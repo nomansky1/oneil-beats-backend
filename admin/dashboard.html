@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>O'Neil Beats — Admin Dashboard</title>
+<style>
+:root {
+  --bg: #06060a; --surface: #0e0e16; --surface2: #14141f; --surface3: #1a1a28;
+  --accent: #f59e0b; --accent2: #8b5cf6; --success: #10b981; --error: #ef4444; --info: #3b82f6;
+  --text: #e2e8f0; --dim: #64748b; --border: rgba(255,255,255,0.08);
+  --radius: 14px; --radius-sm: 8px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-track{background:var(--bg)} ::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:3px}
+
+/* ── Auth Screen ───── */
+#auth-overlay{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:40px;width:380px;text-align:center}
+.auth-card h1{font-size:28px;font-weight:900;letter-spacing:6px;color:var(--accent);margin-bottom:4px}
+.auth-card p{color:var(--dim);font-size:13px;margin-bottom:28px}
+.auth-card input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:13px 16px;color:var(--text);font-size:14px;margin-bottom:12px;outline:none}
+.auth-card input:focus{border-color:var(--accent)}
+.auth-card button{width:100%;background:var(--accent);color:#000;font-weight:700;font-size:15px;padding:13px;border:none;border-radius:var(--radius-sm);cursor:pointer;margin-top:4px;transition:opacity .2s}
+.auth-card button:hover{opacity:.85}
+.auth-err{color:var(--error);font-size:13px;margin-top:10px;display:none}
+
+/* ── Layout ───── */
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:24px 0;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.sidebar-logo{padding:0 24px;font-size:18px;font-weight:900;letter-spacing:5px;color:var(--accent)}
+.sidebar-sub{padding:0 24px;font-size:11px;color:var(--dim);margin-top:2px;margin-bottom:28px}
+.nav{flex:1;display:flex;flex-direction:column;gap:2px;padding:0 12px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;color:var(--dim);font-weight:500;transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:rgba(245,158,11,.12);color:var(--accent)}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+.nav-item .badge{margin-left:auto;background:var(--accent);color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px}
+.sidebar-footer{padding:16px 24px;border-top:1px solid var(--border);font-size:12px;color:var(--dim)}
+.sidebar-footer .dot{display:inline-block;width:8px;height:8px;background:var(--success);border-radius:50%;margin-right:6px}
+
+.main{padding:32px;overflow-y:auto}
+.page{display:none}
+.page.active{display:block}
+.page-title{font-size:24px;font-weight:800;margin-bottom:4px}
+.page-sub{color:var(--dim);font-size:14px;margin-bottom:28px}
+
+/* ── Stats Cards ───── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.stat-label{font-size:12px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.stat-value{font-size:28px;font-weight:800}
+.stat-sub{font-size:12px;color:var(--dim);margin-top:4px}
+.stat-accent{color:var(--accent)} .stat-purple{color:var(--accent2)} .stat-green{color:var(--success)} .stat-blue{color:var(--info)}
+
+/* ── Catalog Table ───── */
+.toolbar{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.search-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px 10px 38px;color:var(--text);font-size:14px;width:280px;outline:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:12px center}
+.search-box:focus{border-color:var(--accent)}
+.filter-select{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;color:var(--text);font-size:14px;outline:none;cursor:pointer}
+.btn{padding:10px 20px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .15s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:var(--accent);color:#000} .btn-primary:hover{opacity:.85}
+.btn-ghost{background:transparent;color:var(--dim);border:1px solid var(--border)} .btn-ghost:hover{color:var(--text);border-color:var(--dim)}
+.btn-danger{background:rgba(239,68,68,.15);color:var(--error)} .btn-danger:hover{background:rgba(239,68,68,.25)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.ml-auto{margin-left:auto}
+
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);font-weight:600;padding:14px 16px;border-bottom:1px solid var(--border);background:var(--surface2)}
+td{padding:12px 16px;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.cover-thumb{width:42px;height:42px;border-radius:6px;object-fit:cover;background:var(--surface2)}
+.genre-tag{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(245,158,11,.15);color:var(--accent)}
+.plays-badge{color:var(--dim);font-size:13px}
+.price-cell{font-weight:600;color:var(--success);font-size:13px}
+.actions-cell{display:flex;gap:6px}
+.empty-state{text-align:center;padding:60px 20px;color:var(--dim)}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+
+/* ── Upload Form ───── */
+.upload-form{max-width:640px}
+.form-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:16px}
+.form-section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:18px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.field{margin-bottom:14px}
+.field label{font-size:12px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 14px;color:var(--text);font-size:14px;outline:none;transition:border .2s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
+.field textarea{resize:vertical;min-height:60px;font-family:inherit}
+
+.drop-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(245,158,11,.04)}
+.drop-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-zone .icon{font-size:32px;margin-bottom:8px}
+.drop-zone .label{font-weight:600;font-size:14px}
+.drop-zone .sub{color:var(--dim);font-size:12px;margin-top:4px}
+.drop-zone.has-file{border-color:var(--success);background:rgba(16,185,129,.06)}
+.file-info{color:var(--success);font-weight:600;font-size:13px;margin-top:6px}
+#cover-preview{width:100%;max-width:200px;aspect-ratio:1;border-radius:10px;object-fit:cover;display:none;margin:12px auto 0}
+
+.upload-progress{display:none;margin-top:20px}
+.progress-bar{width:100%;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .3s;width:0}
+.upload-status{font-size:13px;color:var(--dim);margin-top:6px}
+
+/* ── Modal ───── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;width:500px;max-width:90vw;max-height:85vh;overflow-y:auto}
+.modal h2{font-size:18px;font-weight:700;margin-bottom:20px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px}
+
+/* ── Toast ───── */
+.toast{position:fixed;top:20px;right:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 20px;font-size:14px;z-index:2000;transform:translateX(120%);transition:transform .3s;display:flex;align-items:center;gap:10px;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.toast.show{transform:translateX(0)}
+.toast.success{border-color:var(--success)} .toast.error{border-color:var(--error)}
+
+/* ── Responsive ───── */
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- Auth Overlay -->
+<div id="auth-overlay">
+  <div class="auth-card">
+    <h1>O'NEIL</h1>
+    <p>Producer Admin Dashboard</p>
+    <input type="url" id="auth-url" placeholder="Backend URL" value="https://oneil-beats-backend-production.up.railway.app">
+    <input type="password" id="auth-key" placeholder="Admin Key">
+    <button onclick="authenticate()">Sign In</button>
+    <div class="auth-err" id="auth-err"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <h2 id="modal-title">Edit Beat</h2>
+    <input type="hidden" id="edit-id">
+    <div class="form-row">
+      <div class="field"><label>Title</label><input type="text" id="edit-title"></div>
+      <div class="field"><label>Genre</label><select id="edit-genre"></select></div>
+    </div>
+    <div class="form-row-3">
+      <div class="field"><label>BPM</label><input type="number" id="edit-bpm"></div>
+      <div class="field"><label>Key</label><select id="edit-key"></select></div>
+      <div class="field"><label>Mood</label><input type="text" id="edit-mood"></div>
+    </div>
+    <div class="form-row-3">
+      <div class="field"><label>Lease $</label><input type="number" id="edit-lease" step="0.01"></div>
+      <div class="field"><label>Premium $</label><input type="number" id="edit-premium" step="0.01"></div>
+      <div class="field"><label>Stems $</label><input type="number" id="edit-stems" step="0.01"></div>
+    </div>
+    <div class="field"><label>Tags (comma-separated)</label><input type="text" id="edit-tags"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal" style="width:400px;text-align:center">
+    <h2>Delete Beat?</h2>
+    <p style="color:var(--dim);margin-bottom:8px" id="delete-beat-name"></p>
+    <p style="color:var(--error);font-size:13px">This will deactivate the beat from your catalog.</p>
+    <input type="hidden" id="delete-id">
+    <div class="modal-actions" style="justify-content:center">
+      <button class="btn btn-ghost" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Delete Beat</button>
+    </div>
+  </div>
+</div>
+
+<!-- Main Layout -->
+<div class="layout" id="app" style="display:none">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">O'NEIL</div>
+    <div class="sidebar-sub">Admin Dashboard</div>
+    <nav class="nav">
+      <button class="nav-item active" onclick="showPage('overview',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Overview
+      </button>
+      <button class="nav-item" onclick="showPage('catalog',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        Catalog
+        <span class="badge" id="beat-count-badge">0</span>
+      </button>
+      <button class="nav-item" onclick="showPage('upload',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload Beat
+      </button>
+      <button class="nav-item" onclick="showPage('analytics',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Analytics
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <span class="dot" id="status-dot"></span>
+      <span id="status-text">Connecting...</span>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- ═══ OVERVIEW PAGE ═══ -->
+    <div class="page active" id="page-overview">
+      <h1 class="page-title">Dashboard</h1>
+      <p class="page-sub">Welcome back, Nelson. Here's your beat catalog at a glance.</p>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Beats</div>
+          <div class="stat-value stat-accent" id="stat-beats">—</div>
+          <div class="stat-sub">In your catalog</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Plays</div>
+          <div class="stat-value stat-purple" id="stat-plays">—</div>
+          <div class="stat-sub">Across all beats</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Genres</div>
+          <div class="stat-value stat-green" id="stat-genres">—</div>
+          <div class="stat-sub">Unique genres</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Catalog Value</div>
+          <div class="stat-value stat-blue" id="stat-value">—</div>
+          <div class="stat-sub">Total lease prices</div>
+        </div>
+      </div>
+
+      <!-- Top Beats -->
+      <h2 style="font-size:16px;font-weight:700;margin-bottom:14px">Top Beats by Plays</h2>
+      <div class="table-wrap" style="margin-bottom:32px">
+        <table>
+          <thead><tr><th></th><th>Title</th><th>Genre</th><th>BPM</th><th>Plays</th><th>Lease</th></tr></thead>
+          <tbody id="top-beats-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Recent Uploads -->
+      <h2 style="font-size:16px;font-weight:700;margin-bottom:14px">Recent Uploads</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Title</th><th>Genre</th><th>BPM</th><th>Key</th><th>Added</th></tr></thead>
+          <tbody id="recent-beats-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ CATALOG PAGE ═══ -->
+    <div class="page" id="page-catalog">
+      <h1 class="page-title">Beat Catalog</h1>
+      <p class="page-sub">Manage all your beats. Edit metadata, pricing, or remove tracks.</p>
+
+      <div class="toolbar">
+        <input class="search-box" type="text" placeholder="Search beats..." id="catalog-search" oninput="filterCatalog()">
+        <select class="filter-select" id="catalog-genre-filter" onchange="filterCatalog()"><option value="">All Genres</option></select>
+        <button class="btn btn-primary ml-auto" onclick="showPage('upload',document.querySelectorAll('.nav-item')[2])">+ Upload New Beat</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Title</th>
+              <th>Genre</th>
+              <th>BPM</th>
+              <th>Key</th>
+              <th>Plays</th>
+              <th>Lease</th>
+              <th>Premium</th>
+              <th>Stems</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="catalog-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ UPLOAD PAGE ═══ -->
+    <div class="page" id="page-upload">
+      <h1 class="page-title">Upload Beat</h1>
+      <p class="page-sub">Add a new beat to your catalog. Audio uploads go to Google Drive, metadata to Google Sheets.</p>
+
+      <div class="upload-form">
+        <!-- Audio File -->
+        <div class="form-section">
+          <div class="form-section-title">Audio File</div>
+          <div class="drop-zone" id="audio-drop" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleAudioDrop(event)">
+            <input type="file" accept="audio/*" onchange="handleAudioSelect(this)">
+            <div class="icon">🎵</div>
+            <div class="label">Drop audio file or click to browse</div>
+            <div class="sub">MP3, WAV, FLAC — up to 200MB</div>
+            <div class="file-info" id="audio-file-info" style="display:none"></div>
+          </div>
+          <!-- Audio preview -->
+          <audio id="audio-preview" controls style="width:100%;margin-top:12px;display:none"></audio>
+        </div>
+
+        <!-- Cover Art -->
+        <div class="form-section">
+          <div class="form-section-title">Cover Art (Optional)</div>
+          <div class="drop-zone" id="cover-drop" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleCoverDrop(event)">
+            <input type="file" accept="image/*" onchange="handleCoverSelect(this)">
+            <div class="icon">🖼️</div>
+            <div class="label">Drop cover art or click to browse</div>
+            <div class="sub">JPG, PNG — square recommended</div>
+            <div class="file-info" id="cover-file-info" style="display:none"></div>
+          </div>
+          <img id="cover-preview">
+        </div>
+
+        <!-- Metadata -->
+        <div class="form-section">
+          <div class="form-section-title">Beat Details</div>
+          <div class="field"><label>Title *</label><input type="text" id="up-title" placeholder="e.g. Midnight Flex"></div>
+          <div class="form-row">
+            <div class="field">
+              <label>Genre *</label>
+              <select id="up-genre">
+                <option value="">Select genre</option>
+                <option>Trap</option><option>Drill</option><option>Boom Bap</option><option>Lo-Fi</option>
+                <option>R&B</option><option>Pop</option><option>House</option><option>Afrobeat</option>
+                <option>Dancehall</option><option>Reggaeton</option><option>Phonk</option><option>EDM</option>
+                <option>DnB</option><option>Jazz</option><option>Neo-Soul</option><option>Metal</option>
+                <option>Rock</option><option>Country</option><option>Amapiano</option>
+              </select>
+            </div>
+            <div class="field"><label>BPM *</label><input type="number" id="up-bpm" placeholder="140" min="40" max="300"></div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label>Key</label>
+              <select id="up-key">
+                <option value="">Select key</option>
+                <option>C Major</option><option>C Minor</option><option>C# Major</option><option>C# Minor</option>
+                <option>D Major</option><option>D Minor</option><option>Eb Major</option><option>Eb Minor</option>
+                <option>E Major</option><option>E Minor</option><option>F Major</option><option>F Minor</option>
+                <option>F# Major</option><option>F# Minor</option><option>G Major</option><option>G Minor</option>
+                <option>Ab Major</option><option>Ab Minor</option><option>A Major</option><option>A Minor</option>
+                <option>Bb Major</option><option>Bb Minor</option><option>B Major</option><option>B Minor</option>
+              </select>
+            </div>
+            <div class="field"><label>Mood</label><input type="text" id="up-mood" placeholder="e.g. Dark, Energetic"></div>
+          </div>
+          <div class="field"><label>Tags (comma-separated)</label><input type="text" id="up-tags" placeholder="e.g. hard, aggressive, 808"></div>
+        </div>
+
+        <!-- Pricing -->
+        <div class="form-section">
+          <div class="form-section-title">Pricing</div>
+          <div class="form-row-3">
+            <div class="field">
+              <label style="color:var(--accent)">Lease $</label>
+              <input type="number" id="up-lease" value="29.99" step="0.01" min="0">
+            </div>
+            <div class="field">
+              <label style="color:var(--accent2)">Premium $</label>
+              <input type="number" id="up-premium" value="49.99" step="0.01" min="0">
+            </div>
+            <div class="field">
+              <label style="color:var(--success)">Stems $</label>
+              <input type="number" id="up-stems-price" value="99.99" step="0.01" min="0">
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;padding:14px;font-size:16px" onclick="uploadBeat()">
+          Upload Beat
+        </button>
+
+        <div class="upload-progress" id="upload-progress">
+          <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+          <div class="upload-status" id="upload-status">Preparing upload...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ ANALYTICS PAGE ═══ -->
+    <div class="page" id="page-analytics">
+      <h1 class="page-title">Analytics</h1>
+      <p class="page-sub">Play counts and catalog breakdown.</p>
+
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:32px">
+        <div class="stat-card">
+          <div class="stat-label">Avg BPM</div>
+          <div class="stat-value stat-accent" id="stat-avg-bpm">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Most Popular Genre</div>
+          <div class="stat-value stat-purple" id="stat-top-genre" style="font-size:20px">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg Plays per Beat</div>
+          <div class="stat-value stat-green" id="stat-avg-plays">—</div>
+        </div>
+      </div>
+
+      <!-- Genre Breakdown -->
+      <h2 style="font-size:16px;font-weight:700;margin-bottom:14px">Genre Breakdown</h2>
+      <div class="table-wrap" style="margin-bottom:32px">
+        <table>
+          <thead><tr><th>Genre</th><th>Beats</th><th>Total Plays</th><th>Avg BPM</th><th>Share</th></tr></thead>
+          <tbody id="genre-breakdown-body"></tbody>
+        </table>
+      </div>
+
+      <!-- All Beats by Plays -->
+      <h2 style="font-size:16px;font-weight:700;margin-bottom:14px">All Beats Ranked by Plays</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Title</th><th>Genre</th><th>BPM</th><th>Key</th><th>Plays</th></tr></thead>
+          <tbody id="all-beats-ranked"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let API_URL = '';
+let ADMIN_KEY = '';
+let allBeats = [];
+let audioFile = null;
+let coverFile = null;
+
+const GENRES_LIST = ['Trap','Drill','Boom Bap','Lo-Fi','R&B','Pop','House','Afrobeat','Dancehall','Reggaeton','Phonk','EDM','DnB','Jazz','Neo-Soul','Metal','Rock','Country','Amapiano'];
+const KEYS_LIST = ['C Major','C Minor','C# Major','C# Minor','D Major','D Minor','Eb Major','Eb Minor','E Major','E Minor','F Major','F Minor','F# Major','F# Minor','G Major','G Minor','Ab Major','Ab Minor','A Major','A Minor','Bb Major','Bb Minor','B Major','B Minor'];
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+async function authenticate() {
+  const url = document.getElementById('auth-url').value.replace(/\/$/,'');
+  const key = document.getElementById('auth-key').value;
+  const err = document.getElementById('auth-err');
+
+  if (!url || !key) { err.textContent = 'Enter both URL and admin key.'; err.style.display = 'block'; return; }
+
+  try {
+    const res = await fetch(`${url}/upload/status`, { headers: { 'x-admin-key': key } });
+    const data = await res.json();
+    if (data.success) {
+      API_URL = url; ADMIN_KEY = key;
+      localStorage.setItem('ob_url', url);
+      localStorage.setItem('ob_key', key);
+      document.getElementById('auth-overlay').style.display = 'none';
+      document.getElementById('app').style.display = 'grid';
+      document.getElementById('status-dot').style.background = 'var(--success)';
+      document.getElementById('status-text').textContent = `Connected · ${data.beatCount} beats`;
+      loadBeats();
+    } else {
+      err.textContent = data.error || 'Authentication failed.'; err.style.display = 'block';
+    }
+  } catch (e) {
+    err.textContent = 'Could not connect to server. Check URL.'; err.style.display = 'block';
+  }
+}
+
+// Auto-login
+(function() {
+  const url = localStorage.getItem('ob_url');
+  const key = localStorage.getItem('ob_key');
+  if (url && key) {
+    document.getElementById('auth-url').value = url;
+    document.getElementById('auth-key').value = key;
+    authenticate();
+  }
+})();
+
+// ── Data Loading ─────────────────────────────────────────────────────────────
+async function loadBeats() {
+  try {
+    const res = await fetch(`${API_URL}/beats`);
+    const data = await res.json();
+    if (data.success) {
+      allBeats = data.beats || [];
+      updateOverview();
+      updateCatalog();
+      updateAnalytics();
+      document.getElementById('beat-count-badge').textContent = allBeats.length;
+    }
+  } catch (e) {
+    toast('Failed to load beats', 'error');
+  }
+}
+
+// ── Overview ─────────────────────────────────────────────────────────────────
+function updateOverview() {
+  const totalPlays = allBeats.reduce((s, b) => s + (b.plays || 0), 0);
+  const genres = new Set(allBeats.map(b => b.genre).filter(Boolean));
+  const totalValue = allBeats.reduce((s, b) => s + (b.lease_price || 0), 0);
+
+  document.getElementById('stat-beats').textContent = allBeats.length;
+  document.getElementById('stat-plays').textContent = fmtNum(totalPlays);
+  document.getElementById('stat-genres').textContent = genres.size;
+  document.getElementById('stat-value').textContent = '$' + totalValue.toFixed(0);
+
+  // Top beats
+  const top = [...allBeats].sort((a, b) => (b.plays || 0) - (a.plays || 0)).slice(0, 5);
+  document.getElementById('top-beats-body').innerHTML = top.length ? top.map(b => `
+    <tr>
+      <td><img class="cover-thumb" src="${b.cover_art_url || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2242%22 height=%2242%22><rect width=%2242%22 height=%2242%22 fill=%22%2314141f%22/><text x=%2221%22 y=%2226%22 text-anchor=%22middle%22 fill=%22%2364748b%22 font-size=%2216%22>♪</text></svg>'}"></td>
+      <td><strong>${esc(b.title)}</strong></td>
+      <td><span class="genre-tag">${esc(b.genre)}</span></td>
+      <td>${b.bpm}</td>
+      <td><strong>${fmtNum(b.plays)}</strong></td>
+      <td class="price-cell">$${(b.lease_price||0).toFixed(2)}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="6" class="empty-state">No beats yet. Upload your first beat!</td></tr>';
+
+  // Recent uploads
+  const recent = [...allBeats].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).slice(0, 5);
+  document.getElementById('recent-beats-body').innerHTML = recent.map(b => `
+    <tr>
+      <td><img class="cover-thumb" src="${b.cover_art_url || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2242%22 height=%2242%22><rect width=%2242%22 height=%2242%22 fill=%22%2314141f%22/><text x=%2221%22 y=%2226%22 text-anchor=%22middle%22 fill=%22%2364748b%22 font-size=%2216%22>♪</text></svg>'}"></td>
+      <td><strong>${esc(b.title)}</strong></td>
+      <td><span class="genre-tag">${esc(b.genre)}</span></td>
+      <td>${b.bpm}</td>
+      <td>${esc(b.key || '—')}</td>
+      <td style="color:var(--dim);font-size:13px">${b.created_at ? new Date(b.created_at).toLocaleDateString() : '—'}</td>
+    </tr>
+  `).join('');
+}
+
+// ── Catalog ──────────────────────────────────────────────────────────────────
+function updateCatalog() {
+  // Populate genre filter
+  const genres = [...new Set(allBeats.map(b => b.genre).filter(Boolean))].sort();
+  const sel = document.getElementById('catalog-genre-filter');
+  sel.innerHTML = '<option value="">All Genres</option>' + genres.map(g => `<option>${g}</option>`).join('');
+  filterCatalog();
+}
+
+function filterCatalog() {
+  const q = document.getElementById('catalog-search').value.toLowerCase();
+  const genre = document.getElementById('catalog-genre-filter').value;
+  let filtered = allBeats;
+  if (genre) filtered = filtered.filter(b => b.genre === genre);
+  if (q) filtered = filtered.filter(b => (b.title||'').toLowerCase().includes(q) || (b.genre||'').toLowerCase().includes(q) || (b.key||'').toLowerCase().includes(q) || (b.tags||[]).join(' ').toLowerCase().includes(q));
+
+  document.getElementById('catalog-body').innerHTML = filtered.length ? filtered.map(b => `
+    <tr>
+      <td><img class="cover-thumb" src="${b.cover_art_url || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2242%22 height=%2242%22><rect width=%2242%22 height=%2242%22 fill=%22%2314141f%22/><text x=%2221%22 y=%2226%22 text-anchor=%22middle%22 fill=%22%2364748b%22 font-size=%2216%22>♪</text></svg>'}"></td>
+      <td><strong>${esc(b.title)}</strong></td>
+      <td><span class="genre-tag">${esc(b.genre)}</span></td>
+      <td>${b.bpm}</td>
+      <td>${esc(b.key || '—')}</td>
+      <td class="plays-badge">${fmtNum(b.plays)}</td>
+      <td class="price-cell">$${(b.lease_price||0).toFixed(2)}</td>
+      <td style="color:var(--accent2);font-weight:600;font-size:13px">$${(b.premium_price||0).toFixed(2)}</td>
+      <td style="color:var(--success);font-weight:600;font-size:13px">$${(b.stems_price||0).toFixed(2)}</td>
+      <td>
+        <div class="actions-cell">
+          ${b.audio_url ? `<button class="btn btn-ghost btn-sm" onclick="previewBeat('${esc(b.audio_url)}')">▶</button>` : ''}
+          <button class="btn btn-ghost btn-sm" onclick='openEditModal(${JSON.stringify(b).replace(/'/g,"&#39;")})'>Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${esc(b.id)}','${esc(b.title)}')">✕</button>
+        </div>
+      </td>
+    </tr>
+  `).join('') : '<tr><td colspan="10" class="empty-state"><div class="icon">🎵</div>No beats found</td></tr>';
+}
+
+// ── Preview ──────────────────────────────────────────────────────────────────
+let previewAudio = null;
+function previewBeat(url) {
+  if (previewAudio) { previewAudio.pause(); previewAudio = null; }
+  previewAudio = new Audio(url);
+  previewAudio.play().catch(() => toast('Could not play audio', 'error'));
+}
+
+// ── Edit Modal ───────────────────────────────────────────────────────────────
+function openEditModal(beat) {
+  document.getElementById('edit-id').value = beat.id;
+  document.getElementById('edit-title').value = beat.title || '';
+  document.getElementById('edit-bpm').value = beat.bpm || 120;
+  document.getElementById('edit-mood').value = beat.mood || '';
+  document.getElementById('edit-lease').value = beat.lease_price || 29.99;
+  document.getElementById('edit-premium').value = beat.premium_price || 49.99;
+  document.getElementById('edit-stems').value = beat.stems_price || 99.99;
+  document.getElementById('edit-tags').value = (beat.tags || []).join(', ');
+
+  // Populate selects
+  const genreSel = document.getElementById('edit-genre');
+  genreSel.innerHTML = GENRES_LIST.map(g => `<option${g===beat.genre?' selected':''}>${g}</option>`).join('');
+  const keySel = document.getElementById('edit-key');
+  keySel.innerHTML = '<option value="">—</option>' + KEYS_LIST.map(k => `<option${k===beat.key?' selected':''}>${k}</option>`).join('');
+
+  document.getElementById('edit-modal').classList.add('show');
+}
+
+function closeModal() { document.getElementById('edit-modal').classList.remove('show'); }
+
+async function saveEdit() {
+  const id = document.getElementById('edit-id').value;
+  const body = {
+    id,
+    title: document.getElementById('edit-title').value,
+    genre: document.getElementById('edit-genre').value,
+    bpm: document.getElementById('edit-bpm').value,
+    key: document.getElementById('edit-key').value,
+    mood: document.getElementById('edit-mood').value,
+    lease_price: document.getElementById('edit-lease').value,
+    premium_price: document.getElementById('edit-premium').value,
+    stems_price: document.getElementById('edit-stems').value,
+    tags: document.getElementById('edit-tags').value,
+  };
+
+  try {
+    const res = await fetch(`${API_URL}/admin/beat/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.success) {
+      toast('Beat updated!', 'success');
+      closeModal();
+      loadBeats();
+    } else {
+      toast(data.error || 'Update failed', 'error');
+    }
+  } catch (e) {
+    toast('Could not update beat. The /admin/beat/:id endpoint may need to be added to your backend.', 'error');
+  }
+}
+
+// ── Delete Modal ─────────────────────────────────────────────────────────────
+function openDeleteModal(id, title) {
+  document.getElementById('delete-id').value = id;
+  document.getElementById('delete-beat-name').textContent = `"${title}"`;
+  document.getElementById('delete-modal').classList.add('show');
+}
+function closeDeleteModal() { document.getElementById('delete-modal').classList.remove('show'); }
+
+async function confirmDelete() {
+  const id = document.getElementById('delete-id').value;
+  try {
+    const res = await fetch(`${API_URL}/admin/beat/${id}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-key': ADMIN_KEY },
+    });
+    const data = await res.json();
+    if (data.success) {
+      toast('Beat removed from catalog', 'success');
+      closeDeleteModal();
+      loadBeats();
+    } else {
+      toast(data.error || 'Delete failed', 'error');
+    }
+  } catch (e) {
+    toast('Could not delete beat. The /admin/beat/:id DELETE endpoint may need to be added to your backend.', 'error');
+  }
+}
+
+// ── Upload ───────────────────────────────────────────────────────────────────
+function handleAudioDrop(e) { e.preventDefault(); e.target.closest('.drop-zone').classList.remove('drag-over'); if (e.dataTransfer.files[0]) setAudioFile(e.dataTransfer.files[0]); }
+function handleAudioSelect(input) { if (input.files[0]) setAudioFile(input.files[0]); }
+function handleCoverDrop(e) { e.preventDefault(); e.target.closest('.drop-zone').classList.remove('drag-over'); if (e.dataTransfer.files[0]) setCoverFile(e.dataTransfer.files[0]); }
+function handleCoverSelect(input) { if (input.files[0]) setCoverFile(input.files[0]); }
+
+function setAudioFile(file) {
+  audioFile = file;
+  document.getElementById('audio-drop').classList.add('has-file');
+  document.getElementById('audio-file-info').textContent = `${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`;
+  document.getElementById('audio-file-info').style.display = 'block';
+  const preview = document.getElementById('audio-preview');
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = 'block';
+}
+
+function setCoverFile(file) {
+  coverFile = file;
+  document.getElementById('cover-drop').classList.add('has-file');
+  document.getElementById('cover-file-info').textContent = `${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`;
+  document.getElementById('cover-file-info').style.display = 'block';
+  const preview = document.getElementById('cover-preview');
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = 'block';
+}
+
+async function uploadBeat() {
+  const title = document.getElementById('up-title').value.trim();
+  const genre = document.getElementById('up-genre').value;
+  const bpm = document.getElementById('up-bpm').value;
+
+  if (!audioFile) { toast('Select an audio file', 'error'); return; }
+  if (!title) { toast('Enter a title', 'error'); return; }
+  if (!genre) { toast('Select a genre', 'error'); return; }
+  if (!bpm) { toast('Enter BPM', 'error'); return; }
+
+  const form = new FormData();
+  form.append('audio', audioFile);
+  if (coverFile) form.append('cover', coverFile);
+  form.append('title', title);
+  form.append('genre', genre);
+  form.append('bpm', bpm);
+  form.append('key', document.getElementById('up-key').value);
+  form.append('mood', document.getElementById('up-mood').value);
+  form.append('tags', document.getElementById('up-tags').value);
+  form.append('lease_price', document.getElementById('up-lease').value);
+  form.append('premium_price', document.getElementById('up-premium').value);
+  form.append('stems_price', document.getElementById('up-stems-price').value);
+
+  const prog = document.getElementById('upload-progress');
+  const fill = document.getElementById('progress-fill');
+  const status = document.getElementById('upload-status');
+  prog.style.display = 'block';
+  fill.style.width = '10%';
+  status.textContent = 'Uploading to server...';
+
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_URL}/upload/beat`);
+    xhr.setRequestHeader('x-admin-key', ADMIN_KEY);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 90);
+        fill.style.width = pct + '%';
+        status.textContent = `Uploading... ${pct}%`;
+      }
+    };
+
+    xhr.onload = () => {
+      fill.style.width = '100%';
+      const data = JSON.parse(xhr.responseText);
+      if (data.success) {
+        status.textContent = 'Upload complete!';
+        toast(`"${title}" uploaded successfully!`, 'success');
+        resetUploadForm();
+        loadBeats();
+      } else {
+        status.textContent = 'Upload failed: ' + (data.error || 'Unknown error');
+        toast(data.error || 'Upload failed', 'error');
+      }
+    };
+
+    xhr.onerror = () => {
+      status.textContent = 'Upload failed — network error';
+      toast('Network error during upload', 'error');
+    };
+
+    xhr.send(form);
+  } catch (e) {
+    status.textContent = 'Upload error';
+    toast('Upload failed', 'error');
+  }
+}
+
+function resetUploadForm() {
+  audioFile = null; coverFile = null;
+  document.getElementById('up-title').value = '';
+  document.getElementById('up-genre').value = '';
+  document.getElementById('up-bpm').value = '';
+  document.getElementById('up-key').value = '';
+  document.getElementById('up-mood').value = '';
+  document.getElementById('up-tags').value = '';
+  document.getElementById('up-lease').value = '29.99';
+  document.getElementById('up-premium').value = '49.99';
+  document.getElementById('up-stems-price').value = '99.99';
+  document.getElementById('audio-drop').classList.remove('has-file');
+  document.getElementById('cover-drop').classList.remove('has-file');
+  document.getElementById('audio-file-info').style.display = 'none';
+  document.getElementById('cover-file-info').style.display = 'none';
+  document.getElementById('audio-preview').style.display = 'none';
+  document.getElementById('cover-preview').style.display = 'none';
+  document.getElementById('upload-progress').style.display = 'none';
+  document.getElementById('progress-fill').style.width = '0';
+}
+
+// ── Analytics ────────────────────────────────────────────────────────────────
+function updateAnalytics() {
+  if (!allBeats.length) return;
+  const avgBpm = Math.round(allBeats.reduce((s, b) => s + (b.bpm || 0), 0) / allBeats.length);
+  const totalPlays = allBeats.reduce((s, b) => s + (b.plays || 0), 0);
+  const avgPlays = Math.round(totalPlays / allBeats.length);
+
+  // Top genre
+  const genreCounts = {};
+  allBeats.forEach(b => { if (b.genre) genreCounts[b.genre] = (genreCounts[b.genre] || 0) + 1; });
+  const topGenre = Object.entries(genreCounts).sort((a, b) => b[1] - a[1])[0];
+
+  document.getElementById('stat-avg-bpm').textContent = avgBpm;
+  document.getElementById('stat-top-genre').textContent = topGenre ? topGenre[0] : '—';
+  document.getElementById('stat-avg-plays').textContent = fmtNum(avgPlays);
+
+  // Genre breakdown table
+  const genreData = {};
+  allBeats.forEach(b => {
+    const g = b.genre || 'Unknown';
+    if (!genreData[g]) genreData[g] = { count: 0, plays: 0, bpmSum: 0 };
+    genreData[g].count++;
+    genreData[g].plays += (b.plays || 0);
+    genreData[g].bpmSum += (b.bpm || 0);
+  });
+
+  const genreRows = Object.entries(genreData).sort((a, b) => b[1].count - a[1].count);
+  document.getElementById('genre-breakdown-body').innerHTML = genreRows.map(([g, d]) => `
+    <tr>
+      <td><span class="genre-tag">${esc(g)}</span></td>
+      <td>${d.count}</td>
+      <td>${fmtNum(d.plays)}</td>
+      <td>${Math.round(d.bpmSum / d.count)}</td>
+      <td>${Math.round(d.count / allBeats.length * 100)}%</td>
+    </tr>
+  `).join('');
+
+  // All beats ranked
+  const ranked = [...allBeats].sort((a, b) => (b.plays || 0) - (a.plays || 0));
+  document.getElementById('all-beats-ranked').innerHTML = ranked.map((b, i) => `
+    <tr>
+      <td style="color:var(--dim)">${i + 1}</td>
+      <td><strong>${esc(b.title)}</strong></td>
+      <td><span class="genre-tag">${esc(b.genre)}</span></td>
+      <td>${b.bpm}</td>
+      <td>${esc(b.key || '—')}</td>
+      <td><strong>${fmtNum(b.plays)}</strong></td>
+    </tr>
+  `).join('');
+}
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+function showPage(id, navEl) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (navEl) navEl.classList.add('active');
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function fmtNum(n) { if (!n) return '0'; if (n >= 1000000) return (n/1000000).toFixed(1)+'M'; if (n >= 1000) return (n/1000).toFixed(1)+'K'; return ''+n; }
+
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = (type === 'success' ? '✓ ' : type === 'error' ? '✕ ' : '') + msg;
+  t.className = 'toast show ' + (type || '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.classList.remove('show'); } });
+});
+</script>
+</body>
+</html>
