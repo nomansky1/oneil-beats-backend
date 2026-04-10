@@ -369,41 +369,4 @@ app.get('/upload/status', requireAdminKey, async (req, res) => {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ADMIN BEAT MANAGEMENT (edit + delete)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// PUT /admin/beat/:id — update beat metadata
-app.put('/admin/beat/:id', requireAdminKey, async (req, res) => {
-  try {
-    await updateBeatInSheet(req.params.id, req.body);
-    res.json({ success: true, message: 'Beat updated' });
-  } catch (err) {
-    console.error('Update beat error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// DELETE /admin/beat/:id — soft-delete (deactivate) beat
-app.delete('/admin/beat/:id', requireAdminKey, async (req, res) => {
-  try {
-    await deleteBeatInSheet(req.params.id);
-    res.json({ success: true, message: 'Beat deactivated' });
-  } catch (err) {
-    console.error('Delete beat error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── Serve admin dashboard ─────────────────────────────────────────────────────
-const path = require('path');
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin', 'dashboard.html'));
-});
-
-// ── Health check ───────────────────────────────────────────────────────────────
-app.get('/', (req, res) => {
-  res.json({ name: "O'Neil Beats API", version: '1.0.0', status: 'ok' });
-});
-
-app.listen(PORT, () => {
-  console.log(`🎵 O'Neil Beats API running on port ${PORT}`);
-});
+// ═════════════════════════════

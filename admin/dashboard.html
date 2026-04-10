@@ -478,15 +478,13 @@ async function authenticate() {
   }
 }
 
-// Auto-login
+// Auto-login — pre-filled credentials
 (function() {
-  const url = localStorage.getItem('ob_url');
-  const key = localStorage.getItem('ob_key');
-  if (url && key) {
-    document.getElementById('auth-url').value = url;
-    document.getElementById('auth-key').value = key;
-    authenticate();
-  }
+  const savedUrl = localStorage.getItem('ob_url') || 'https://oneil-beats-backend-production.up.railway.app';
+  const savedKey = localStorage.getItem('ob_key') || 'oneilbeats2024admin';
+  document.getElementById('auth-url').value = savedUrl;
+  document.getElementById('auth-key').value = savedKey;
+  authenticate();
 })();
 
 // ── Data Loading ─────────────────────────────────────────────────────────────
@@ -863,8 +861,4 @@ function toast(msg, type) {
 
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.classList.remove('show'); } });
-});
-</script>
-</body>
-</html>
+  overlay.addEventListener('click', (e) =>
