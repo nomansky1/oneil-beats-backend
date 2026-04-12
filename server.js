@@ -442,9 +442,28 @@ app.post('/upload/get-signed-url', requireAdminKey, async (req, res) => {
     const safeName = `${Date.now()}_${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase.storage
+
+    // Try to create signed URL — if bucket doesn't exist, auto-create it
+    let data, error;
+    ({ data, error } = await supabase.storage
       .from(targetBucket)
-      .createSignedUploadUrl(safeName);
+      .createSignedUploadUrl(safeName));
+
+    // If bucket not found, try creating it then retry
+    if (error && (error.message.includes('not found') || error.message.includes('Bucket not found') || error.statusCode === 404)) {
+      console.log(`Bucket "${targetBucket}" not found, creating...`);
+      const { error: createErr } = await supabase.storage.createBucket(targetBucket, {
+        public: true,
+        fileSizeLimit: 524288000, // 500MB for stems
+      });
+      if (createErr && !createErr.message.includes('already exists')) {
+        console.warn(`Could not create bucket "${targetBucket}":`, createErr.message);
+      }
+      // Retry signed URL
+      ({ data, error } = await supabase.storage
+        .from(targetBucket)
+        .createSignedUploadUrl(safeName));
+    }
 
     if (error) throw new Error(`Signed URL error: ${error.message}`);
 
