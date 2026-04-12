@@ -1,6 +1,7 @@
-// ─── Google Drive + Sheets API helper ─────────────────────────────────────────
+// Google Drive + Sheets API helper
 require('dotenv').config();
 const { google } = require('googleapis');
+const { Readable } = require('stream');
 
 // Authenticate with Google Service Account
 function getAuth() {
@@ -18,12 +19,6 @@ function getAuth() {
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID;
-
-// ─── Google Sheets: Beat Catalog ──────────────────────────────────────────────
-// Expected columns (Row 1 = header):
-// id | title | artist | genre | bpm | key | mood | duration
-// lease_price | premium_price | stems_price | tags | cover_art_id
-// audio_file_id | plays | created_at | active
 
 const SHEET_RANGE = 'Sheet1!A:R';
 
@@ -51,12 +46,11 @@ async function fetchBeatsFromSheet() {
   const [headers, ...dataRows] = rows;
 
   return dataRows
-    .filter(row => row[15] !== 'false') // active column
+    .filter(row => row[15] !== 'false')
     .map(row => {
       const obj = {};
       headers.forEach((h, i) => { obj[h] = row[i] || ''; });
 
-      // Parse numeric fields
       obj.bpm = parseInt(obj.bpm) || 120;
       obj.lease_price = parseFloat(obj.lease_price) || 29.99;
       obj.premium_price = parseFloat(obj.premium_price) || 99.99;
@@ -64,7 +58,6 @@ async function fetchBeatsFromSheet() {
       obj.plays = parseInt(obj.plays) || 0;
       obj.tags = obj.tags ? obj.tags.split(',').map(t => t.trim()) : [];
 
-      // Generate CDN-friendly public URLs
       if (obj.cover_art_id) {
         obj.cover_art_url = getDriveImageUrl(obj.cover_art_id);
       }
@@ -97,9 +90,9 @@ async function addBeatToSheet(beatData) {
     (beatData.tags || []).join(','),
     beatData.cover_art_id || '',
     beatData.audio_file_id || '',
-    0, // plays
+    0,
     now,
-    'true', // active
+    'true',
   ];
 
   await sheets.spreadsheets.values.append({
@@ -129,7 +122,7 @@ async function incrementPlayCount(beatId) {
   if (rowIdx === -1) return;
 
   const currentPlays = parseInt(rows[rowIdx][playsCol]) || 0;
-  const sheetRow = rowIdx + 1; // 1-indexed, row 1 is headers
+  const sheetRow = rowIdx + 1;
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
@@ -139,7 +132,7 @@ async function incrementPlayCount(beatId) {
   });
 }
 
-// ─── Update a beat row in Google Sheet ────────────────────────────────────────
+// Update a beat row in Google Sheet
 async function updateBeatInSheet(beatId, updates) {
   const sheets = await getSheets();
   const res = await sheets.spreadsheets.values.get({
@@ -155,9 +148,8 @@ async function updateBeatInSheet(beatId, updates) {
   const rowIdx = rows.findIndex((r, i) => i > 0 && r[idCol] === beatId);
   if (rowIdx === -1) throw new Error('Beat not found');
 
-  // Map update fields to column indices
   const updatableFields = ['title', 'genre', 'bpm', 'key', 'mood', 'lease_price', 'premium_price', 'stems_price', 'tags'];
-  const sheetRow = rowIdx + 1; // 1-indexed for Sheets API
+  const sheetRow = rowIdx + 1;
 
   for (const field of updatableFields) {
     if (updates[field] !== undefined && updates[field] !== '') {
@@ -165,7 +157,6 @@ async function updateBeatInSheet(beatId, updates) {
       if (colIdx === -1) continue;
       const colLetter = String.fromCharCode(65 + colIdx);
       let value = updates[field];
-      // Tags: if comma-separated string, keep as-is for sheet
       await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
         range: `Sheet1!${colLetter}${sheetRow + 1}`,
@@ -176,4 +167,88 @@ async function updateBeatInSheet(beatId, updates) {
   }
 }
 
-/
+// Soft-delete a beat (set active = false)
+async function deleteBeatInSheet(beatId) {
+  const sheets = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: SHEET_RANGE,
+  });
+
+  const rows = res.data.values || [];
+  if (rows.length < 2) throw new Error('Sheet is empty');
+
+  const headers = rows[0];
+  const idCol = headers.indexOf('id');
+  const activeCol = headers.indexOf('active');
+  if (activeCol === -1) throw new Error('No active column found');
+
+  const rowIdx = rows.findIndex((r, i) => i > 0 && r[idCol] === beatId);
+  if (rowIdx === -1) throw new Error('Beat not found');
+
+  const sheetRow = rowIdx + 1;
+  const colLetter = String.fromCharCode(65 + activeCol);
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEET_ID,
+    range: `Sheet1!${colLetter}${sheetRow + 1}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [['false']] },
+  });
+}
+
+// Google Drive: File Upload
+async function uploadFileToDrive(buffer, filename, mimeType) {
+  const drive = await getDrive();
+
+  const fileMetadata = {
+    name: filename,
+    parents: [DRIVE_FOLDER_ID],
+  };
+
+  const media = {
+    mimeType,
+    body: Readable.from(buffer),
+  };
+
+  const res = await drive.files.create({
+    requestBody: fileMetadata,
+    media,
+    fields: 'id, name, webContentLink, webViewLink',
+  });
+
+  // Make file publicly readable
+  await drive.permissions.create({
+    fileId: res.data.id,
+    requestBody: { role: 'reader', type: 'anyone' },
+  });
+
+  return res.data.id;
+}
+
+// Get a direct streaming URL for audio files
+function getDriveStreamUrl(fileId) {
+  return 'https://drive.google.com/uc?export=download&id=' + fileId;
+}
+
+// Get a thumbnail/image URL for cover art
+function getDriveImageUrl(fileId) {
+  return 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w400';
+}
+
+// Get full-res download URL (for purchased beats)
+function getDriveDownloadUrl(fileId) {
+  return 'https://drive.google.com/uc?export=download&confirm=1&id=' + fileId;
+}
+
+module.exports = {
+  fetchBeatsFromSheet,
+  addBeatToSheet,
+  updateBeatInSheet,
+  deleteBeatInSheet,
+  incrementPlayCount,
+  uploadFileToDrive,
+  getDriveStreamUrl,
+  getDriveImageUrl,
+  getDriveDownloadUrl,
+};

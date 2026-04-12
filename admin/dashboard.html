@@ -861,4 +861,19 @@ function toast(msg, type) {
 
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.addEventListener('click', (e) =>
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.classList.remove('show');
+  });
+});
+
+// Auto-login if credentials are saved
+window.addEventListener('DOMContentLoaded', () => {
+  const savedUrl = localStorage.getItem('ob_url');
+  const savedKey = localStorage.getItem('ob_key');
+  if (savedUrl) document.getElementById('auth-url').value = savedUrl;
+  if (savedKey) document.getElementById('auth-key').value = savedKey;
+  if (savedUrl && savedKey) authenticate();
+});
+</script>
+</body>
+</html>
