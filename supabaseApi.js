@@ -69,9 +69,9 @@ async function addBeatToDB(beatData) {
 }
 
 async function updateBeatInDB(beatId, updates) {
-  const allowedFields = ['title', 'genre', 'bpm', 'key', 'mood', 'price',
-    'lease_price', 'premium_price', 'stem_price', 'tags', 'audio_url',
-    'cover_url', 'wav_url', 'stem_url', 'active'];
+  const allowedFields = ['title', 'genre', 'subgenre', 'bpm', 'key', 'mood', 'price',
+    'lease_price', 'premium_price', 'stems_price', 'stem_price', 'tags', 'audio_url',
+    'cover_url', 'cover_art_url', 'wav_url', 'stem_url', 'active'];
 
   const filtered = {};
   for (const [k, v] of Object.entries(updates)) {
