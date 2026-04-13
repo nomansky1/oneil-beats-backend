@@ -117,6 +117,36 @@ async function incrementPlayCount(beatId) {
   if (error) console.error('Play count error:', error.message);
 }
 
+// ── Ensure Storage Buckets Accept All File Types ─────────────────────────────
+let _bucketsInitialized = false;
+async function ensureBuckets() {
+  if (_bucketsInitialized) return;
+  _bucketsInitialized = true;
+  try {
+    // Update 'beats' bucket to accept ALL file types (mp3, wav, zip, etc.)
+    const { error: updateErr } = await supabase.storage.updateBucket('beats', {
+      public: true,
+      allowedMimeTypes: null, // null = allow ALL mime types
+      fileSizeLimit: 524288000, // 500MB
+    });
+    if (updateErr) console.warn('Could not update beats bucket:', updateErr.message);
+    else console.log('Beats bucket updated: all MIME types allowed, 500MB limit');
+
+    // Ensure 'cover-art' bucket exists
+    const { error: coverErr } = await supabase.storage.updateBucket('cover-art', {
+      public: true,
+      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+      fileSizeLimit: 10485760, // 10MB
+    });
+    if (coverErr) console.warn('Could not update cover-art bucket:', coverErr.message);
+  } catch (e) {
+    console.warn('Bucket init error:', e.message);
+  }
+}
+
+// Run on module load
+ensureBuckets();
+
 // ── Storage Upload ───────────────────────────────────────────────────────────
 
 async function uploadFileToStorage(buffer, filename, bucket, mimeType) {

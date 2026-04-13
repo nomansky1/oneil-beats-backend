@@ -396,6 +396,26 @@ app.post('/upload/base64', requireAdminKey, async (req, res) => {
   }
 });
 
+// POST /upload/file — direct file upload via multipart (bypasses bucket MIME restrictions)
+// Used for stems ZIP, WAV, or any file the signed URL approach rejects
+app.post('/upload/file', requireAdminKey, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file provided' });
+
+    const bucket = req.body.bucket || 'beats';
+    const mimeType = req.file.mimetype || 'application/octet-stream';
+    const filename = req.file.originalname || `upload_${Date.now()}`;
+
+    console.log(`[Upload/file] ${filename} (${(req.file.size/1024/1024).toFixed(1)}MB) → bucket=${bucket} mime=${mimeType}`);
+
+    const publicUrl = await uploadFileToStorage(req.file.buffer, filename, bucket, mimeType);
+    res.json({ success: true, url: publicUrl, bucket });
+  } catch (err) {
+    console.error('File upload error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /upload/beat-metadata — register beat with pre-uploaded file URLs
 app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
   try {
