@@ -164,7 +164,7 @@ app.post('/checkout', async (req, res) => {
       price_data: {
         currency: 'usd',
         product_data: {
-          name: `${item.beatTitle}`,
+          name: `${item.beatTitle} | O'Neil Beats`,
           description: `${LICENSE_TERMS[item.licenseType]?.name || 'License'} — O'Neil Beats`,
           metadata: { beatId: item.beatId, licenseType: item.licenseType },
         },
@@ -188,6 +188,12 @@ app.post('/checkout', async (req, res) => {
       success_url: `${process.env.APP_URL || 'https://oneil-beats-backend.vercel.app'}/success?order=${orderId}&session={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.APP_URL || 'https://oneil-beats-backend.vercel.app'}/cancel`,
       metadata: { orderId },
+      submit_type: 'pay',
+      billing_address_collection: 'auto',
+      payment_intent_data: {
+        statement_descriptor_suffix: 'BEATS',
+        description: 'O\'Neil Beats - Beat License Purchase',
+      },
     });
 
     res.json({ url: session.url, sessionId: session.id, orderId });
