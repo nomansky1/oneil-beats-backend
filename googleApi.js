@@ -3,7 +3,7 @@ require('dotenv').config();
 const { google } = require('googleapis');
 const { Readable } = require('stream');
 
-// Authenticate with Google Service Account
+// Authenticate with Google Service Account (for Sheets operations)
 function getAuth() {
   return new google.auth.GoogleAuth({
     credentials: {
@@ -15,6 +15,25 @@ function getAuth() {
       'https://www.googleapis.com/auth/drive',
     ],
   });
+}
+
+// OAuth2 client for Drive uploads (uses user's own storage quota)
+function getDriveOAuth2Client() {
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_OAUTH_CLIENT_ID,
+    process.env.GOOGLE_OAUTH_CLIENT_SECRET
+  );
+  oauth2Client.setCredentials({
+    refresh_token: process.env.GOOGLE_OAUTH_REFRESH_TOKEN,
+  });
+  return oauth2Client;
+}
+
+// Get a fresh access token from OAuth2 refresh token
+async function getOAuthAccessToken() {
+  const oauth2Client = getDriveOAuth2Client();
+  const { token } = await oauth2Client.getAccessToken();
+  return token;
 }
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
@@ -197,33 +216,116 @@ async function deleteBeatInSheet(beatId) {
   });
 }
 
-// Google Drive: File Upload
+// Google Drive: File Upload (uses resumable upload to support any file size)
+// Uses OAuth2 user credentials so uploads count against the user's own Drive quota
+// (service accounts on free Gmail have 0 storage quota)
 async function uploadFileToDrive(buffer, filename, mimeType) {
-  const drive = await getDrive();
+  const accessToken = await getOAuthAccessToken();
 
-  const fileMetadata = {
-    name: filename,
-    parents: [DRIVE_FOLDER_ID],
-  };
+  const targetFolder = DRIVE_FOLDER_ID;
+  if (!targetFolder) throw new Error('GOOGLE_DRIVE_FOLDER_ID not configured');
 
-  const media = {
-    mimeType,
-    body: Readable.from(buffer),
-  };
+  const metadata = { name: filename, parents: [targetFolder] };
 
-  const res = await drive.files.create({
-    requestBody: fileMetadata,
-    media,
-    fields: 'id, name, webContentLink, webViewLink',
+  // Step 1: Initiate resumable upload
+  const initRes = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id,name,webContentLink,webViewLink',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json; charset=UTF-8',
+        'X-Upload-Content-Type': mimeType || 'application/octet-stream',
+        'X-Upload-Content-Length': buffer.length.toString(),
+      },
+      body: JSON.stringify(metadata),
+    }
+  );
+
+  if (!initRes.ok) {
+    const errText = await initRes.text();
+    throw new Error(`Drive upload init failed (${initRes.status}): ${errText}`);
+  }
+
+  const uploadUrl = initRes.headers.get('location');
+  if (!uploadUrl) throw new Error('No resumable upload URL returned');
+
+  // Step 2: Upload the file content
+  const uploadRes = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': mimeType || 'application/octet-stream',
+      'Content-Length': buffer.length.toString(),
+    },
+    body: buffer,
   });
 
-  // Make file publicly readable
-  await drive.permissions.create({
-    fileId: res.data.id,
+  if (!uploadRes.ok) {
+    const errText = await uploadRes.text();
+    throw new Error(`Drive upload failed (${uploadRes.status}): ${errText}`);
+  }
+
+  const fileData = await uploadRes.json();
+
+  // Step 3: Make file publicly readable (using OAuth client)
+  const oauthDrive = google.drive({ version: 'v3', auth: getDriveOAuth2Client() });
+  await oauthDrive.permissions.create({
+    fileId: fileData.id,
+    supportsAllDrives: true,
     requestBody: { role: 'reader', type: 'anyone' },
   });
 
-  return res.data.id;
+  return fileData.id;
+}
+
+// Google Drive: Create a resumable upload session URL
+// Uses OAuth2 user credentials for upload quota
+async function createResumableUpload(filename, mimeType, folderId) {
+  const accessToken = await getOAuthAccessToken();
+
+  const targetFolder = folderId || DRIVE_FOLDER_ID;
+  const metadata = { name: filename, parents: [targetFolder] };
+
+  // Initiate resumable upload session via Google Drive API v3
+  const initRes = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id,name,webContentLink,webViewLink',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json; charset=UTF-8',
+        'X-Upload-Content-Type': mimeType || 'application/octet-stream',
+      },
+      body: JSON.stringify(metadata),
+    }
+  );
+
+  if (!initRes.ok) {
+    const errText = await initRes.text();
+    throw new Error(`Google Drive resumable init failed (${initRes.status}): ${errText}`);
+  }
+
+  // The Location header contains the resumable upload URL
+  const uploadUrl = initRes.headers.get('location');
+  if (!uploadUrl) throw new Error('No resumable upload URL returned');
+
+  return { uploadUrl, folderId: targetFolder };
+}
+
+// Google Drive: After upload completes, set file as publicly readable and return URLs
+async function finalizeUpload(fileId) {
+  const oauthDrive = google.drive({ version: 'v3', auth: getDriveOAuth2Client() });
+  await oauthDrive.permissions.create({
+    fileId,
+    supportsAllDrives: true,
+    requestBody: { role: 'reader', type: 'anyone' },
+  });
+  return {
+    fileId,
+    streamUrl: getDriveStreamUrl(fileId),
+    downloadUrl: getDriveDownloadUrl(fileId),
+    imageUrl: getDriveImageUrl(fileId),
+  };
 }
 
 // Get a direct streaming URL for audio files
@@ -248,6 +350,8 @@ module.exports = {
   deleteBeatInSheet,
   incrementPlayCount,
   uploadFileToDrive,
+  createResumableUpload,
+  finalizeUpload,
   getDriveStreamUrl,
   getDriveImageUrl,
   getDriveDownloadUrl,

@@ -46,6 +46,7 @@ async function addBeatToDB(beatData) {
       title: beatData.title || '',
       artist: beatData.artist || "O'Neil",
       genre: beatData.genre || '',
+      subgenre: beatData.subgenre || '',
       bpm: parseInt(beatData.bpm) || 120,
       key: beatData.key || '',
       mood: beatData.mood || '',
@@ -78,9 +79,21 @@ async function updateBeatInDB(beatId, updates) {
     if (allowedFields.includes(k) && v !== undefined) filtered[k] = v;
   }
 
+  // Map stems_price → stem_price (DB column is stem_price)
+  if (filtered.stems_price) {
+    filtered.stem_price = filtered.stems_price;
+    delete filtered.stems_price;
+  }
+
   // Sync lease_price ↔ price
   if (filtered.lease_price && !filtered.price) filtered.price = filtered.lease_price;
   if (filtered.price && !filtered.lease_price) filtered.lease_price = filtered.price;
+
+  // Map cover_art_url → cover_url (DB column is cover_url)
+  if (filtered.cover_art_url) {
+    filtered.cover_url = filtered.cover_art_url;
+    delete filtered.cover_art_url;
+  }
 
   const { error } = await supabase
     .from('beats')
@@ -183,6 +196,107 @@ async function uploadBase64ToStorage(base64Data, filename, bucket, mimeType) {
   return uploadFileToStorage(buffer, filename, bucket, mimeType);
 }
 
+// ── Orders CRUD ─────────────────────────────────────────────────────────────
+
+async function createOrder({ orderId, customerEmail, cartItems, totalAmount }) {
+  const { data, error } = await supabase
+    .from('orders')
+    .insert({
+      id: orderId,
+      customer_email: customerEmail,
+      status: 'pending',
+      total_amount: totalAmount || 0,
+    })
+    .select('id')
+    .single();
+
+  if (error) throw new Error(`Create order error: ${error.message}`);
+
+  // Insert order items
+  if (cartItems && cartItems.length > 0) {
+    const items = cartItems.map(item => ({
+      order_id: orderId,
+      beat_id: item.beatId,
+      beat_title: item.beatTitle,
+      license_type: item.licenseType,
+      price: item.price || 0,
+    }));
+
+    const { error: itemsErr } = await supabase
+      .from('order_items')
+      .insert(items);
+
+    if (itemsErr) throw new Error(`Create order items error: ${itemsErr.message}`);
+  }
+
+  return data.id;
+}
+
+async function fulfillOrder({ orderId, stripeSessionId, customerEmail, customerName, beats }) {
+  // Update order status to paid
+  const updates = {
+    status: 'paid',
+    stripe_session_id: stripeSessionId,
+    paid_at: new Date().toISOString(),
+  };
+  if (customerEmail) updates.customer_email = customerEmail;
+  if (customerName) updates.customer_name = customerName;
+
+  const { error } = await supabase
+    .from('orders')
+    .update(updates)
+    .eq('id', orderId);
+
+  if (error) throw new Error(`Fulfill order error: ${error.message}`);
+
+  // Enrich order items with file URLs from beats
+  if (beats && beats.length > 0) {
+    const { data: items } = await supabase
+      .from('order_items')
+      .select('*')
+      .eq('order_id', orderId);
+
+    for (const item of (items || [])) {
+      const beat = beats.find(b => b.id === item.beat_id);
+      if (beat) {
+        const itemUpdate = {
+          mp3_url: beat.audio_url || '',
+          wav_url: beat.wav_url || '',
+          stems_url: beat.stem_url || beat.stems_url || '',
+          cover_url: beat.cover_url || beat.cover_art_url || '',
+        };
+        await supabase
+          .from('order_items')
+          .update(itemUpdate)
+          .eq('id', item.id);
+      }
+    }
+  }
+}
+
+async function getOrderById(orderId) {
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select('*, order_items(*)')
+    .eq('id', orderId)
+    .single();
+
+  if (error) return null;
+  return order;
+}
+
+async function getOrdersByEmail(email) {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*, order_items(*)')
+    .eq('customer_email', email)
+    .eq('status', 'paid')
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(`Fetch orders error: ${error.message}`);
+  return data || [];
+}
+
 // ── Supabase client getter (for direct use in server.js if needed) ──────────
 function getSupabaseClient() {
   return supabase;
@@ -198,6 +312,10 @@ module.exports = {
   uploadAudioToStorage,
   uploadCoverToStorage,
   uploadBase64ToStorage,
+  createOrder,
+  fulfillOrder,
+  getOrderById,
+  getOrdersByEmail,
   getSupabaseClient,
   SUPABASE_URL,
 };

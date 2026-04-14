@@ -1,1 +1,31 @@
-DEPLOY_DONE  
+Retrieving project…
+Deploying nomansky1s-projects/oneil-beats-backend
+Uploading [--------------------] (0.0B/55.2KB)
+Uploading [=========-----------] (26.5KB/55.2KB)
+Uploading [===============-----] (42.5KB/55.2KB)
+Uploading [====================] (55.2KB/55.2KB)
+Inspect: https://vercel.com/nomansky1s-projects/oneil-beats-backend/9EeEHg744Q6n4ziG14iE9E4viwpL [2s]
+Production: https://oneil-beats-backend-bhyda24xo-nomansky1s-projects.vercel.app [2s]
+https://oneil-beats-backend-bhyda24xo-nomansky1s-projects.vercel.appBuilding...
+Building...
+Building: Running build in Washington, D.C., USA (East) – iad1
+Building: Build machine configuration: 2 cores, 8 GB
+Building: Retrieving list of deployment files...
+Building: Downloading 10 deployment files...
+Building: Restored build cache from previous deployment (BnSyZ92tMrH66JuEQ66JuVEPFufX)
+Building: Running "vercel build"
+Building: Vercel CLI 50.43.0
+Building: WARNING! Due to `builds` existing in your configuration file, the Build and Development Settings defined in your Project Settings will not apply. Learn More: https://vercel.link/unused-build-settings
+Building: Installing dependencies...
+Building: up to date in 774ms
+Building: 60 packages are looking for funding
+Building: run `npm fund` for details
+Building: Build Completed in /vercel/output [13s]
+Building: Deploying outputs...
+Building: Deployment completed
+Building: Creating build cache...
+[2K[1A[2K[GProduction: https://oneil-beats-backend-bhyda24xo-nomansky1s-projects.vercel.app [28s]
+Completing...
+Aliased: https://oneil-beats-backend.vercel.app [28s]
+Due to `builds` existing in your configuration file, the Build and Development Settings defined in your Project Settings will not apply. Learn More: https://vercel.link/unused-build-settings
+> Tip: Run `npx plugins add vercel/vercel-plugin` to enhance your agent experience
