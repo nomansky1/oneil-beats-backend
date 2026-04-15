@@ -162,6 +162,130 @@ app.post('/upload/beat',
 );
 
 // ──────────────────────────────────────────────────────────────────────────────
+// STRIPE CHECKOUT
+// ──────────────────────────────────────────────────────────────────────────────
+
+// POST /checkout — create a Stripe checkout session for the cart items.
+// Body: { customerEmail, cartItems: [{ beatId, beatTitle, licenseType, price }] }
+// Returns: { url } — Stripe hosted checkout URL to redirect the customer to.
+app.post('/checkout', async (req, res) => {
+  try {
+    const { customerEmail, cartItems } = req.body;
+
+    if (!customerEmail || !Array.isArray(cartItems) || cartItems.length === 0) {
+      return res.status(400).json({ error: 'customerEmail and cartItems required' });
+    }
+
+    // Validate prices server-side by re-fetching from the DB (never trust client prices).
+    const allBeats = await fetchBeatsFromDB();
+    const beatById = new Map(allBeats.map(b => [b.id, b]));
+
+    const validatedItems = [];
+    for (const item of cartItems) {
+      const beat = beatById.get(item.beatId);
+      if (!beat) {
+        return res.status(400).json({ error: `Beat ${item.beatId} not found or inactive` });
+      }
+      const priceKey =
+        item.licenseType === 'premium' ? 'premium_price' :
+        item.licenseType === 'stems'   ? 'stems_price'   :
+                                         'lease_price';
+      const serverPrice = parseFloat(beat[priceKey]);
+      if (!serverPrice || isNaN(serverPrice) || serverPrice <= 0) {
+        return res.status(400).json({ error: `Invalid price for ${beat.title} (${item.licenseType})` });
+      }
+      validatedItems.push({
+        beatId: beat.id,
+        beatTitle: beat.title,
+        licenseType: item.licenseType,
+        price: serverPrice,
+        coverUrl: beat.cover_url || beat.cover_art_url || '',
+      });
+    }
+
+    const totalAmount = validatedItems.reduce((sum, it) => sum + it.price, 0);
+    const orderId = uuidv4();
+
+    // Create pending order in Supabase
+    await createOrder({
+      orderId,
+      customerEmail,
+      cartItems: validatedItems,
+      totalAmount,
+    });
+
+    // Build Stripe line items
+    const line_items = validatedItems.map(item => {
+      const tierLabel =
+        item.licenseType === 'premium' ? 'Premium License (MP3 + WAV)' :
+        item.licenseType === 'stems'   ? 'Stems License (MP3 + WAV + Track Stems)' :
+                                         'Lease License (MP3)';
+      return {
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: `${item.beatTitle} — ${tierLabel}`,
+            description: `Prod. O'Neil — ${tierLabel}`,
+            images: item.coverUrl ? [item.coverUrl] : undefined,
+          },
+          unit_amount: Math.round(item.price * 100), // cents
+        },
+        quantity: 1,
+      };
+    });
+
+    const appUrl = process.env.APP_URL || 'https://oneil-beats-backend.vercel.app';
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      payment_method_types: ['card'],
+      line_items,
+      customer_email: customerEmail,
+      client_reference_id: orderId,
+      metadata: { orderId },
+      success_url: `${appUrl}/success?orderId=${orderId}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/cancel?orderId=${orderId}`,
+      payment_intent_data: {
+        metadata: { orderId },
+        description: `O'Neil Beats Order #${orderId.slice(0, 8)}`,
+      },
+      allow_promotion_codes: true,
+    });
+
+    return res.json({ url: session.url, sessionId: session.id, orderId });
+  } catch (err) {
+    console.error('Checkout error:', err);
+    return res.status(500).json({ error: err.message || 'Checkout failed' });
+  }
+});
+
+// GET /success — simple success landing page after Stripe redirects back
+app.get('/success', (req, res) => {
+  const orderId = req.query.orderId || '';
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Payment Successful — O'Neil Beats</title></head>
+<body style="background:#06060a;color:#fff;font-family:-apple-system,Segoe UI,Roboto,sans-serif;padding:40px 20px;text-align:center;">
+<div style="max-width:520px;margin:40px auto;background:#0f0f14;border:1px solid #222;border-radius:20px;padding:36px 24px;">
+<div style="font-size:56px;margin-bottom:8px;">🎵</div>
+<h1 style="color:#e63946;margin:0 0 8px;">Payment Successful!</h1>
+<p style="color:#888;margin:8px 0 20px;font-size:14px;">Order #${orderId.slice(0,8)}</p>
+<p style="line-height:1.5;">Thanks for your purchase! Your download links and PDF license have been emailed to you.</p>
+<p style="color:#888;font-size:13px;margin-top:20px;">You can close this tab and return to the app.</p>
+</div></body></html>`);
+});
+
+// GET /cancel — simple cancel landing page
+app.get('/cancel', (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Payment Canceled</title></head>
+<body style="background:#06060a;color:#fff;font-family:-apple-system,Segoe UI,Roboto,sans-serif;padding:40px 20px;text-align:center;">
+<div style="max-width:520px;margin:40px auto;background:#0f0f14;border:1px solid #222;border-radius:20px;padding:36px 24px;">
+<h1 style="color:#f59e0b;margin:0 0 8px;">Payment Canceled</h1>
+<p style="line-height:1.5;">Your cart is still saved. You can return to the app and try again.</p>
+</div></body></html>`);
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // PURCHASES & ORDERS
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -325,6 +449,7 @@ app.post('/notification/send', requireAdminKey, async (req, res) => {
   }
 });
 
+// ─�
 // ──────────────────────────────────────────────────────────────────────────────
 // STRIPE WEBHOOK
 // ──────────────────────────────────────────────────────────────────────────────
@@ -346,19 +471,30 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    const orderId = session.metadata?.orderId;
+    const orderId = session.metadata?.orderId || session.client_reference_id;
 
     if (orderId) {
       try {
+        // Fetch all beats so fulfillOrder can populate download URLs on order_items.
+        const beats = await fetchBeatsFromDB();
+
+        // Mark the order paid and stamp mp3/wav/stems urls onto each order item.
+        await fulfillOrder({
+          orderId,
+          stripeSessionId: session.id,
+          customerEmail: session.customer_details?.email || session.customer_email,
+          customerName: session.customer_details?.name || '',
+          beats,
+        });
+
         const order = await getOrderById(orderId);
         const items = order?.order_items || [];
 
-        if (order.customer_email && items.length > 0) {
+        if (order && order.customer_email && items.length > 0) {
           const baseUrl = process.env.APP_URL || 'https://oneil-beats-backend.vercel.app';
           const beatCards = items.map(item => {
             const dlBase = `${baseUrl}/download/${orderId}/${item.beat_id}`;
             const licBase = `${baseUrl}/license/${orderId}/${item.beat_id}`;
-            const tierColor = item.license_type === 'stems' ? '#10b981' : item.license_type === 'premium' ? '#8b5cf6' : '#e63946';
             let buttons = `<a href="${dlBase}?format=mp3" style="display:inline-block;padding:10px 18px;margin:4px 6px 4px 0;background:#e63946;color:#000;text-decoration:none;border-radius:6px;font-weight:700;font-size:13px;">MP3</a>`;
             if (item.license_type === 'premium' || item.license_type === 'stems') {
               buttons += `<a href="${dlBase}?format=wav" style="display:inline-block;padding:10px 18px;margin:4px 6px 4px 0;background:#8b5cf6;color:#fff;text-decoration:none;border-radius:6px;font-weight:700;font-size:13px;">WAV</a>`;
