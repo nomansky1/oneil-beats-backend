@@ -128,8 +128,15 @@ async function sendPushNotification(expoPushTokens, title, body, data = {}) {
 // ── Express Setup ────────────────────────────────────────────────────────────
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Skip JSON body parsing for raw-body routes (webhook + chunked upload)
+app.use((req, res, next) => {
+  if (req.path === '/webhook' || req.path === '/upload/drive-proxy-chunk') return next();
+  express.json({ limit: '50mb' })(req, res, next);
+});
+app.use((req, res, next) => {
+  if (req.path === '/webhook' || req.path === '/upload/drive-proxy-chunk') return next();
+  express.urlencoded({ limit: '50mb', extended: true })(req, res, next);
+});
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
@@ -398,6 +405,224 @@ app.post('/upload/beat',
     }
   }
 );
+
+// ──────────────────────────────────────────────────────────────────────────────
+// FILE UPLOAD PROXY (for OB Uploader mobile app)
+// Routes: drive-proxy-small, drive-proxy-init, drive-proxy-chunk, drive-finalize, beat-metadata
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Map file type to Supabase bucket + path prefix
+function _bucketForType(type) {
+  if (type === 'cover') return { bucket: 'cover-art', prefix: 'covers' };
+  if (type === 'wav')   return { bucket: 'beats', prefix: 'wav' };
+  if (type === 'stems') return { bucket: 'beats', prefix: 'stems' };
+  return { bucket: 'beats', prefix: 'mp3' };
+}
+
+// POST /upload/drive-proxy-small — single-shot file upload via FormData
+app.post('/upload/drive-proxy-small', requireAdminKey, upload.single('file'), async (req, res) => {
+  try {
+    const fileType = req.body.type || 'mp3';
+    const { bucket, prefix } = _bucketForType(fileType);
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'No file provided' });
+
+    const safeName = `${prefix}/${Date.now()}_${(file.originalname || 'file').replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase.storage.from(bucket).upload(safeName, file.buffer, {
+      contentType: file.mimetype || 'application/octet-stream',
+      upsert: false,
+    });
+    if (error) throw new Error(`Storage upload error: ${error.message}`);
+    const publicUrl = supabase.storage.from(bucket).getPublicUrl(safeName).data.publicUrl;
+    res.json({ success: true, publicUrl, path: safeName });
+  } catch (err) {
+    console.error('drive-proxy-small error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /upload/drive-proxy-init — init chunked upload
+// Returns a Supabase signed URL so the client can upload directly (works with serverless)
+app.post('/upload/drive-proxy-init', requireAdminKey, async (req, res) => {
+  try {
+    const { filename, mimeType, fileSize } = req.body;
+    if (!filename) return res.status(400).json({ error: 'filename required' });
+    const safeName = `uploads/${filename}`;
+    const supabase = getSupabaseClient();
+    // Create a signed upload URL valid for 10 minutes
+    const { data, error } = await supabase.storage.from('beats').createSignedUploadUrl(safeName);
+    if (error) throw new Error(`Signed URL error: ${error.message}`);
+    // Return the signed URL as uploadUrl — client will PUT chunks/full file directly
+    // Also return the path for finalize step
+    res.json({ success: true, uploadUrl: data.signedUrl, path: safeName, token: data.token });
+  } catch (err) {
+    console.error('drive-proxy-init error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /upload/drive-proxy-chunk — proxy a chunk to Supabase Storage
+// On serverless (Vercel), each chunk goes directly through to Supabase
+app.put('/upload/drive-proxy-chunk', requireAdminKey, express.raw({ type: '*/*', limit: '10mb' }), async (req, res) => {
+  try {
+    const uploadUrl = req.headers['x-upload-url'];
+    const contentRange = req.headers['x-content-range'] || '';
+    const contentType = req.headers['x-content-type'] || 'application/octet-stream';
+    const chunkBuf = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body);
+
+    // If uploadUrl is a Supabase signed URL, proxy the chunk directly
+    if (uploadUrl && uploadUrl.startsWith('http')) {
+            const proxyRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': contentType,
+          'Content-Range': contentRange,
+          'x-upsert': 'true',
+        },
+        body: chunkBuf,
+      });
+      if (proxyRes.ok) {
+        const data = await proxyRes.json().catch(() => ({}));
+        return res.json({ success: true, fileId: data.Key || uploadUrl, status: 200, done: true });
+      }
+      // If 308, chunk was received
+      if (proxyRes.status === 308) {
+        return res.json({ success: true, status: 308, done: false });
+      }
+      const errText = await proxyRes.text().catch(() => '');
+      throw new Error(`Supabase chunk upload failed (${proxyRes.status}): ${errText.substring(0, 200)}`);
+    }
+
+    // Fallback: upload the chunk as a complete file to Supabase
+    const safeName = `uploads/chunk_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.storage.from('beats').upload(safeName, chunkBuf, {
+      contentType, upsert: false,
+    });
+    if (error) throw new Error(`Chunk upload error: ${error.message}`);
+    const publicUrl = supabase.storage.from('beats').getPublicUrl(safeName).data.publicUrl;
+    return res.json({ success: true, fileId: safeName, publicUrl, done: true });
+  } catch (err) {
+    console.error('drive-proxy-chunk error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /upload/drive-finalize — finalize upload, return public URL
+app.post('/upload/drive-finalize', requireAdminKey, async (req, res) => {
+  try {
+    const { fileId, type } = req.body;
+    if (!fileId) return res.status(400).json({ error: 'fileId required' });
+    const { bucket } = _bucketForType(type);
+    const supabase = getSupabaseClient();
+    // fileId could be a storage path or a signed URL path
+    const storagePath = fileId.includes('/') ? fileId.split('/object/')[1] || fileId : fileId;
+    const publicUrl = supabase.storage.from(bucket).getPublicUrl(storagePath).data.publicUrl;
+    res.json({ success: true, publicUrl });
+  } catch (err) {
+    console.error('drive-finalize error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /upload/get-signed-url — generate a signed upload URL for direct client-to-Supabase upload
+app.post('/upload/get-signed-url', requireAdminKey, async (req, res) => {
+  try {
+    const { filename, bucket } = req.body;
+    if (!filename) return res.status(400).json({ error: 'filename required' });
+    const targetBucket = bucket || 'beats';
+    const safeName = `${Date.now()}_${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase.storage.from(targetBucket).createSignedUploadUrl(safeName);
+    if (error) throw new Error(`Signed URL error: ${error.message}`);
+    const publicUrl = supabase.storage.from(targetBucket).getPublicUrl(safeName).data.publicUrl;
+    res.json({ success: true, signedUrl: data.signedUrl, publicUrl, path: safeName });
+  } catch (err) {
+    console.error('get-signed-url error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /upload/proxy-image — fetch an image URL and return it (for CORS-blocked images)
+app.post('/upload/proxy-image', requireAdminKey, async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'url required' });
+        const imgRes = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!imgRes.ok) throw new Error(`Image fetch failed (${imgRes.status})`);
+    const buffer = Buffer.from(await imgRes.arrayBuffer());
+    const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+    res.set('Content-Type', contentType);
+    res.send(buffer);
+  } catch (err) {
+    console.error('proxy-image error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /upload/cover-from-url — fetch image from URL and upload to Supabase Storage
+app.post('/upload/cover-from-url', requireAdminKey, async (req, res) => {
+  try {
+    const { imageUrl, filename } = req.body;
+    if (!imageUrl) return res.status(400).json({ error: 'imageUrl required' });
+        const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(15000) });
+    if (!imgRes.ok) throw new Error(`Image fetch failed (${imgRes.status})`);
+    const buffer = Buffer.from(await imgRes.arrayBuffer());
+    const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+    const safeName = `covers/${filename || `cover_${Date.now()}.jpg`}`;
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.storage.from('cover-art').upload(safeName, buffer, {
+      contentType, upsert: false,
+    });
+    if (error) throw new Error(`Cover upload error: ${error.message}`);
+    const publicUrl = supabase.storage.from('cover-art').getPublicUrl(safeName).data.publicUrl;
+    res.json({ success: true, url: publicUrl });
+  } catch (err) {
+    console.error('cover-from-url error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /upload/beat-metadata — register beat in DB (no file upload, just metadata + URLs)
+app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
+  try {
+    const { title, genre, subgenre, bpm, key, mood, tags, lease_price, premium_price, stems_price, exclusive_price, audio_url, wav_url, stem_url, cover_url } = req.body;
+    if (!title) return res.status(400).json({ error: 'Title is required' });
+
+    const beatId = await addBeatToDB({
+      title, genre: genre || '', subgenre: subgenre || '',
+      bpm: bpm || '120', key: key || '', mood: mood || '',
+      tags: tags ? (Array.isArray(tags) ? tags : tags.split(',')) : [],
+      lease_price: lease_price || 29.99,
+      premium_price: premium_price || 99.99,
+      stems_price: stems_price || 199.99,
+      exclusive_price: exclusive_price || null,
+      audio_url: audio_url || '', wav_url: wav_url || '', stem_url: stem_url || '',
+      cover_url: cover_url || '',
+    });
+
+    // Send push notification to all customers
+    try {
+      const tokens = await getPushTokens();
+      if (tokens.length > 0) {
+        sendPushNotification(
+          tokens,
+          '🎵 New Beat Released!',
+          `Check out "${title}" — ${genre || 'New'} · ${bpm || '?'} BPM`,
+          { beatId, beatTitle: title, genre, bpm }
+        ).catch(err => console.error('Push notification send error:', err));
+      }
+    } catch (notifErr) {
+      console.error('Error sending push notifications:', notifErr);
+    }
+
+    res.json({ success: true, beatId, message: `Beat "${title}" is live!` });
+  } catch (err) {
+    console.error('beat-metadata error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ──────────────────────────────────────────────────────────────────────────────
 // AI COVER ART GENERATION
