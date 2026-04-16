@@ -427,11 +427,11 @@ app.post('/upload/drive-proxy-small', requireAdminKey, upload.single('file'), as
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'No file provided' });
 
-    const safeName = `${prefix}/${Date.now()}_${(file.originalname || 'file').replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const safeName = `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2,6)}_${(file.originalname || 'file').replace(/[^a-zA-Z0-9._-]/g, '_')}`;
     const supabase = getSupabaseClient();
     const { data, error } = await supabase.storage.from(bucket).upload(safeName, file.buffer, {
       contentType: file.mimetype || 'application/octet-stream',
-      upsert: false,
+      upsert: true,
     });
     if (error) throw new Error(`Storage upload error: ${error.message}`);
     const publicUrl = supabase.storage.from(bucket).getPublicUrl(safeName).data.publicUrl;
@@ -448,9 +448,9 @@ app.post('/upload/drive-proxy-init', requireAdminKey, async (req, res) => {
   try {
     const { filename, mimeType, fileSize } = req.body;
     if (!filename) return res.status(400).json({ error: 'filename required' });
-    const safeName = `uploads/${filename}`;
+    const safeName = `uploads/${Date.now()}_${Math.random().toString(36).slice(2,6)}_${filename}`;
     const supabase = getSupabaseClient();
-    // Create a signed upload URL valid for 10 minutes
+    // Create a signed upload URL valid for 10 minutes (unique path prevents 409 Duplicate)
     const { data, error } = await supabase.storage.from('beats').createSignedUploadUrl(safeName);
     if (error) throw new Error(`Signed URL error: ${error.message}`);
     // Return the signed URL as uploadUrl — client will PUT chunks/full file directly
@@ -498,7 +498,7 @@ app.put('/upload/drive-proxy-chunk', requireAdminKey, express.raw({ type: '*/*',
     const safeName = `uploads/chunk_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const supabase = getSupabaseClient();
     const { error } = await supabase.storage.from('beats').upload(safeName, chunkBuf, {
-      contentType, upsert: false,
+      contentType, upsert: true,
     });
     if (error) throw new Error(`Chunk upload error: ${error.message}`);
     const publicUrl = supabase.storage.from('beats').getPublicUrl(safeName).data.publicUrl;
@@ -540,6 +540,127 @@ app.post('/upload/get-signed-url', requireAdminKey, async (req, res) => {
     res.json({ success: true, signedUrl: data.signedUrl, publicUrl, path: safeName });
   } catch (err) {
     console.error('get-signed-url error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /upload/analyze-audio — BPM + key detection from uploaded audio file
+app.post('/upload/analyze-audio', requireAdminKey, upload.single('audio'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'No audio file provided' });
+
+    const MusicTempo = require('music-tempo');
+    const fftJs = require('fft-js');
+    const fft = fftJs.fft;
+    const fftMag = fftJs.util.fftMag;
+
+    // Decode audio to PCM float samples
+    let pcmData, sampleRate;
+    const isWav = (file.originalname || '').toLowerCase().endsWith('.wav') ||
+                  (file.mimetype || '').includes('wav');
+
+    if (isWav) {
+      const wavDecoder = require('wav-decoder');
+      const decoded = await wavDecoder.decode(file.buffer);
+      pcmData = decoded.channelData[0]; // mono or first channel
+      sampleRate = decoded.sampleRate;
+    } else {
+      // For MP3/other: try to parse as WAV first, then fall back to raw PCM guess
+      try {
+        const wavDecoder = require('wav-decoder');
+        const decoded = await wavDecoder.decode(file.buffer);
+        pcmData = decoded.channelData[0];
+        sampleRate = decoded.sampleRate;
+      } catch (_) {
+        // Can't decode MP3 server-side without heavy deps — return filename-based detection only
+        return res.json({ success: true, bpm: null, key: null, note: 'MP3 analysis requires WAV upload' });
+      }
+    }
+
+    // Limit analysis to first 30 seconds for speed
+    const maxSamples = sampleRate * 30;
+    const samples = pcmData.length > maxSamples ? pcmData.slice(0, maxSamples) : pcmData;
+
+    // ── BPM Detection ──
+    let bpm = null;
+    try {
+      const mt = new MusicTempo(Array.from(samples));
+      bpm = Math.round(mt.tempo);
+    } catch (e) {
+      console.warn('BPM detection failed:', e.message);
+    }
+
+    // ── Key Detection via Chromagram + Krumhansl-Kessler profiles ──
+    let key = null;
+    try {
+      const N = 4096;
+      const hop = 2048;
+      const chroma = new Float64Array(12);
+      const numFrames = Math.floor((samples.length - N) / hop);
+      const limit = Math.min(numFrames, 300);
+
+      for (let frame = 0; frame < limit; frame++) {
+        const start = frame * hop;
+        const windowed = [];
+        for (let i = 0; i < N; i++) {
+          const w = 0.5 * (1 - Math.cos(2 * Math.PI * i / (N - 1)));
+          windowed.push([(samples[start + i] || 0) * w, 0]);
+        }
+        const spectrum = fft(windowed);
+        const mags = fftMag(spectrum);
+
+        const minBin = Math.floor(50 * N / sampleRate);
+        const maxBin = Math.floor(2000 * N / sampleRate);
+        for (let k = minBin; k <= maxBin; k++) {
+          const freq = k * sampleRate / N;
+          const midiNote = 12 * Math.log2(freq / 440) + 69;
+          const pitchClass = ((Math.round(midiNote) % 12) + 12) % 12;
+          chroma[pitchClass] += mags[k] * mags[k];
+        }
+      }
+
+      const maxC = Math.max(...chroma);
+      if (maxC > 0) for (let i = 0; i < 12; i++) chroma[i] /= maxC;
+
+      const majorProfile = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+      const minorProfile = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+      const noteNames = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+      let bestCorr = -Infinity;
+      let bestKey = 'C Major';
+      for (let shift = 0; shift < 12; shift++) {
+        let corrMaj = 0, corrMin = 0;
+        for (let i = 0; i < 12; i++) {
+          const idx = (i + shift) % 12;
+          corrMaj += chroma[idx] * majorProfile[i];
+          corrMin += chroma[idx] * minorProfile[i];
+        }
+        if (corrMaj > bestCorr) { bestCorr = corrMaj; bestKey = noteNames[shift] + ' Major'; }
+        if (corrMin > bestCorr) { bestCorr = corrMin; bestKey = noteNames[shift] + ' Minor'; }
+      }
+      key = bestKey;
+    } catch (e) {
+      console.warn('Key detection failed:', e.message);
+    }
+
+    // ── Mood from BPM + Key ──
+    let mood = null;
+    if (bpm && key) {
+      const isMinor = key.includes('Minor');
+      if (bpm >= 140 && isMinor) mood = 'Aggressive';
+      else if (bpm >= 140) mood = 'Energetic';
+      else if (bpm >= 110 && isMinor) mood = 'Dark';
+      else if (bpm >= 110) mood = 'Uplifting';
+      else if (bpm >= 85 && isMinor) mood = 'Melancholic';
+      else if (bpm >= 85) mood = 'Smooth';
+      else if (isMinor) mood = 'Chill';
+      else mood = 'Dreamy';
+    }
+
+    res.json({ success: true, bpm, key, mood });
+  } catch (err) {
+    console.error('analyze-audio error:', err);
     res.status(500).json({ error: err.message });
   }
 });
