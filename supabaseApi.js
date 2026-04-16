@@ -17,6 +17,7 @@ async function fetchBeatsFromDB() {
     lease_price: parseFloat(beat.lease_price || beat.price) || 29.99,
     premium_price: parseFloat(beat.premium_price) || 99.99,
     stems_price: parseFloat(beat.stem_price) || 199.99,
+    exclusive_price: beat.exclusive_price ? parseFloat(beat.exclusive_price) : null,
     plays: beat.plays || 0,
     tags: beat.tags ? beat.tags.split(',').map(t => t.trim()) : [],
     audio_url: beat.audio_url || '',
@@ -40,6 +41,7 @@ async function addBeatToDB(beatData) {
     lease_price: parseFloat(beatData.lease_price) || 29.99,
     premium_price: parseFloat(beatData.premium_price) || 99.99,
     stem_price: parseFloat(beatData.stems_price) || 199.99,
+    exclusive_price: beatData.exclusive_price ? parseFloat(beatData.exclusive_price) : null,
     tags: Array.isArray(beatData.tags) ? beatData.tags.join(',') : (beatData.tags || ''),
     audio_url: beatData.audio_url || '',
     cover_url: beatData.cover_url || '',
@@ -54,7 +56,7 @@ async function addBeatToDB(beatData) {
 }
 
 async function updateBeatInDB(beatId, updates) {
-  const allowedFields = ['title', 'genre', 'subgenre', 'bpm', 'key', 'mood', 'price', 'lease_price', 'premium_price', 'stems_price', 'stem_price', 'tags', 'audio_url', 'cover_url', 'cover_art_url', 'wav_url', 'stem_url', 'active'];
+  const allowedFields = ['title', 'genre', 'subgenre', 'bpm', 'key', 'mood', 'price', 'lease_price', 'premium_price', 'stems_price', 'stem_price', 'exclusive_price', 'tags', 'audio_url', 'cover_url', 'cover_art_url', 'wav_url', 'stem_url', 'active'];
   const filtered = {};
   for (const [k, v] of Object.entries(updates)) {
     if (allowedFields.includes(k) && v !== undefined) filtered[k] = v;
