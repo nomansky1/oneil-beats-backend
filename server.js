@@ -30,7 +30,7 @@ const {
   getPushTokens,
   removePushToken,
 } = require('./supabaseApi');
-const { generateLicensePDF, LICENSE_TERMS } = require('./licenseGenerator');
+const { generateLicensePDF, generateSplitSheetPDF, LICENSE_TERMS } = require('./licenseGenerator');
 
 // ── Email Setup ────────────────────────────────────────────────────────────────
 const mailer = nodemailer.createTransport({
@@ -621,6 +621,19 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
               attachments.push({
                 filename: `${item.beat_title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_license.pdf`,
                 content: pdfBuffer,
+                contentType: 'application/pdf',
+              });
+
+              // Generate split sheet PDF
+              const splitBuffer = await generateSplitSheetPDF({
+                beat: { title: item.beat_title, genre: item.genre || '', bpm: item.bpm || '', key: item.key || '' },
+                buyer: { name: order.customer_name || 'Artist', email: order.customer_email },
+                orderId,
+                licenseType: item.license_type,
+              });
+              attachments.push({
+                filename: `${item.beat_title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_split_sheet.pdf`,
+                content: splitBuffer,
                 contentType: 'application/pdf',
               });
             } catch (pdfErr) {

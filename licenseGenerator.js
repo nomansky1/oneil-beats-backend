@@ -185,4 +185,157 @@ function generateLicensePDF(orderData) {
   });
 }
 
-module.exports = { generateLicensePDF, LICENSE_TERMS };
+// ─── Split Sheet PDF Generator ──────────────────────────────────────────────
+// Industry-standard collaboration split sheet showing producer/artist percentages
+function generateSplitSheetPDF(orderData) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'LETTER', margin: 60 });
+    const buffers = [];
+
+    doc.on('data', chunk => buffers.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    const beat = orderData.beat || {};
+    const buyer = orderData.buyer || {};
+    const orderId = orderData.orderId || 'N/A';
+    const licenseType = orderData.licenseType || 'lease';
+    const terms = LICENSE_TERMS[licenseType] || LICENSE_TERMS.lease;
+    const isExclusive = terms.exclusive;
+    const purchaseDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric',
+    });
+
+    // Split percentages — industry standard
+    const producerSplit = isExclusive ? 0 : 50;
+    const artistSplit = isExclusive ? 100 : 50;
+
+    // Header bar
+    doc.rect(0, 0, 612, 8).fill('#1a1a2e');
+    doc.moveDown(1);
+    doc.font('Helvetica-Bold').fontSize(24).fillColor('#1a1a2e');
+    doc.text('COLLABORATION SPLIT SHEET', { align: 'center' });
+    doc.font('Helvetica').fontSize(10).fillColor('#666666');
+    doc.text('Music Ownership & Revenue Agreement', { align: 'center' });
+    doc.moveDown(0.8);
+
+    // Song Info Box
+    doc.rect(60, doc.y, 492, 70).fill('#f8f9fa').stroke('#e0e0e0');
+    const infoY = doc.y - 70;
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#888888');
+    doc.text('SONG / BEAT TITLE', 75, infoY + 10);
+    doc.font('Helvetica-Bold').fontSize(16).fillColor('#1a1a2e');
+    doc.text(beat.title || 'Untitled Beat', 75, infoY + 26);
+    doc.font('Helvetica').fontSize(9).fillColor('#666666');
+    doc.text(`Genre: ${beat.genre || 'N/A'}  \u2022  BPM: ${beat.bpm || 'N/A'}  \u2022  Key: ${beat.key || 'N/A'}  \u2022  Order: #${orderId.toString().slice(0, 8)}  \u2022  Date: ${purchaseDate}`, 75, infoY + 50);
+    doc.moveDown(0.5);
+
+    // Parties
+    doc.font('Helvetica-Bold').fontSize(12).fillColor('#1a1a2e');
+    doc.text('PARTIES', 60, doc.y + 10);
+    doc.moveDown(0.3);
+
+    // Producer box
+    doc.rect(60, doc.y, 236, 80).fill('#fff3e0').stroke('#f59e0b');
+    const prodY = doc.y - 80;
+    doc.font('Helvetica-Bold').fontSize(9).fillColor('#f59e0b');
+    doc.text('PRODUCER', 75, prodY + 10);
+    doc.font('Helvetica-Bold').fontSize(14).fillColor('#1a1a2e');
+    doc.text("O'Neil", 75, prodY + 26);
+    doc.font('Helvetica').fontSize(9).fillColor('#666666');
+    doc.text('produceroneil@gmail.com', 75, prodY + 44);
+    doc.text("O'Neil Beats", 75, prodY + 58);
+
+    // Artist box
+    doc.rect(316, prodY, 236, 80).fill('#e8f5e9').stroke('#10b981');
+    doc.font('Helvetica-Bold').fontSize(9).fillColor('#10b981');
+    doc.text('ARTIST / LICENSEE', 331, prodY + 10);
+    doc.font('Helvetica-Bold').fontSize(14).fillColor('#1a1a2e');
+    doc.text(buyer.name || 'Artist', 331, prodY + 26);
+    doc.font('Helvetica').fontSize(9).fillColor('#666666');
+    doc.text(buyer.email || 'N/A', 331, prodY + 44);
+    doc.text(`License: ${terms.name}`, 331, prodY + 58);
+
+    doc.moveDown(1);
+
+    // Ownership Split Table
+    doc.font('Helvetica-Bold').fontSize(12).fillColor('#1a1a2e');
+    doc.text('OWNERSHIP & REVENUE SPLIT', 60, doc.y + 10);
+    doc.moveDown(0.3);
+
+    const splitData = [
+      ['Master Recording Ownership', `${producerSplit}%`, `${artistSplit}%`],
+      ['Publishing / Songwriter', `${producerSplit}%`, `${artistSplit}%`],
+      ['Performance Royalties (PRO)', `${producerSplit}%`, `${artistSplit}%`],
+      ['Sync Licensing Revenue', `${producerSplit}%`, `${artistSplit}%`],
+    ];
+
+    // Table header
+    let tY = doc.y + 5;
+    doc.rect(60, tY, 492, 24).fill('#1a1a2e');
+    doc.font('Helvetica-Bold').fontSize(9).fillColor('#ffffff');
+    doc.text('REVENUE TYPE', 75, tY + 8);
+    doc.text('PRODUCER', 330, tY + 8);
+    doc.text('ARTIST', 430, tY + 8);
+    tY += 24;
+
+    splitData.forEach(([label, prod, art], i) => {
+      doc.rect(60, tY, 492, 24).fill(i % 2 === 0 ? '#ffffff' : '#f8f9fa');
+      doc.font('Helvetica').fontSize(10).fillColor('#444444');
+      doc.text(label, 75, tY + 7);
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#f59e0b');
+      doc.text(prod, 340, tY + 7);
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#10b981');
+      doc.text(art, 440, tY + 7);
+      tY += 24;
+    });
+    doc.rect(60, doc.y + 5, 492, 24 * (splitData.length + 1)).stroke('#e0e0e0');
+
+    doc.moveDown(2);
+
+    // Notes
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1a1a2e');
+    doc.text('IMPORTANT NOTES', 60, doc.y + 10);
+    doc.moveDown(0.3);
+    doc.font('Helvetica').fontSize(9).fillColor('#555555');
+
+    if (isExclusive) {
+      doc.text('\u2022 This is an EXCLUSIVE purchase. The artist owns 100% of the master recording and publishing.', 60, doc.y, { width: 492 });
+      doc.text("\u2022 The beat will be removed from the O'Neil Beats store following this purchase.", 60, doc.y + 2, { width: 492 });
+      doc.text('\u2022 Producer retains credit: "Prod. by O\'Neil Beats" must appear on all releases.', 60, doc.y + 2, { width: 492 });
+    } else {
+      doc.text('\u2022 This is a NON-EXCLUSIVE license. The producer retains ownership of the beat and may license it to others.', 60, doc.y, { width: 492 });
+      doc.text('\u2022 The 50/50 split is the industry standard for non-exclusive beat licenses.', 60, doc.y + 2, { width: 492 });
+      doc.text('\u2022 Producer credit: "Prod. by O\'Neil Beats" must appear on all releases.', 60, doc.y + 2, { width: 492 });
+      doc.text('\u2022 Both parties should register with their respective PRO (ASCAP, BMI, SESAC) to collect royalties.', 60, doc.y + 2, { width: 492 });
+    }
+
+    doc.moveDown(2);
+
+    // Signature lines
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1a1a2e');
+    doc.text('SIGNATURES', 60, doc.y);
+    doc.moveDown(0.8);
+
+    doc.moveTo(60, doc.y).lineTo(270, doc.y).stroke('#cccccc');
+    doc.font('Helvetica').fontSize(9).fillColor('#666666');
+    doc.text("O'Neil (Producer) \u2014 Digitally Signed", 60, doc.y + 4);
+    doc.text(purchaseDate, 60, doc.y + 2);
+    doc.moveDown(0.5);
+    doc.moveTo(310, doc.y - 30).lineTo(552, doc.y - 30).stroke('#cccccc');
+    doc.text(buyer.name || buyer.email || 'Artist', 310, doc.y - 26);
+    doc.text(purchaseDate, 310, doc.y + 2);
+
+    // Footer
+    doc.rect(0, doc.page.height - 40, 612, 40).fill('#1a1a2e');
+    doc.font('Helvetica').fontSize(8).fillColor('#888888');
+    doc.text(
+      `O'Neil Beats Split Sheet  \u2022  Order: ${orderId}  \u2022  ${purchaseDate}  \u2022  This document does not constitute legal advice.`,
+      60, doc.page.height - 25, { align: 'center', width: 492 }
+    );
+
+    doc.end();
+  });
+}
+
+module.exports = { generateLicensePDF, generateSplitSheetPDF, LICENSE_TERMS };
