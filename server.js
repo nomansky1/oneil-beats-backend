@@ -122,6 +122,57 @@ app.get('/health', async (req, res) => {
   });
 });
 
+// GET /upload/status — OB Uploader uses this to authenticate admin sessions
+app.get('/upload/status', requireAdminKey, (req, res) => {
+  res.json({ success: true, message: 'Authenticated', serverTime: new Date().toISOString() });
+});
+
+// POST /beat-request — custom beat request from customer app
+app.post('/beat-request', async (req, res) => {
+  try {
+    const { email, name, genre, bpm, key, mood, description } = req.body;
+    if (!email || !description) {
+      return res.status(400).json({ error: 'Email and description are required' });
+    }
+
+    // Store in Supabase
+    const supabase = getSupabaseClient();
+    const { error: dbError } = await supabase
+      .from('beat_requests')
+      .insert([{ email, name: name || 'Anonymous', genre, bpm, key_signature: key, mood, description, status: 'pending', created_at: new Date().toISOString() }]);
+
+    if (dbError) console.error('beat_requests insert error (table may not exist, falling back to email):', dbError.message);
+
+    // Always send email notification to producer
+    if (process.env.EMAIL_FROM && process.env.EMAIL_PASS) {
+      try {
+        await mailer.sendMail({
+          from: process.env.EMAIL_FROM,
+          to: process.env.EMAIL_FROM, // send to yourself
+          replyTo: email,
+          subject: 'New Custom Beat Request from ' + (name || email),
+          html: '<div style="font-family:sans-serif;max-width:600px;">' +
+            '<h2 style="color:#f59e0b;">New Custom Beat Request</h2>' +
+            '<p><b>From:</b> ' + (name || 'Anonymous') + ' (' + email + ')</p>' +
+            '<p><b>Genre:</b> ' + (genre || 'Not specified') + '</p>' +
+            '<p><b>BPM:</b> ' + (bpm || 'Any') + '</p>' +
+            '<p><b>Key:</b> ' + (key || 'Any') + '</p>' +
+            '<p><b>Mood:</b> ' + (mood || 'Not specified') + '</p>' +
+            '<p><b>Description:</b></p><p style="background:#111;color:#fff;padding:12px;border-radius:8px;">' + description + '</p>' +
+            '</div>',
+        });
+      } catch (emailErr) {
+        console.error('Beat request email failed:', emailErr.message);
+      }
+    }
+
+    res.json({ success: true, message: 'Your beat request has been submitted! We\'ll get back to you soon.' });
+  } catch (err) {
+    console.error('Beat request error:', err);
+    res.status(500).json({ error: 'Failed to submit request' });
+  }
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // BEATS API
 // ──────────────────────────────────────────────────────────────────────────────
@@ -227,6 +278,7 @@ app.post('/checkout', async (req, res) => {
         return res.status(400).json({ error: `Beat ${item.beatId} not found or inactive` });
       }
       const priceKey =
+        item.licenseType === 'exclusive' ? 'exclusive_price' :
         item.licenseType === 'premium' ? 'premium_price' :
         item.licenseType === 'stems'   ? 'stems_price'   :
                                          'lease_price';
@@ -257,6 +309,7 @@ app.post('/checkout', async (req, res) => {
     // Build Stripe line items
     const line_items = validatedItems.map(item => {
       const tierLabel =
+        item.licenseType === 'exclusive' ? 'Exclusive Rights (Full Buyout)' :
         item.licenseType === 'premium' ? 'Premium License (MP3 + WAV)' :
         item.licenseType === 'stems'   ? 'Stems License (MP3 + WAV + Track Stems)' :
                                          'Lease License (MP3)';
@@ -578,8 +631,8 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
           await mailer.sendMail({
             from: `"O'Neil Beats" <${process.env.EMAIL_FROM}>`,
             to: order.customer_email,
-            subject: `🎵 Your O'Neil Beats Order Ready\!`,
-            text: `Thanks for your purchase\!\n\n${textLinks}\n\nEnjoy\!`,
+            subject: `🎵 Your O'Neil Beats Order Ready!`,
+            text: `Thanks for your purchase!\n\n${textLinks}\n\nEnjoy!`,
             html: htmlEmail,
             attachments: attachments.length > 0 ? attachments : undefined,
           });
