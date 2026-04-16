@@ -210,16 +210,20 @@ app.post('/beat-request', async (req, res) => {
           from: process.env.EMAIL_FROM,
           to: process.env.EMAIL_FROM, // send to yourself
           replyTo: email,
-          subject: 'New Custom Beat Request from ' + (name || email),
-          html: '<div style="font-family:sans-serif;max-width:600px;">' +
-            '<h2 style="color:#f59e0b;">New Custom Beat Request</h2>' +
-            '<p><b>From:</b> ' + (name || 'Anonymous') + ' (' + email + ')</p>' +
-            '<p><b>Genre:</b> ' + (genre || 'Not specified') + '</p>' +
-            '<p><b>BPM:</b> ' + (bpm || 'Any') + '</p>' +
-            '<p><b>Key:</b> ' + (key || 'Any') + '</p>' +
-            '<p><b>Mood:</b> ' + (mood || 'Not specified') + '</p>' +
-            '<p><b>Description:</b></p><p style="background:#111;color:#fff;padding:12px;border-radius:8px;">' + description + '</p>' +
-            '</div>',
+          subject: '🎹 Beat Request from ' + (name || email),
+          html: buildColoredEmail({
+            type: 'request',
+            title: 'Custom Beat Request',
+            bodyHtml: `
+              <p style="color:#ccc;margin:0 0 8px;"><b style="color:#fff;">From:</b> ${name || 'Anonymous'} (${email})</p>
+              <p style="color:#ccc;margin:0 0 4px;"><b style="color:#fff;">Genre:</b> ${genre || 'Not specified'}</p>
+              <p style="color:#ccc;margin:0 0 4px;"><b style="color:#fff;">BPM:</b> ${bpm || 'Any'}</p>
+              <p style="color:#ccc;margin:0 0 4px;"><b style="color:#fff;">Key:</b> ${key || 'Any'}</p>
+              <p style="color:#ccc;margin:0 0 8px;"><b style="color:#fff;">Mood:</b> ${mood || 'Not specified'}</p>
+              <p style="color:#fff;margin:12px 0 4px;font-weight:700;">Description:</p>
+              <p style="background:#111;color:#fff;padding:12px;border-radius:8px;">${description}</p>
+              <p style="color:#888;margin:12px 0 0;font-size:12px;">Reply directly to this email to respond to the customer.</p>`,
+          }),
         });
       } catch (emailErr) {
         console.error('Beat request email failed:', emailErr.message);
@@ -230,6 +234,89 @@ app.post('/beat-request', async (req, res) => {
   } catch (err) {
     console.error('Beat request error:', err);
     res.status(500).json({ error: 'Failed to submit request' });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// EXCLUSIVE OFFER SUBMISSION
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Email color coding by type
+const EMAIL_COLORS = {
+  offer:    { bg: '#dc2626', label: 'EXCLUSIVE OFFER',   badge: '#dc2626', accent: '#fca5a5' },
+  purchase: { bg: '#16a34a', label: 'PURCHASE',          badge: '#16a34a', accent: '#86efac' },
+  request:  { bg: '#f59e0b', label: 'BEAT REQUEST',      badge: '#f59e0b', accent: '#fde68a' },
+  system:   { bg: '#6366f1', label: 'SYSTEM',            badge: '#6366f1', accent: '#a5b4fc' },
+};
+
+function buildColoredEmail({ type, title, bodyHtml }) {
+  const c = EMAIL_COLORS[type] || EMAIL_COLORS.system;
+  return `<!DOCTYPE html><html><body style="background:#06060a;margin:0;padding:0;">
+<div style="max-width:600px;margin:0 auto;padding:32px 20px;">
+  <div style="background:${c.bg};color:#fff;display:inline-block;padding:5px 14px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:1.5px;margin-bottom:16px;">${c.label}</div>
+  <h1 style="color:#fff;margin:0 0 6px;">${title}</h1>
+  <div style="border-left:4px solid ${c.bg};padding-left:16px;margin:16px 0;">
+    ${bodyHtml}
+  </div>
+  <p style="color:#444;font-size:11px;margin-top:24px;">O'Neil Beats App Notification</p>
+</div></body></html>`;
+}
+
+// POST /offer — customer submits an offer on an exclusive beat
+app.post('/offer', async (req, res) => {
+  try {
+    const { email, name, beatId, beatTitle, offerAmount, message } = req.body;
+    if (!email || !beatId || !offerAmount) {
+      return res.status(400).json({ error: 'Email, beatId, and offerAmount are required' });
+    }
+
+    const amount = parseFloat(offerAmount);
+    if (isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ error: 'Offer amount must be a positive number' });
+    }
+
+    // Store offer in Supabase (table may not exist yet — graceful fallback)
+    const supabase = getSupabaseClient();
+    const { error: dbError } = await supabase
+      .from('exclusive_offers')
+      .insert([{
+        email,
+        name: name || 'Anonymous',
+        beat_id: beatId,
+        beat_title: beatTitle || '',
+        offer_amount: amount,
+        message: message || '',
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      }]);
+    if (dbError) console.error('exclusive_offers insert error (table may not exist):', dbError.message);
+
+    // Email to producer — red color-coded EXCLUSIVE OFFER
+    if (process.env.EMAIL_FROM && process.env.EMAIL_PASS) {
+      try {
+        const bodyHtml = `
+          <p style="color:#ccc;margin:0 0 8px;"><b style="color:#fff;">From:</b> ${name || 'Anonymous'} (${email})</p>
+          <p style="color:#ccc;margin:0 0 8px;"><b style="color:#fff;">Beat:</b> ${beatTitle || beatId}</p>
+          <p style="color:#fff;margin:0 0 8px;font-size:28px;font-weight:900;">$${amount.toFixed(2)}</p>
+          ${message ? `<p style="color:#ccc;margin:12px 0 0;"><b style="color:#fff;">Message:</b></p><p style="background:#111;color:#fff;padding:12px;border-radius:8px;">${message}</p>` : ''}
+          <p style="color:#888;margin:12px 0 0;font-size:12px;">Reply directly to this email to respond to the buyer.</p>`;
+
+        await mailer.sendMail({
+          from: `"O'Neil Beats" <${process.env.EMAIL_FROM}>`,
+          to: process.env.EMAIL_FROM,
+          replyTo: email,
+          subject: `🔥 Exclusive Offer: $${amount.toFixed(2)} for "${beatTitle || 'Beat'}"`,
+          html: buildColoredEmail({ type: 'offer', title: `Exclusive Offer — $${amount.toFixed(2)}`, bodyHtml }),
+        });
+      } catch (emailErr) {
+        console.error('Offer email failed:', emailErr.message);
+      }
+    }
+
+    res.json({ success: true, message: 'Your offer has been submitted! The producer will review and respond via email.' });
+  } catch (err) {
+    console.error('Offer submission error:', err);
+    res.status(500).json({ error: 'Failed to submit offer' });
   }
 });
 
@@ -801,7 +888,11 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
             return `• ${item.beat_title}\n  MP3: ${dlBase}?format=mp3\n  License: ${licBase}`;
           }).join('\n\n');
 
-          const htmlEmail = `<!DOCTYPE html><html><body style="background:#06060a;"><div style="max-width:600px;margin:0 auto;padding:32px 20px;"><h1 style="color:#fff;">🎵 Your O'Neil Beats Are Ready!</h1><p style="color:#888;">Order #${orderId.slice(0,8)}</p>${beatCards}<p style="color:#666;font-size:12px;margin-top:20px;">Thank you for your purchase!</p></div></body></html>`;
+          const htmlEmail = buildColoredEmail({
+            type: 'purchase',
+            title: '🎵 Your O\'Neil Beats Are Ready!',
+            bodyHtml: `<p style="color:#888;margin:0 0 12px;">Order #${orderId.slice(0,8)}</p>${beatCards}<p style="color:#666;font-size:12px;margin-top:20px;">Thank you for your purchase!</p>`,
+          });
 
           const attachments = [];
           for (const item of items) {
