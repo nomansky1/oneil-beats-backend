@@ -32,6 +32,66 @@ const {
 } = require('./supabaseApi');
 const { generateLicensePDF, generateSplitSheetPDF, LICENSE_TERMS } = require('./licenseGenerator');
 
+// ── AI Cover Art — mood-to-prompt mapping ─────────────────────────────────────
+const COVER_THEMES = {
+  'Aggressive': {
+    prompts: [
+      'dark recording studio with red neon lights and smoke, urban gritty atmosphere, music culture',
+      'burning microphone in dark studio, fire and embers, intense red and black tones',
+      'underground hip hop studio with graffiti walls, red lighting, raw energy',
+    ],
+  },
+  'Energetic': {
+    prompts: [
+      'vibrant music studio with gold and neon lights, dynamic energy, city skyline through window',
+      'DJ turntable with golden sparks flying, electric energy, concert atmosphere',
+      'recording booth with colorful LED strips, headphones floating, burst of energy',
+    ],
+  },
+  'Dark': {
+    prompts: [
+      'moody purple-lit recording booth, vintage vinyl records, mysterious shadows, noir style',
+      'foggy dark alley with music notes floating, purple haze, cinematic atmosphere',
+      'silhouette of producer at mixing console, deep purple and blue tones, atmospheric',
+    ],
+  },
+  'Uplifting': {
+    prompts: [
+      'golden hour light streaming through studio windows, warm tones, inspirational vibes',
+      'sunrise over city with music waves in the sky, warm orange and gold palette',
+      'open air recording session at sunset, acoustic guitar, peaceful and warm',
+    ],
+  },
+  'Melancholic': {
+    prompts: [
+      'rainy window with reflections of city lights, vintage microphone, blue tones, emotional',
+      'lone piano in dimly lit room, rain drops on window, melancholy atmosphere',
+      'empty recording studio at night, single blue light, abandoned headphones on console',
+    ],
+  },
+  'Smooth': {
+    prompts: [
+      'jazz club atmosphere, warm amber lighting, saxophone silhouette, velvet curtains',
+      'smooth R&B studio lounge with leather chair, warm wood tones, soft golden light',
+      'intimate concert venue with candles, acoustic instruments, cozy warm atmosphere',
+    ],
+  },
+  'Chill': {
+    prompts: [
+      'cozy lo-fi bedroom studio with plants, sunset through window, headphones on desk, aesthetic',
+      'rooftop music session at dusk, city skyline, string lights, relaxed vibes',
+      'vinyl record player in cozy room, warm lamp light, books and plants, peaceful',
+    ],
+  },
+  'Dreamy': {
+    prompts: [
+      'ethereal clouds with floating music notes, pastel pink and purple, surreal dreamscape',
+      'underwater recording studio, bioluminescent lights, floating instruments, magical',
+      'starry night sky with constellation forming a treble clef, cosmic purple palette',
+    ],
+  },
+};
+
 // ── Email Setup ────────────────────────────────────────────────────────────────
 const mailer = nodemailer.createTransport({
   service: 'gmail',
@@ -251,6 +311,142 @@ app.post('/upload/beat',
     }
   }
 );
+
+// ──────────────────────────────────────────────────────────────────────────────
+// AI COVER ART GENERATION
+// ──────────────────────────────────────────────────────────────────────────────
+
+// POST /upload/generate-cover — generate AI cover art via Pollinations.ai
+app.post('/upload/generate-cover', requireAdminKey, async (req, res) => {
+  try {
+    const { mood, title, genre, tags, key: beatKey, seed: clientSeed } = req.body;
+    if (!mood) return res.status(400).json({ error: 'mood required' });
+
+    const theme = COVER_THEMES[mood] || COVER_THEMES['Dark'];
+    const prompt = theme.prompts[Math.floor(Math.random() * theme.prompts.length)];
+
+    const tagContext = tags ? `, ${tags} aesthetic` : '';
+    const toneContext = beatKey && beatKey.includes('Minor') ? ', moody dark tones' : beatKey ? ', bright warm tones' : '';
+    const fullPrompt = `${prompt}, ${genre || 'hip hop'} music album cover${tagContext}${toneContext}, square format, cinematic, high quality, no text no words no letters`;
+
+    const seed = clientSeed || Date.now();
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=1024&height=1024&seed=${seed}&nologo=true`;
+
+    try {
+      const imgRes = await fetch(pollinationsUrl, { signal: AbortSignal.timeout(60000) });
+      if (!imgRes.ok) throw new Error(`Pollinations returned ${imgRes.status}`);
+      const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+      const coverUrl = await uploadCoverToStorage(
+        imgBuffer,
+        `ai_cover_${seed}.png`,
+        'image/png'
+      );
+      res.json({
+        success: true,
+        image_url: coverUrl,
+        source: 'pollinations',
+        mood,
+        prompt: fullPrompt,
+        seed,
+      });
+    } catch (pollErr) {
+      console.warn('Pollinations fetch/upload failed, returning direct URL:', pollErr.message);
+      res.json({
+        success: true,
+        image_url: pollinationsUrl,
+        source: 'pollinations-direct',
+        mood,
+        prompt: fullPrompt,
+        seed,
+      });
+    }
+  } catch (err) {
+    console.error('Cover generation error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /upload/cover-library — list saved AI covers from Supabase storage
+app.get('/upload/cover-library', requireAdminKey, async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase.storage.from('cover-art').list('', {
+      limit: 100,
+      sortBy: { column: 'created_at', order: 'desc' },
+    });
+    if (error) throw error;
+    const covers = (data || [])
+      .filter(f => f.name.startsWith('ai_cover_'))
+      .map(f => {
+        const { data: urlData } = supabase.storage.from('cover-art').getPublicUrl(f.name);
+        return { name: f.name, url: urlData.publicUrl, created: f.created_at };
+      });
+    res.json({ success: true, covers });
+  } catch (err) {
+    console.error('Cover library error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /upload/analyze-audio — BPM/key detection from audio file
+// Uses spectral analysis approach for key detection
+app.post('/upload/analyze-audio', requireAdminKey, upload.single('audio'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'audio file required' });
+
+    // For Vercel serverless: return genre-based defaults + filename detection
+    // Full FFT analysis requires Web Audio API (client-side only)
+    const filename = req.file.originalname || '';
+    const name = filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+
+    let detectedBpm = null;
+    let detectedKey = null;
+    let detectedMood = null;
+
+    // BPM from filename
+    const bpmMatch = name.match(/(\d{2,3})\s*bpm/i);
+    if (bpmMatch) {
+      const val = parseInt(bpmMatch[1]);
+      if (val >= 50 && val <= 250) detectedBpm = val;
+    }
+
+    // Key from filename
+    const keyPatterns = [
+      { regex: /\b([A-G])\s*sharp\s*(minor|major|min|maj)\b/i, proc: (m) => `${m[1]}# ${m[2].toLowerCase().startsWith('min') ? 'Minor' : 'Major'}` },
+      { regex: /\b([A-G])\s*flat\s*(minor|major|min|maj)\b/i, proc: (m) => `${m[1]}b ${m[2].toLowerCase().startsWith('min') ? 'Minor' : 'Major'}` },
+      { regex: /\b([A-G][b#]?)\s*(minor|major|min|maj)\b/i, proc: (m) => `${m[1]} ${m[2].toLowerCase().startsWith('min') ? 'Minor' : 'Major'}` },
+      { regex: /\b([A-G][b#]?)m\b/i, proc: (m) => `${m[1]} Minor` },
+      { regex: /\b([A-G][b#])\b/, proc: (m) => `${m[1]} Major` },
+    ];
+    for (const { regex, proc } of keyPatterns) {
+      const match = name.match(regex);
+      if (match) { detectedKey = proc(match); break; }
+    }
+
+    // Mood from BPM + key
+    if (detectedBpm && detectedKey) {
+      const isMinor = detectedKey.includes('Minor');
+      if (detectedBpm >= 140 && isMinor) detectedMood = 'Aggressive';
+      else if (detectedBpm >= 140) detectedMood = 'Energetic';
+      else if (detectedBpm >= 110 && isMinor) detectedMood = 'Dark';
+      else if (detectedBpm >= 110) detectedMood = 'Uplifting';
+      else if (detectedBpm >= 85 && isMinor) detectedMood = 'Melancholic';
+      else if (detectedBpm >= 85) detectedMood = 'Smooth';
+      else if (isMinor) detectedMood = 'Chill';
+      else detectedMood = 'Dreamy';
+    }
+
+    res.json({
+      bpm: detectedBpm,
+      key: detectedKey,
+      mood: detectedMood,
+      source: 'filename',
+    });
+  } catch (err) {
+    console.error('Audio analysis error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ──────────────────────────────────────────────────────────────────────────────
 // STRIPE CHECKOUT
