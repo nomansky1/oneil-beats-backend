@@ -1150,7 +1150,7 @@ app.post('/upload/cover-from-url', requireAdminKey, async (req, res) => {
 // POST /upload/beat-metadata — register beat in DB (no file upload, just metadata + URLs)
 app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
   try {
-    const { title, genre, subgenre, bpm, key, mood, tags, lease_price, premium_price, stems_price, exclusive_price, audio_url, wav_url, stem_url, cover_url } = req.body;
+    const { title, genre, subgenre, bpm, key, mood, tags, lease_price, premium_price, stems_price, exclusive_price, audio_url, wav_url, stem_url, cover_url, announce, announce_title, announce_body } = req.body;
     if (!title) return res.status(400).json({ error: 'Title is required' });
 
     const beatId = await addBeatToDB({
@@ -1165,19 +1165,25 @@ app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
       cover_url: cover_url || '',
     });
 
-    // Send push notification to all customers
-    try {
-      const tokens = await getPushTokens();
-      if (tokens.length > 0) {
-        sendPushNotification(
-          tokens,
-          '🎵 New Beat Released!',
-          `Check out "${title}" — ${genre || 'New'} · ${bpm || '?'} BPM`,
-          { beatId, beatTitle: title, genre, bpm }
-        ).catch(err => console.error('Push notification send error:', err));
+    // Push broadcast on new beat — opt-in. Uploader sends announce:false to skip
+    // (e.g. reuploads / test uploads). Custom title/body optional.
+    if (announce !== false) {
+      try {
+        const tokens = await getPushTokens();
+        if (tokens.length > 0) {
+          const pTitle = (typeof announce_title === 'string' && announce_title.trim()) || '🎵 New Beat Released!';
+          const pBody = (typeof announce_body === 'string' && announce_body.trim()) ||
+            `Check out "${title}" — ${genre || 'New'} · ${bpm || '?'} BPM`;
+          sendPushNotification(
+            tokens,
+            pTitle,
+            pBody,
+            { beatId, beatTitle: title, genre, bpm }
+          ).catch(err => console.error('Push notification send error:', err));
+        }
+      } catch (notifErr) {
+        console.error('Error sending push notifications:', notifErr);
       }
-    } catch (notifErr) {
-      console.error('Error sending push notifications:', notifErr);
     }
 
     res.json({ success: true, beatId, message: `Beat "${title}" is live!` });
