@@ -884,20 +884,22 @@ app.post('/upload/drive-proxy-small', requireAdminKey, upload.single('file'), as
   }
 });
 
-// POST /upload/drive-proxy-init — init chunked upload
-// Returns a Supabase signed URL so the client can upload directly (works with serverless)
+// POST /upload/drive-proxy-init — init direct-to-Supabase upload
+// Returns a Supabase signed upload URL; client PUTs the WHOLE file in one request
+// (Supabase signed upload URLs are one-shot — do NOT send chunks, you'll get 409 Duplicate)
 app.post('/upload/drive-proxy-init', requireAdminKey, async (req, res) => {
   try {
-    const { filename, mimeType, fileSize } = req.body;
+    const { filename, mimeType, fileSize, type } = req.body;
     if (!filename) return res.status(400).json({ error: 'filename required' });
-    const safeName = `uploads/${Date.now()}_${Math.random().toString(36).slice(2,6)}_${filename}`;
+    const fileType = type || 'mp3';
+    const { bucket, prefix } = _bucketForType(fileType);
+    const cleanName = String(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeName = `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2,6)}_${cleanName}`;
     const supabase = getSupabaseClient();
-    // Create a signed upload URL valid for 10 minutes (unique path prevents 409 Duplicate)
-    const { data, error } = await supabase.storage.from('beats').createSignedUploadUrl(safeName);
+    const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(safeName);
     if (error) throw new Error(`Signed URL error: ${error.message}`);
-    // Return the signed URL as uploadUrl — client will PUT chunks/full file directly
-    // Also return the path for finalize step
-    res.json({ success: true, uploadUrl: data.signedUrl, path: safeName, token: data.token });
+    const publicUrl = supabase.storage.from(bucket).getPublicUrl(safeName).data.publicUrl;
+    res.json({ success: true, uploadUrl: data.signedUrl, path: safeName, bucket, publicUrl, token: data.token });
   } catch (err) {
     console.error('drive-proxy-init error:', err);
     res.status(500).json({ error: err.message });
@@ -954,13 +956,15 @@ app.put('/upload/drive-proxy-chunk', requireAdminKey, express.raw({ type: '*/*',
 // POST /upload/drive-finalize — finalize upload, return public URL
 app.post('/upload/drive-finalize', requireAdminKey, async (req, res) => {
   try {
-    const { fileId, type } = req.body;
-    if (!fileId) return res.status(400).json({ error: 'fileId required' });
-    const { bucket } = _bucketForType(type);
+    const { fileId, path, bucket: bucketParam, type } = req.body;
+    const storagePath = path || fileId;
+    if (!storagePath) return res.status(400).json({ error: 'path or fileId required' });
+    const bucket = bucketParam || _bucketForType(type).bucket;
     const supabase = getSupabaseClient();
-    // fileId could be a storage path or a signed URL path
-    const storagePath = fileId.includes('/') ? fileId.split('/object/')[1] || fileId : fileId;
-    const publicUrl = supabase.storage.from(bucket).getPublicUrl(storagePath).data.publicUrl;
+    const cleanPath = String(storagePath).includes('/object/')
+      ? String(storagePath).split('/object/')[1] || storagePath
+      : storagePath;
+    const publicUrl = supabase.storage.from(bucket).getPublicUrl(cleanPath).data.publicUrl;
     res.json({ success: true, publicUrl });
   } catch (err) {
     console.error('drive-finalize error:', err);
