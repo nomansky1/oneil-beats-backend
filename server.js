@@ -342,6 +342,177 @@ app.get('/beats', async (req, res) => {
   }
 });
 
+// ──────────────────────────────────────────────────────────────────────────────
+// CUSTOMER ANALYTICS / REGISTRATION / FAVORITES / PROMO
+// ──────────────────────────────────────────────────────────────────────────────
+
+// POST /customer/track — customer behavior event logging
+// Body: { userId?, action, data? }
+// Always returns 200 so analytics failures never break the customer app flow.
+app.post('/customer/track', async (req, res) => {
+  try {
+    const { userId, action, data } = req.body || {};
+    if (!action) return res.json({ success: true, skipped: 'no action' });
+    try {
+      const supabase = getSupabaseClient();
+      await supabase.from('customer_events').insert([{
+        user_id: userId || null,
+        action,
+        event_data: data || {},
+        created_at: new Date().toISOString(),
+      }]);
+    } catch (dbErr) {
+      console.warn('customer_events insert skipped:', dbErr.message);
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: true, error: err.message });
+  }
+});
+
+// POST /customer/register — upsert customer profile row
+// Body: { id, email?, name?, phone?, expoPushToken? }
+app.post('/customer/register', async (req, res) => {
+  try {
+    const { id, email, name, phone, expoPushToken } = req.body || {};
+    if (!id && !email) return res.status(400).json({ error: 'id or email required' });
+    const supabase = getSupabaseClient();
+    const row = {
+      id: id || undefined,
+      email: email || null,
+      name: name || null,
+      phone: phone || null,
+      last_seen: new Date().toISOString(),
+    };
+    Object.keys(row).forEach(k => row[k] === undefined && delete row[k]);
+    try {
+      await supabase.from('customers').upsert(row, { onConflict: id ? 'id' : 'email' });
+    } catch (dbErr) {
+      console.warn('customers upsert skipped:', dbErr.message);
+    }
+    if (expoPushToken && id) {
+      try { await registerPushToken(id, expoPushToken, 'mobile'); } catch (_) {}
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Customer register error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /favorites?userId=... — list favorited beat IDs
+app.get('/favorites', async (req, res) => {
+  try {
+    const userId = req.query.userId;
+    if (!userId) return res.json({ success: true, favorites: [] });
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase.from('favorites').select('beat_id').eq('user_id', userId);
+    if (error) {
+      console.warn('favorites fetch skipped:', error.message);
+      return res.json({ success: true, favorites: [] });
+    }
+    res.json({ success: true, favorites: (data || []).map(r => r.beat_id) });
+  } catch (err) {
+    res.json({ success: true, favorites: [], error: err.message });
+  }
+});
+
+// POST /favorites — toggle favorite: { userId, beatId, favorited }
+app.post('/favorites', async (req, res) => {
+  try {
+    const { userId, beatId, favorited } = req.body || {};
+    if (!userId || !beatId) return res.status(400).json({ error: 'userId and beatId required' });
+    const supabase = getSupabaseClient();
+    try {
+      if (favorited === false) {
+        await supabase.from('favorites').delete().eq('user_id', userId).eq('beat_id', beatId);
+      } else {
+        await supabase.from('favorites').upsert({
+          user_id: userId,
+          beat_id: beatId,
+          created_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,beat_id' });
+      }
+    } catch (dbErr) {
+      console.warn('favorites write skipped:', dbErr.message);
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /promo/check-first-purchase — returns { firstTime: boolean }
+app.post('/promo/check-first-purchase', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) return res.json({ firstTime: true });
+    const orders = await getOrdersByEmail(email);
+    res.json({ firstTime: (orders || []).length === 0, paidOrders: (orders || []).length });
+  } catch (err) {
+    res.json({ firstTime: true, error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ADMIN BEAT CRUD + LICENSE TERMS
+// ──────────────────────────────────────────────────────────────────────────────
+
+// PUT /admin/beat/:id — update beat metadata
+app.put('/admin/beat/:id', requireAdminKey, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'Beat ID required' });
+    await updateBeatInDB(id, req.body || {});
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Admin beat update error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /admin/beat/:id — soft-delete beat (sets active=false)
+app.delete('/admin/beat/:id', requireAdminKey, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'Beat ID required' });
+    await deleteBeatInDB(id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Admin beat delete error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /admin/licenses — read editable license terms (single row table)
+app.get('/admin/licenses', requireAdminKey, async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase.from('license_terms').select('*').limit(1).maybeSingle();
+    if (error && error.code !== 'PGRST116') {
+      console.warn('license_terms fetch warning:', error.message);
+    }
+    res.json({ success: true, terms: data || null, defaults: LICENSE_TERMS || null });
+  } catch (err) {
+    res.json({ success: true, terms: null, defaults: LICENSE_TERMS || null, error: err.message });
+  }
+});
+
+// PUT /admin/licenses — upsert license terms row
+app.put('/admin/licenses', requireAdminKey, async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const payload = { ...(req.body || {}), updated_at: new Date().toISOString() };
+    if (!payload.id) payload.id = 1;
+    const { error } = await supabase.from('license_terms').upsert(payload, { onConflict: 'id' });
+    if (error) throw new Error(error.message);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Admin licenses update error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /upload/beat — multipart upload (audio + optional cover)
 app.post('/upload/beat',
   requireAdminKey,
@@ -752,15 +923,19 @@ app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
 // POST /upload/generate-cover — generate AI cover art via Pollinations.ai
 app.post('/upload/generate-cover', requireAdminKey, async (req, res) => {
   try {
-    const { mood, title, genre, tags, key: beatKey, seed: clientSeed } = req.body;
+    const { mood, title, genre, tags, key: beatKey, seed: clientSeed, prompt: clientPrompt } = req.body;
     if (!mood) return res.status(400).json({ error: 'mood required' });
 
-    const theme = COVER_THEMES[mood] || COVER_THEMES['Dark'];
-    const prompt = theme.prompts[Math.floor(Math.random() * theme.prompts.length)];
-
-    const tagContext = tags ? `, ${tags} aesthetic` : '';
-    const toneContext = beatKey && beatKey.includes('Minor') ? ', moody dark tones' : beatKey ? ', bright warm tones' : '';
-    const fullPrompt = `${prompt}, ${genre || 'hip hop'} music album cover${tagContext}${toneContext}, square format, cinematic, high quality, no text no words no letters`;
+    let fullPrompt;
+    if (clientPrompt && typeof clientPrompt === 'string' && clientPrompt.length < 1000) {
+      fullPrompt = clientPrompt;
+    } else {
+      const theme = COVER_THEMES[mood] || COVER_THEMES['Dark'];
+      const prompt = theme.prompts[Math.floor(Math.random() * theme.prompts.length)];
+      const tagContext = tags ? `, ${tags} aesthetic` : '';
+      const toneContext = beatKey && beatKey.includes('Minor') ? ', moody dark tones' : beatKey ? ', bright warm tones' : '';
+      fullPrompt = `${prompt}, ${genre || 'hip hop'} music album cover${tagContext}${toneContext}, square format, cinematic, high quality, no text no words no letters`;
+    }
 
     const seed = clientSeed || Date.now();
     const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=1024&height=1024&seed=${seed}&nologo=true`;
@@ -795,6 +970,37 @@ app.post('/upload/generate-cover', requireAdminKey, async (req, res) => {
     }
   } catch (err) {
     console.error('Cover generation error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /upload/generate-covers — return N (default 10) Pollinations preview URLs
+// Body: { mood, title?, genre?, tags?, key?, count? }
+// Previews are NOT persisted — user picks one and re-calls /upload/generate-cover
+// with the chosen seed + prompt to store the final image in Supabase.
+app.post('/upload/generate-covers', requireAdminKey, async (req, res) => {
+  try {
+    const { mood, title, genre, tags, key: beatKey, count } = req.body || {};
+    if (!mood) return res.status(400).json({ error: 'mood required' });
+
+    const theme = COVER_THEMES[mood] || COVER_THEMES['Dark'];
+    const prompts = theme.prompts;
+    const tagContext = tags ? `, ${tags} aesthetic` : '';
+    const toneContext = beatKey && beatKey.includes('Minor') ? ', moody dark tones' : beatKey ? ', bright warm tones' : '';
+    const total = Math.min(Math.max(parseInt(count) || 10, 1), 10);
+
+    const previews = [];
+    for (let i = 0; i < total; i++) {
+      const prompt = prompts[i % prompts.length];
+      const fullPrompt = `${prompt}, ${genre || 'hip hop'} music album cover${tagContext}${toneContext}, square format, cinematic, high quality, no text no words no letters`;
+      const seed = Date.now() + i * 1013 + Math.floor(Math.random() * 997);
+      const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=1024&height=1024&seed=${seed}&nologo=true`;
+      previews.push({ id: `preview_${seed}`, url, seed, prompt: fullPrompt });
+    }
+
+    res.json({ success: true, previews, mood, count: total });
+  } catch (err) {
+    console.error('Covers generation error:', err);
     res.status(500).json({ error: err.message });
   }
 });
