@@ -48,10 +48,20 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .sr-only{position:absolute !important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;left:-9999px;top:auto}
 
 /* ── Header ── */
-header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between}
-.logo-wrap{display:flex;flex-direction:column}
-.logo-text{font-size:20px;font-weight:900;letter-spacing:5px;background:linear-gradient(135deg,var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.logo-sub{font-size:9px;color:var(--dim);letter-spacing:3px;margin-top:-2px}
+header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);padding:0 24px;height:72px;display:flex;align-items:center;justify-content:space-between}
+.logo-wrap{display:flex;flex-direction:column;perspective:600px}
+/* ── 3D Animated Logo ── */
+.logo-3d{position:relative;font-size:22px;font-weight:900;letter-spacing:5px;line-height:1;transform-style:preserve-3d;animation:logoFloat 6s ease-in-out infinite;cursor:pointer;display:inline-block}
+.logo-3d .l-main{display:inline-block;background:linear-gradient(135deg,#ff4d5a 0%,var(--accent) 25%,var(--gold) 55%,#ffd27a 75%,var(--accent) 100%);background-size:300% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:logoShimmer 5s linear infinite;text-shadow:0 0 30px rgba(230,57,70,.3);position:relative;z-index:2}
+/* 3D stacked depth layers (CSS "extrusion") */
+.logo-3d::before{content:attr(data-text);position:absolute;inset:0;background:linear-gradient(135deg,rgba(230,57,70,.85),rgba(245,158,11,.85));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;transform:translate3d(1px,1px,-1px);filter:blur(.3px);opacity:.6;z-index:1}
+.logo-3d::after{content:attr(data-text);position:absolute;inset:0;color:rgba(6,6,10,.9);transform:translate3d(3px,3px,-2px);filter:blur(1.5px);opacity:.7;z-index:0}
+/* Reflection */
+.logo-reflect{display:block;font-size:22px;font-weight:900;letter-spacing:5px;line-height:1;background:linear-gradient(135deg,#ff4d5a 0%,var(--accent) 25%,var(--gold) 55%,#ffd27a 75%,var(--accent) 100%);background-size:300% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;transform:scaleY(-1) translateY(2px);opacity:.25;animation:logoShimmer 5s linear infinite;-webkit-mask-image:linear-gradient(transparent 0%,transparent 40%,rgba(0,0,0,.8) 100%);mask-image:linear-gradient(transparent 0%,transparent 40%,rgba(0,0,0,.8) 100%);filter:blur(.6px)}
+.logo-sub{font-size:9px;color:var(--dim);letter-spacing:3px;margin-top:-3px;opacity:.85}
+@keyframes logoFloat{0%,100%{transform:rotateX(0deg) rotateY(-6deg)}25%{transform:rotateX(-2deg) rotateY(2deg)}50%{transform:rotateX(2deg) rotateY(6deg)}75%{transform:rotateX(-1deg) rotateY(-2deg)}}
+@keyframes logoShimmer{0%{background-position:0% center}100%{background-position:300% center}}
+.logo-3d:hover{animation-play-state:paused;transform:rotateX(-4deg) rotateY(10deg) scale(1.04)}
 .header-nav{display:flex;align-items:center;gap:22px}
 .header-nav a{font-size:13px;font-weight:600;color:var(--dim);text-decoration:none;transition:color .15s}
 .header-nav a:hover{color:var(--text)}
@@ -73,23 +83,33 @@ header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-fi
 /* Keyframes reused by overlay */
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 @keyframes shimmer{0%{background-position:0% center}100%{background-position:200% center}}
-/* ── Featured Carousel ── */
+/* ── Featured Carousel — 3D coverflow w/ reflection ── */
 .hero-carousel{position:relative;width:100%;max-width:1040px;margin:0 auto;padding:6px 0 4px}
-.hero-carousel-track-wrap{overflow:hidden;position:relative;padding:26px 0 20px}
-.hero-carousel-track{display:flex;gap:20px;justify-content:center;align-items:center;transition:transform .5s cubic-bezier(.22,.8,.28,1);will-change:transform}
-.feat-card{position:relative;flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;cursor:pointer;transition:all .5s cubic-bezier(.22,.8,.28,1);box-shadow:0 20px 60px rgba(0,0,0,.55)}
-.feat-card.sz-side{width:180px;opacity:.55;transform:scale(.86)}
-.feat-card.sz-near{width:220px;opacity:.8;transform:scale(.94)}
-.feat-card.sz-center{width:280px;opacity:1;transform:scale(1);z-index:5;box-shadow:0 30px 80px rgba(230,57,70,.35),0 0 0 1px rgba(230,57,70,.4)}
+.hero-carousel-track-wrap{overflow:hidden;position:relative;padding:24px 0 90px;perspective:1400px;perspective-origin:50% 40%}
+.hero-carousel-track{display:flex;gap:20px;justify-content:center;align-items:flex-start;transition:transform .6s cubic-bezier(.22,.8,.28,1);will-change:transform;transform-style:preserve-3d}
+.feat-card{position:relative;flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;cursor:pointer;transition:all .6s cubic-bezier(.22,.8,.28,1);box-shadow:0 20px 60px rgba(0,0,0,.55);transform-style:preserve-3d;-webkit-box-reflect:below 4px linear-gradient(to bottom,transparent 0%,transparent 60%,rgba(255,255,255,.18) 100%)}
+.feat-card.sz-side{width:160px;opacity:.5;transform:scale(.82)}
+.feat-card.sz-side.pos-left{transform:scale(.82) rotateY(32deg)}
+.feat-card.sz-side.pos-right{transform:scale(.82) rotateY(-32deg)}
+.feat-card.sz-near{width:210px;opacity:.82;transform:scale(.92)}
+.feat-card.sz-near.pos-left{transform:scale(.92) rotateY(20deg)}
+.feat-card.sz-near.pos-right{transform:scale(.92) rotateY(-20deg)}
+.feat-card.sz-center{width:290px;opacity:1;transform:scale(1) translateZ(40px);z-index:5;box-shadow:0 30px 80px rgba(230,57,70,.38),0 0 0 1px rgba(230,57,70,.45),0 0 60px rgba(230,57,70,.25);animation:centerFloat 4s ease-in-out infinite}
+@keyframes centerFloat{0%,100%{transform:scale(1) translateZ(40px) translateY(0)}50%{transform:scale(1) translateZ(40px) translateY(-6px)}}
 .feat-cover{width:100%;aspect-ratio:1;object-fit:cover;background:var(--surface2);display:block}
 .feat-cover-ph{width:100%;aspect-ratio:1;background:linear-gradient(135deg,var(--surface2),var(--surface3));display:flex;align-items:center;justify-content:center}
-.feat-play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.8);width:56px;height:56px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:all .3s;box-shadow:0 10px 32px rgba(230,57,70,.7);border:none;cursor:pointer}
+/* Gloss sweep across center cover */
+.feat-card.sz-center::before{content:'';position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.14) 50%,transparent 70%);background-size:220% 100%;animation:gloss 3.5s ease-in-out infinite;pointer-events:none;z-index:3;border-radius:18px}
+@keyframes gloss{0%{background-position:200% 0}60%,100%{background-position:-120% 0}}
+.feat-play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.8);width:56px;height:56px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:all .3s;box-shadow:0 10px 32px rgba(230,57,70,.7);border:none;cursor:pointer;z-index:4}
 .feat-card.sz-center:hover .feat-play,.feat-card.sz-center .feat-play.always{opacity:1;transform:translate(-50%,-50%) scale(1)}
 .feat-play:hover{transform:translate(-50%,-50%) scale(1.12) !important}
-.feat-info{padding:12px 16px 14px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.85));position:absolute;left:0;right:0;bottom:0}
+.feat-info{padding:12px 16px 14px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.85));position:absolute;left:0;right:0;bottom:0;z-index:2}
 .feat-title{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
 .feat-card.sz-center .feat-title{font-size:16px}
 .feat-genre{font-size:10px;color:var(--gold);font-weight:700;letter-spacing:.7px;text-transform:uppercase}
+/* Stage ground glow under carousel */
+.hero-stage-glow{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);width:420px;height:30px;background:radial-gradient(ellipse at center,rgba(230,57,70,.35),transparent 70%);filter:blur(16px);pointer-events:none;z-index:0}
 /* Carousel arrows */
 .car-arrow{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;background:rgba(14,14,22,.82);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:20;color:var(--text);transition:all .2s}
 .car-arrow:hover{background:var(--accent);border-color:var(--accent);color:#fff;transform:translateY(-50%) scale(1.08)}
@@ -100,28 +120,47 @@ header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-fi
 .car-dot{width:6px;height:6px;border-radius:50%;background:var(--surface3);cursor:pointer;transition:all .2s;border:none;padding:0}
 .car-dot.active{background:var(--accent);width:20px;border-radius:3px}
 .car-dot:hover{background:var(--dim)}
-/* ── Layered text overlay (floats above carousel) ── */
-.hero-overlay-top{position:absolute;top:0;left:50%;transform:translateX(-50%);z-index:10;display:flex;align-items:center;gap:10px;pointer-events:none}
-.hero-overlay-top .hero-eyebrow{pointer-events:auto}
+/* ── Inline hero text flow (above carousel, not overlapping) ── */
+.hero-top-stack{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:6px}
 .hero-eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:2.5px;color:var(--accent);text-transform:uppercase;padding:5px 12px;background:rgba(14,14,22,.72);backdrop-filter:blur(10px);border:1px solid rgba(230,57,70,.35);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .hero-eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:pulse 2s ease-in-out infinite}
-.hero-overlay-bottom{position:absolute;left:50%;bottom:-4px;transform:translateX(-50%);z-index:10;display:flex;flex-direction:column;align-items:center;gap:10px;width:min(92%,720px);pointer-events:none}
-.hero-overlay-bottom > *{pointer-events:auto}
-.hero-tagline{font-size:17px;font-weight:900;color:var(--text);letter-spacing:-.4px;text-shadow:0 2px 18px rgba(0,0,0,.9),0 0 40px rgba(0,0,0,.7);line-height:1.2}
-.hero-tagline .hl{background:linear-gradient(135deg,var(--accent) 0%,var(--gold) 60%,var(--accent) 100%);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 4s linear infinite;text-shadow:none}
+.hero-tagline{font-size:20px;font-weight:900;color:var(--text);letter-spacing:-.5px;line-height:1.2;max-width:720px;text-align:center}
+.hero-tagline .hl{background:linear-gradient(135deg,var(--accent) 0%,var(--gold) 60%,var(--accent) 100%);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 4s linear infinite}
+.hero-bottom-stack{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:4px}
 .hero-stats-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .hero-stat-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;color:var(--text);padding:4px 10px;background:rgba(14,14,22,.72);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:14px;letter-spacing:.3px}
 .hero-stat-pill svg{color:var(--green)}
 .hero-stat-pill .num{color:var(--gold);font-weight:900}
-/* Mini CTA row */
 .hero-cta{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .hero-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;border:none;transition:all .2s;text-decoration:none}
 .hero-btn.primary{background:linear-gradient(135deg,var(--accent),#ff4d5a);color:#fff;box-shadow:0 6px 20px rgba(230,57,70,.35)}
 .hero-btn.primary:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(230,57,70,.5)}
 .hero-btn.ghost{background:rgba(14,14,22,.72);backdrop-filter:blur(10px);color:var(--text);border:1px solid var(--border)}
 .hero-btn.ghost:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2)}
-/* Bottom fade so text pops over carousel */
-.hero-carousel::after{content:'';position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(180deg,transparent 0%,rgba(6,6,10,.85) 85%);pointer-events:none;z-index:6}
+
+/* ── Compact expandable categories (below search) ── */
+.categories-panel{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;margin-top:8px}
+.cat-toggle{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:18px;padding:5px 14px;font-size:11px;font-weight:800;color:var(--dim);cursor:pointer;font-family:inherit;letter-spacing:.5px;text-transform:uppercase;transition:all .15s}
+.cat-toggle:hover{color:var(--text);border-color:rgba(230,57,70,.35)}
+.cat-toggle svg{transition:transform .25s}
+.cat-toggle.open svg{transform:rotate(180deg);color:var(--accent)}
+.cat-toggle .pill-count{background:var(--accent);color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;font-weight:900}
+.cat-expand{max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.22,.8,.28,1);width:100%}
+.cat-expand.open{max-height:400px}
+.cat-rows{display:flex;flex-direction:column;align-items:center;gap:8px;padding:6px 0 2px}
+.cat-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:900px}
+.cat-row-label{font-size:9px;font-weight:800;letter-spacing:1.8px;color:var(--dim);text-transform:uppercase;margin-right:4px;align-self:center}
+
+/* ── Sidebar FAQ card ── */
+.side-faq-item{border-bottom:1px solid var(--border)}
+.side-faq-item:last-child{border-bottom:none}
+.side-faq-q{font-size:12px;font-weight:700;color:var(--text);padding:10px 0;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;line-height:1.3}
+.side-faq-q svg{flex-shrink:0;color:var(--dim);transition:transform .2s}
+.side-faq-q:hover{color:var(--accent)}
+.side-faq-a{font-size:11px;color:var(--dim);line-height:1.5;display:none;padding:0 0 10px}
+.side-faq-item.open .side-faq-a{display:block}
+.side-faq-item.open .side-faq-q svg{transform:rotate(180deg);color:var(--accent)}
+.side-faq-item.open .side-faq-q{color:var(--accent)}
 
 /* ── Filters ── */
 .filters{padding:10px 24px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:60px;z-index:90}
@@ -130,7 +169,6 @@ header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-fi
 .search-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 40px 9px 14px;color:var(--text);font-size:13px;outline:none;font-family:inherit;transition:border-color .15s}
 .search-input:focus{border-color:var(--accent)}
 .search-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--dim);pointer-events:none}
-.filter-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
 .chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;color:var(--dim);cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit}
 .chip:hover{color:var(--text);border-color:rgba(255,255,255,.18)}
 .chip.active{background:rgba(230,57,70,.15);border-color:var(--accent);color:var(--accent)}
@@ -387,8 +425,10 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
   .feat-card.sz-near{width:150px;opacity:.65}
   .feat-card.sz-side{display:none}
   .car-arrow{width:36px;height:36px}
-  .hero-overlay-bottom{bottom:-8px}
-  .filters{padding:8px 14px;top:54px}
+  .filters{padding:8px 14px;top:68px}
+  .hero-tagline{font-size:16px}
+  .logo-3d,.logo-reflect{font-size:18px;letter-spacing:4px}
+  header{height:64px}
   .layout{padding:14px 14px calc(var(--player-h) + 32px)}
   .beats-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
   .beat-info{padding:10px}
@@ -411,7 +451,8 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
 <header>
   <a href="/" style="text-decoration:none" aria-label="O'Neil Beats home">
     <div class="logo-wrap">
-      <div class="logo-text">O'NEIL</div>
+      <span class="logo-3d" data-text="O'NEIL"><span class="l-main">O'NEIL</span></span>
+      <span class="logo-reflect" aria-hidden="true">O'NEIL</span>
       <div class="logo-sub">BEATS STORE</div>
     </div>
   </a>
@@ -442,13 +483,15 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
     <h1 class="hero-h1-seo" id="page-h1">Premium Reggaeton, Trap & Hip-Hop Beats — Buy Rap Instrumentals Online</h1>
     <p class="hero-h1-seo" id="page-sub">Professionally mixed instrumentals for artists who demand more. Perreo, dembow, Latin trap, drill, boom bap and more. Instant MP3/WAV delivery.</p>
 
-    <!-- Carousel with layered text overlay -->
-    <div class="hero-carousel" id="hero-carousel" onmouseenter="carPause()" onmouseleave="carResume()">
-      <!-- Top floating badge -->
-      <div class="hero-overlay-top">
-        <div class="hero-eyebrow">New Drops · Reggaeton · Trap · Hip-Hop</div>
-      </div>
+    <!-- Above carousel: eyebrow + shimmer tagline -->
+    <div class="hero-top-stack">
+      <div class="hero-eyebrow">New Drops · Reggaeton · Trap · Hip-Hop</div>
+      <div class="hero-tagline">Premium <span class="hl">Reggaeton</span> · <span class="hl">Trap</span> · <span class="hl">Hip-Hop</span> Beats</div>
+    </div>
 
+    <!-- 3D Carousel (no text overlay on covers) -->
+    <div class="hero-carousel" id="hero-carousel" onmouseenter="carPause()" onmouseleave="carResume()">
+      <div class="hero-stage-glow"></div>
       <button class="car-arrow prev" onclick="carPrev()" aria-label="Previous beat">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
@@ -458,41 +501,51 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
       <button class="car-arrow next" onclick="carNext()" aria-label="Next beat">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
-
-      <!-- Bottom layered text overlay -->
-      <div class="hero-overlay-bottom">
-        <div class="hero-tagline">Premium <span class="hl">Reggaeton</span> · <span class="hl">Trap</span> · <span class="hl">Hip-Hop</span> Beats</div>
-        <div class="hero-cta">
-          <a href="#catalog" class="hero-btn primary" onclick="event.preventDefault();document.getElementById('catalog').scrollIntoView({behavior:'smooth'})">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            Browse All Beats
-          </a>
-          <a href="#" class="hero-btn ghost" onclick="event.preventDefault();setGenreFilter('Reggaeton')">🔥 Reggaeton</a>
-          <a href="#" class="hero-btn ghost" onclick="event.preventDefault();setGenreFilter('Trap')">💣 Trap</a>
-        </div>
-        <div class="hero-stats-row">
-          <div class="hero-stat-pill"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span class="num" id="stat-beats">—</span>&nbsp;Beats</div>
-          <div class="hero-stat-pill"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Instant Delivery</div>
-          <div class="hero-stat-pill"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Lease <span class="num">$29.99</span></div>
-        </div>
-      </div>
     </div>
     <div class="car-dots" id="car-dots" role="tablist" aria-label="Beat selector"></div>
+
+    <!-- Below carousel: CTAs + stats -->
+    <div class="hero-bottom-stack">
+      <div class="hero-cta">
+        <a href="#catalog" class="hero-btn primary" onclick="event.preventDefault();document.getElementById('catalog').scrollIntoView({behavior:'smooth'})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Browse All Beats
+        </a>
+        <a href="#" class="hero-btn ghost" onclick="event.preventDefault();setGenreFilter('Reggaeton')">🔥 Reggaeton</a>
+        <a href="#" class="hero-btn ghost" onclick="event.preventDefault();setGenreFilter('Trap')">💣 Trap</a>
+      </div>
+      <div class="hero-stats-row">
+        <div class="hero-stat-pill"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span class="num" id="stat-beats">—</span>&nbsp;Beats</div>
+        <div class="hero-stat-pill"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Instant Delivery</div>
+        <div class="hero-stat-pill"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Lease <span class="num">$29.99</span></div>
+      </div>
+    </div>
   </div>
 </section>
 
 <!-- Filters (sticky) -->
 <div class="filters" id="filters-bar" role="search">
-  <div class="filters-inner">
-    <div class="search-wrap">
-      <input class="search-input" id="search-input" type="search" placeholder="Search — reggaeton, trap, perreo, BPM, key…" aria-label="Search beats" oninput="filterBeats()">
-      <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+  <div class="filters-inner" style="flex-direction:column;gap:0">
+    <div style="display:flex;gap:10px;align-items:center;width:100%;max-width:720px;margin:0 auto">
+      <div class="search-wrap" style="flex:1;max-width:none">
+        <input class="search-input" id="search-input" type="search" placeholder="Search — reggaeton, trap, perreo, BPM, key…" aria-label="Search beats" oninput="filterBeats()">
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </div>
+      <span class="beat-count" id="beat-count" aria-live="polite" style="margin:0"></span>
     </div>
-    <div class="filter-row">
-      <div id="genre-chips" style="display:flex;gap:5px;flex-wrap:wrap"></div>
-      <span style="width:1px;height:16px;background:var(--border);flex-shrink:0"></span>
-      <div id="mood-chips" style="display:flex;gap:5px;flex-wrap:wrap"></div>
-      <span class="beat-count" id="beat-count" aria-live="polite"></span>
+    <div class="categories-panel">
+      <button class="cat-toggle" id="cat-toggle" onclick="toggleCategories()" aria-expanded="false">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <span>Categories</span>
+        <span class="pill-count" id="cat-count">0</span>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="cat-expand" id="cat-expand">
+        <div class="cat-rows">
+          <div class="cat-row"><span class="cat-row-label">Genre</span><div id="genre-chips" style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center"></div></div>
+          <div class="cat-row"><span class="cat-row-label">Mood</span><div id="mood-chips" style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center"></div></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -553,6 +606,16 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
       <div class="side-license"><span class="side-license-name" style="color:var(--purple)">Premium</span><span class="side-license-price">$99.99</span></div>
       <div class="side-license"><span class="side-license-name" style="color:var(--green)">Stems</span><span class="side-license-price">$199.99</span></div>
       <div class="side-license"><span class="side-license-name" style="color:var(--gold)">Exclusive</span><span class="side-license-price" style="font-size:11px;color:var(--dim)">Contact</span></div>
+    </div>
+
+    <div class="side-card">
+      <div class="side-title">FAQ</div>
+      <div class="side-faq-item"><div class="side-faq-q" onclick="toggleSideFaq(this)">Which license should I choose?<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></div><div class="side-faq-a">Lease covers up to 100K streams. Premium unlocks unlimited streams + higher distribution. Stems includes WAV track-outs for mixing. Exclusive removes the beat from store — you own it.</div></div>
+      <div class="side-faq-item"><div class="side-faq-q" onclick="toggleSideFaq(this)">How do I get the files?<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></div><div class="side-faq-a">Instant email delivery after Stripe payment. MP3 or WAV links sent to your inbox within seconds.</div></div>
+      <div class="side-faq-item"><div class="side-faq-q" onclick="toggleSideFaq(this)">Can I use on Spotify / YouTube?<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></div><div class="side-faq-a">Yes. All licenses cover YouTube, Spotify, Apple Music, Tidal, SoundCloud. Lease is capped at 100K streams — upgrade for unlimited.</div></div>
+      <div class="side-faq-item"><div class="side-faq-q" onclick="toggleSideFaq(this)">Do I need to credit O'Neil?<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></div><div class="side-faq-a">Lease / Premium: include "Prod. by O'Neil" in the title or description. Exclusive buyouts: no credit required.</div></div>
+      <div class="side-faq-item"><div class="side-faq-q" onclick="toggleSideFaq(this)">Lost your download link?<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></div><div class="side-faq-a">Scroll to <a href="#orders" style="color:var(--accent)">My Orders</a> and enter your checkout email — fresh links are regenerated instantly.</div></div>
+      <a href="#faq" style="display:inline-block;margin-top:10px;font-size:11px;color:var(--accent);text-decoration:none;font-weight:700">See all FAQs →</a>
     </div>
   </aside>
 </main>
@@ -859,11 +922,17 @@ function carRender() {
   const n = cards.length;
   if (!n) return;
   cards.forEach((el, i) => {
-    const d = Math.min((i - carIdx + n) % n, (carIdx - i + n) % n);
-    el.classList.remove('sz-center','sz-near','sz-side');
+    const fwd = (i - carIdx + n) % n;
+    const back = (carIdx - i + n) % n;
+    const d = Math.min(fwd, back);
+    // Which side of center? fwd < back → right of center; fwd > back → left
+    const side = fwd === 0 ? 'center' : (fwd <= back ? 'right' : 'left');
+    el.classList.remove('sz-center','sz-near','sz-side','pos-left','pos-right');
     if (d === 0) el.classList.add('sz-center');
     else if (d === 1) el.classList.add('sz-near');
     else el.classList.add('sz-side');
+    if (side === 'left') el.classList.add('pos-left');
+    else if (side === 'right') el.classList.add('pos-right');
   });
   document.querySelectorAll('#car-dots .car-dot').forEach((d,i) =>
     d.classList.toggle('active', i === carIdx));
@@ -895,6 +964,20 @@ function buildFilterChips() {
   const moods  = [...new Set(allBeats.map(b=>b.mood).filter(Boolean))].sort();
   document.getElementById('genre-chips').innerHTML = genres.map(g=>`<button class="chip" onclick="toggleGenre('${g}')" data-genre="${g}">${g}</button>`).join('');
   document.getElementById('mood-chips').innerHTML  = moods.map(m=>`<button class="chip" onclick="toggleMood('${m}')" data-mood="${m}">${m}</button>`).join('');
+  const cc = document.getElementById('cat-count');
+  if (cc) cc.textContent = genres.length + moods.length;
+}
+
+function toggleCategories() {
+  const panel = document.getElementById('cat-expand');
+  const btn = document.getElementById('cat-toggle');
+  const open = panel.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  btn.setAttribute('aria-expanded', open);
+}
+
+function toggleSideFaq(el) {
+  el.closest('.side-faq-item').classList.toggle('open');
 }
 
 function setGenreFilter(g) {
