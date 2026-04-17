@@ -990,38 +990,73 @@ app.post('/upload/get-signed-url', requireAdminKey, async (req, res) => {
   }
 });
 
+// Filename-based BPM/key fallback for when spectral analysis isn't available (MP3 on serverless).
+function _filenameDetect(filename) {
+  const name = String(filename || '').replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+  let bpm = null, key = null;
+  const bpmMatch = name.match(/(\d{2,3})\s*bpm/i);
+  if (bpmMatch) {
+    const v = parseInt(bpmMatch[1], 10);
+    if (v >= 50 && v <= 250) bpm = v;
+  }
+  const keyPatterns = [
+    { re: /\b([A-G])\s*sharp\s*(minor|major|min|maj)\b/i, fn: m => `${m[1]}# ${m[2].toLowerCase().startsWith('min') ? 'Minor' : 'Major'}` },
+    { re: /\b([A-G])\s*flat\s*(minor|major|min|maj)\b/i, fn: m => `${m[1]}b ${m[2].toLowerCase().startsWith('min') ? 'Minor' : 'Major'}` },
+    { re: /\b([A-G][b#]?)\s*(minor|major|min|maj)\b/i, fn: m => `${m[1]} ${m[2].toLowerCase().startsWith('min') ? 'Minor' : 'Major'}` },
+    { re: /\b([A-G][b#]?)m\b/, fn: m => `${m[1]} Minor` },
+    { re: /\b([A-G][b#])\b/, fn: m => `${m[1]} Major` },
+  ];
+  for (const { re, fn } of keyPatterns) {
+    const m = name.match(re);
+    if (m) { key = fn(m); break; }
+  }
+  return { bpm, key };
+}
+
+function _moodFrom(bpm, key) {
+  if (!bpm || !key) return null;
+  const isMinor = key.includes('Minor');
+  if (bpm >= 140 && isMinor) return 'Aggressive';
+  if (bpm >= 140) return 'Energetic';
+  if (bpm >= 110 && isMinor) return 'Dark';
+  if (bpm >= 110) return 'Uplifting';
+  if (bpm >= 85 && isMinor) return 'Melancholic';
+  if (bpm >= 85) return 'Smooth';
+  return isMinor ? 'Chill' : 'Dreamy';
+}
+
 // POST /upload/analyze-audio — BPM + key detection from uploaded audio file
+// Strategy: spectral analysis on WAVs, filename parsing as fallback/complement for MP3
 app.post('/upload/analyze-audio', requireAdminKey, upload.single('audio'), async (req, res) => {
   try {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'No audio file provided' });
+
+    const fromName = _filenameDetect(file.originalname || '');
 
     const MusicTempo = require('music-tempo');
     const fftJs = require('fft-js');
     const fft = fftJs.fft;
     const fftMag = fftJs.util.fftMag;
 
-    // Decode audio to PCM float samples
-    let pcmData, sampleRate;
+    let pcmData = null, sampleRate = null;
     const isWav = (file.originalname || '').toLowerCase().endsWith('.wav') ||
                   (file.mimetype || '').includes('wav');
-
-    if (isWav) {
+    try {
       const wavDecoder = require('wav-decoder');
       const decoded = await wavDecoder.decode(file.buffer);
-      pcmData = decoded.channelData[0]; // mono or first channel
+      pcmData = decoded.channelData[0];
       sampleRate = decoded.sampleRate;
-    } else {
-      // For MP3/other: try to parse as WAV first, then fall back to raw PCM guess
-      try {
-        const wavDecoder = require('wav-decoder');
-        const decoded = await wavDecoder.decode(file.buffer);
-        pcmData = decoded.channelData[0];
-        sampleRate = decoded.sampleRate;
-      } catch (_) {
-        // Can't decode MP3 server-side without heavy deps — return filename-based detection only
-        return res.json({ success: true, bpm: null, key: null, note: 'MP3 analysis requires WAV upload' });
-      }
+    } catch (_) { /* MP3 or undecodable — fall back to filename */ }
+
+    if (!pcmData) {
+      const key = fromName.key;
+      const bpm = fromName.bpm;
+      return res.json({
+        success: true, bpm, key, mood: _moodFrom(bpm, key),
+        source: 'filename',
+        note: isWav ? null : 'Upload WAV for spectral analysis',
+      });
     }
 
     // Limit analysis to first 30 seconds for speed
@@ -1090,21 +1125,16 @@ app.post('/upload/analyze-audio', requireAdminKey, upload.single('audio'), async
       console.warn('Key detection failed:', e.message);
     }
 
-    // ── Mood from BPM + Key ──
-    let mood = null;
-    if (bpm && key) {
-      const isMinor = key.includes('Minor');
-      if (bpm >= 140 && isMinor) mood = 'Aggressive';
-      else if (bpm >= 140) mood = 'Energetic';
-      else if (bpm >= 110 && isMinor) mood = 'Dark';
-      else if (bpm >= 110) mood = 'Uplifting';
-      else if (bpm >= 85 && isMinor) mood = 'Melancholic';
-      else if (bpm >= 85) mood = 'Smooth';
-      else if (isMinor) mood = 'Chill';
-      else mood = 'Dreamy';
-    }
-
-    res.json({ success: true, bpm, key, mood });
+    // Merge spectral results with filename hints (filename fills gaps only)
+    const finalBpm = bpm || fromName.bpm;
+    const finalKey = key || fromName.key;
+    res.json({
+      success: true,
+      bpm: finalBpm,
+      key: finalKey,
+      mood: _moodFrom(finalBpm, finalKey),
+      source: bpm || key ? 'spectral' : 'filename',
+    });
   } catch (err) {
     console.error('analyze-audio error:', err);
     res.status(500).json({ error: err.message });
@@ -1308,65 +1338,7 @@ app.get('/upload/cover-library', requireAdminKey, async (req, res) => {
   }
 });
 
-// POST /upload/analyze-audio — BPM/key detection from audio file
-// Uses spectral analysis approach for key detection
-app.post('/upload/analyze-audio', requireAdminKey, upload.single('audio'), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: 'audio file required' });
-
-    // For Vercel serverless: return genre-based defaults + filename detection
-    // Full FFT analysis requires Web Audio API (client-side only)
-    const filename = req.file.originalname || '';
-    const name = filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
-
-    let detectedBpm = null;
-    let detectedKey = null;
-    let detectedMood = null;
-
-    // BPM from filename
-    const bpmMatch = name.match(/(\d{2,3})\s*bpm/i);
-    if (bpmMatch) {
-      const val = parseInt(bpmMatch[1]);
-      if (val >= 50 && val <= 250) detectedBpm = val;
-    }
-
-    // Key from filename
-    const keyPatterns = [
-      { regex: /\b([A-G])\s*sharp\s*(minor|major|min|maj)\b/i, proc: (m) => `${m[1]}# ${m[2].toLowerCase().startsWith('min') ? 'Minor' : 'Major'}` },
-      { regex: /\b([A-G])\s*flat\s*(minor|major|min|maj)\b/i, proc: (m) => `${m[1]}b ${m[2].toLowerCase().startsWith('min') ? 'Minor' : 'Major'}` },
-      { regex: /\b([A-G][b#]?)\s*(minor|major|min|maj)\b/i, proc: (m) => `${m[1]} ${m[2].toLowerCase().startsWith('min') ? 'Minor' : 'Major'}` },
-      { regex: /\b([A-G][b#]?)m\b/i, proc: (m) => `${m[1]} Minor` },
-      { regex: /\b([A-G][b#])\b/, proc: (m) => `${m[1]} Major` },
-    ];
-    for (const { regex, proc } of keyPatterns) {
-      const match = name.match(regex);
-      if (match) { detectedKey = proc(match); break; }
-    }
-
-    // Mood from BPM + key
-    if (detectedBpm && detectedKey) {
-      const isMinor = detectedKey.includes('Minor');
-      if (detectedBpm >= 140 && isMinor) detectedMood = 'Aggressive';
-      else if (detectedBpm >= 140) detectedMood = 'Energetic';
-      else if (detectedBpm >= 110 && isMinor) detectedMood = 'Dark';
-      else if (detectedBpm >= 110) detectedMood = 'Uplifting';
-      else if (detectedBpm >= 85 && isMinor) detectedMood = 'Melancholic';
-      else if (detectedBpm >= 85) detectedMood = 'Smooth';
-      else if (isMinor) detectedMood = 'Chill';
-      else detectedMood = 'Dreamy';
-    }
-
-    res.json({
-      bpm: detectedBpm,
-      key: detectedKey,
-      mood: detectedMood,
-      source: 'filename',
-    });
-  } catch (err) {
-    console.error('Audio analysis error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
+// (duplicate /upload/analyze-audio endpoint removed — see definition above)
 
 // ──────────────────────────────────────────────────────────────────────────────
 // STRIPE CHECKOUT
