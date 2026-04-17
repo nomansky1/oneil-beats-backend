@@ -607,6 +607,110 @@ app.get('/admin/analytics', requireAdminKey, async (req, res) => {
   }
 });
 
+// Reusable fulfillment email (webhook + admin resend).
+async function sendFulfillmentEmail(order, orderId, items) {
+  const baseUrl = process.env.APP_URL || 'https://oneil-beats-backend.vercel.app';
+  const beatCards = items.map(item => {
+    const dlBase = `${baseUrl}/download/${orderId}/${item.beat_id}`;
+    const licBase = `${baseUrl}/license/${orderId}/${item.beat_id}`;
+    let buttons = `<a href="${dlBase}?format=mp3" style="display:inline-block;padding:10px 18px;margin:4px 6px 4px 0;background:#e63946;color:#000;text-decoration:none;border-radius:6px;font-weight:700;font-size:13px;">MP3</a>`;
+    if (item.license_type === 'premium' || item.license_type === 'stems') {
+      buttons += `<a href="${dlBase}?format=wav" style="display:inline-block;padding:10px 18px;margin:4px 6px 4px 0;background:#8b5cf6;color:#fff;text-decoration:none;border-radius:6px;font-weight:700;font-size:13px;">WAV</a>`;
+    }
+    if (item.license_type === 'stems') {
+      buttons += `<a href="${dlBase}?format=stems" style="display:inline-block;padding:10px 18px;margin:4px 6px 4px 0;background:#10b981;color:#000;text-decoration:none;border-radius:6px;font-weight:700;font-size:13px;">Stems</a>`;
+    }
+    buttons += `<a href="${licBase}" style="display:inline-block;padding:10px 18px;margin:4px 6px 4px 0;background:#f59e0b;color:#000;text-decoration:none;border-radius:6px;font-weight:700;font-size:13px;">License PDF</a>`;
+    return `<div style="background:#0f0f14;border:1px solid #222;border-radius:12px;padding:20px;margin-bottom:14px;"><h3 style="color:#fff;margin:0;font-size:17px;">${item.beat_title}</h3><div style="margin-top:12px;">${buttons}</div></div>`;
+  }).join('');
+
+  const textLinks = items.map(item => {
+    const dlBase = `${baseUrl}/download/${orderId}/${item.beat_id}`;
+    const licBase = `${baseUrl}/license/${orderId}/${item.beat_id}`;
+    return `• ${item.beat_title}\n  MP3: ${dlBase}?format=mp3\n  License: ${licBase}`;
+  }).join('\n\n');
+
+  const htmlEmail = buildColoredEmail({
+    type: 'purchase',
+    title: '🎵 Your O\'Neil Beats Are Ready!',
+    bodyHtml: `<p style="color:#888;margin:0 0 12px;">Order #${orderId.slice(0,8)}</p>${beatCards}<p style="color:#666;font-size:12px;margin-top:20px;">Thank you for your purchase!</p>`,
+  });
+
+  const attachments = [];
+  for (const item of items) {
+    try {
+      const pdfBuffer = await generateLicensePDF({
+        beatTitle: item.beat_title,
+        licenseType: item.license_type,
+        customerName: order.customer_name || 'Customer',
+        customerEmail: order.customer_email,
+        orderDate: new Date().toLocaleDateString(),
+        licenseTerms: LICENSE_TERMS[item.license_type] || LICENSE_TERMS.lease,
+      });
+      attachments.push({
+        filename: `${item.beat_title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_license.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf',
+      });
+      const splitBuffer = await generateSplitSheetPDF({
+        beat: { title: item.beat_title, genre: item.genre || '', bpm: item.bpm || '', key: item.key || '' },
+        buyer: { name: order.customer_name || 'Artist', email: order.customer_email },
+        orderId,
+        licenseType: item.license_type,
+      });
+      attachments.push({
+        filename: `${item.beat_title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_split_sheet.pdf`,
+        content: splitBuffer,
+        contentType: 'application/pdf',
+      });
+    } catch (pdfErr) {
+      console.error(`Error generating PDF for beat ${item.beat_title}:`, pdfErr);
+    }
+  }
+
+  await mailer.sendMail({
+    from: `"O'Neil Beats" <${process.env.EMAIL_FROM}>`,
+    to: order.customer_email,
+    subject: `🎵 Your O'Neil Beats Order Ready!`,
+    text: `Thanks for your purchase!\n\n${textLinks}\n\nEnjoy!`,
+    html: htmlEmail,
+    attachments: attachments.length > 0 ? attachments : undefined,
+  });
+}
+
+// GET /admin/orders — list recent orders (for Orders inbox)
+app.get('/admin/orders', requireAdminKey, async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id, customer_email, customer_name, total, status, created_at, order_items(beat_id, beat_title, license_type)')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    res.json({ success: true, orders: data || [] });
+  } catch (err) {
+    res.json({ success: true, orders: [], error: err.message });
+  }
+});
+
+// POST /admin/order/:id/resend — re-send the fulfillment email
+app.post('/admin/order/:id/resend', requireAdminKey, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await getOrderById(id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (!order.customer_email) return res.status(400).json({ error: 'Order has no customer_email' });
+    const items = order.order_items || [];
+    if (items.length === 0) return res.status(400).json({ error: 'Order has no items' });
+    await sendFulfillmentEmail(order, id, items);
+    res.json({ success: true, email: order.customer_email, items: items.length });
+  } catch (err) {
+    console.error('Order resend error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /admin/customers — real customer list with play/favorite/order aggregates
 app.get('/admin/customers', requireAdminKey, async (req, res) => {
   try {
@@ -1586,75 +1690,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         const items = order?.order_items || [];
 
         if (order && order.customer_email && items.length > 0) {
-          const baseUrl = process.env.APP_URL || 'https://oneil-beats-backend.vercel.app';
-          const beatCards = items.map(item => {
-            const dlBase = `${baseUrl}/download/${orderId}/${item.beat_id}`;
-            const licBase = `${baseUrl}/license/${orderId}/${item.beat_id}`;
-            let buttons = `<a href="${dlBase}?format=mp3" style="display:inline-block;padding:10px 18px;margin:4px 6px 4px 0;background:#e63946;color:#000;text-decoration:none;border-radius:6px;font-weight:700;font-size:13px;">MP3</a>`;
-            if (item.license_type === 'premium' || item.license_type === 'stems') {
-              buttons += `<a href="${dlBase}?format=wav" style="display:inline-block;padding:10px 18px;margin:4px 6px 4px 0;background:#8b5cf6;color:#fff;text-decoration:none;border-radius:6px;font-weight:700;font-size:13px;">WAV</a>`;
-            }
-            if (item.license_type === 'stems') {
-              buttons += `<a href="${dlBase}?format=stems" style="display:inline-block;padding:10px 18px;margin:4px 6px 4px 0;background:#10b981;color:#000;text-decoration:none;border-radius:6px;font-weight:700;font-size:13px;">Stems</a>`;
-            }
-            buttons += `<a href="${licBase}" style="display:inline-block;padding:10px 18px;margin:4px 6px 4px 0;background:#f59e0b;color:#000;text-decoration:none;border-radius:6px;font-weight:700;font-size:13px;">License PDF</a>`;
-            return `<div style="background:#0f0f14;border:1px solid #222;border-radius:12px;padding:20px;margin-bottom:14px;"><h3 style="color:#fff;margin:0;font-size:17px;">${item.beat_title}</h3><div style="margin-top:12px;">${buttons}</div></div>`;
-          }).join('');
-
-          const textLinks = items.map(item => {
-            const dlBase = `${baseUrl}/download/${orderId}/${item.beat_id}`;
-            const licBase = `${baseUrl}/license/${orderId}/${item.beat_id}`;
-            return `• ${item.beat_title}\n  MP3: ${dlBase}?format=mp3\n  License: ${licBase}`;
-          }).join('\n\n');
-
-          const htmlEmail = buildColoredEmail({
-            type: 'purchase',
-            title: '🎵 Your O\'Neil Beats Are Ready!',
-            bodyHtml: `<p style="color:#888;margin:0 0 12px;">Order #${orderId.slice(0,8)}</p>${beatCards}<p style="color:#666;font-size:12px;margin-top:20px;">Thank you for your purchase!</p>`,
-          });
-
-          const attachments = [];
-          for (const item of items) {
-            try {
-              const pdfBuffer = await generateLicensePDF({
-                beatTitle: item.beat_title,
-                licenseType: item.license_type,
-                customerName: order.customer_name || 'Customer',
-                customerEmail: order.customer_email,
-                orderDate: new Date().toLocaleDateString(),
-                licenseTerms: LICENSE_TERMS[item.license_type] || LICENSE_TERMS.lease,
-              });
-              attachments.push({
-                filename: `${item.beat_title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_license.pdf`,
-                content: pdfBuffer,
-                contentType: 'application/pdf',
-              });
-
-              // Generate split sheet PDF
-              const splitBuffer = await generateSplitSheetPDF({
-                beat: { title: item.beat_title, genre: item.genre || '', bpm: item.bpm || '', key: item.key || '' },
-                buyer: { name: order.customer_name || 'Artist', email: order.customer_email },
-                orderId,
-                licenseType: item.license_type,
-              });
-              attachments.push({
-                filename: `${item.beat_title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_split_sheet.pdf`,
-                content: splitBuffer,
-                contentType: 'application/pdf',
-              });
-            } catch (pdfErr) {
-              console.error(`Error generating PDF for beat ${item.beat_title}:`, pdfErr);
-            }
-          }
-
-          await mailer.sendMail({
-            from: `"O'Neil Beats" <${process.env.EMAIL_FROM}>`,
-            to: order.customer_email,
-            subject: `🎵 Your O'Neil Beats Order Ready!`,
-            text: `Thanks for your purchase!\n\n${textLinks}\n\nEnjoy!`,
-            html: htmlEmail,
-            attachments: attachments.length > 0 ? attachments : undefined,
-          });
+          await sendFulfillmentEmail(order, orderId, items);
         }
       } catch (fulfillErr) {
         console.error('Order fulfillment error:', fulfillErr);
