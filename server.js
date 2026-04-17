@@ -484,27 +484,32 @@ app.delete('/admin/beat/:id', requireAdminKey, async (req, res) => {
   }
 });
 
-// GET /admin/licenses — read editable license terms (single row table)
+// GET /admin/licenses — returns { licenses: {lease, premium, stems, exclusive} }
+// Reads a single-row JSON blob from license_terms table; falls back to defaults.
 app.get('/admin/licenses', requireAdminKey, async (req, res) => {
   try {
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase.from('license_terms').select('*').limit(1).maybeSingle();
-    if (error && error.code !== 'PGRST116') {
-      console.warn('license_terms fetch warning:', error.message);
-    }
-    res.json({ success: true, terms: data || null, defaults: LICENSE_TERMS || null });
+    const { data } = await supabase.from('license_terms').select('terms').eq('id', 1).maybeSingle();
+    const licenses = (data && data.terms) ? data.terms : LICENSE_TERMS;
+    res.json({ success: true, licenses });
   } catch (err) {
-    res.json({ success: true, terms: null, defaults: LICENSE_TERMS || null, error: err.message });
+    res.json({ success: true, licenses: LICENSE_TERMS, warning: err.message });
   }
 });
 
-// PUT /admin/licenses — upsert license terms row
+// PUT /admin/licenses — body: { licenses: {lease, premium, stems, exclusive} }
 app.put('/admin/licenses', requireAdminKey, async (req, res) => {
   try {
+    const { licenses } = req.body || {};
+    if (!licenses || typeof licenses !== 'object') {
+      return res.status(400).json({ error: 'licenses object required' });
+    }
     const supabase = getSupabaseClient();
-    const payload = { ...(req.body || {}), updated_at: new Date().toISOString() };
-    if (!payload.id) payload.id = 1;
-    const { error } = await supabase.from('license_terms').upsert(payload, { onConflict: 'id' });
+    const { error } = await supabase.from('license_terms').upsert({
+      id: 1,
+      terms: licenses,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
     if (error) throw new Error(error.message);
     res.json({ success: true });
   } catch (err) {
