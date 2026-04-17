@@ -260,6 +260,13 @@ header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-fi
 .play-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);opacity:0;transition:opacity .2s}
 .beat-card:hover .play-overlay,.beat-card.playing .play-overlay{opacity:1}
 .beat-card.playing .play-overlay{background:rgba(230,57,70,.15)}
+.fav-btn{position:absolute;top:8px;right:8px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:3;transition:transform .15s,background .15s;padding:0}
+.fav-btn:hover{background:rgba(0,0,0,.75);transform:scale(1.08)}
+.fav-btn svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;transition:fill .15s,stroke .15s}
+.fav-btn.on svg{fill:#e63946;stroke:#e63946;animation:favPop .28s ease}
+@keyframes favPop{0%{transform:scale(1)}45%{transform:scale(1.35)}100%{transform:scale(1)}}
+.list-view .fav-btn{width:28px;height:28px;top:4px;right:4px}
+.list-view .fav-btn svg{width:14px;height:14px}
 .play-circle{width:48px;height:48px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(230,57,70,.5)}
 .beat-info{padding:12px}
 .beat-title{font-size:13px;font-weight:700;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1162,6 +1169,9 @@ function beatCard(b) {
   <div class="beat-cover-wrap" onclick="playBeat('${b.id}')" role="button" tabindex="0" aria-label="Play ${esc(b.title)}">
     ${cover}
     <div class="play-overlay"><div class="play-circle">${playIcon}</div></div>
+    <button class="fav-btn${favorites.has(b.id)?' on':''}" data-fav-id="${b.id}" onclick="toggleFavorite('${b.id}',event)" aria-label="${favorites.has(b.id)?'Remove from favorites':'Add to favorites'}" aria-pressed="${favorites.has(b.id)}">
+      <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    </button>
   </div>
   <div class="beat-info">
     <h3 class="beat-title" title="${esc(b.title)}">${esc(b.title)}</h3>
@@ -1525,6 +1535,7 @@ async function loadFavorites() {
     const d = await r.json();
     favorites = new Set((d.favorites || d.beatIds || []).map(x => typeof x === 'string' ? x : x.beatId));
   } catch(e) { favorites = new Set(); }
+  try { if (typeof renderBeats === 'function' && Array.isArray(filteredBeats)) renderBeats(); } catch(e) {}
 }
 async function toggleFavorite(beatId, ev) {
   ev?.stopPropagation();
