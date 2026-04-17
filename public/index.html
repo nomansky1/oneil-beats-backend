@@ -44,6 +44,8 @@
 html{scroll-behavior:smooth}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:3px}
+/* Hidden-but-indexable content (invisible to humans, crawlable by Google) */
+.sr-only{position:absolute !important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;left:-9999px;top:auto}
 
 /* ── Header ── */
 header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between}
@@ -483,12 +485,7 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
     </div>
   </div>
 
-  <aside class="sidebar" aria-label="Browse and steps">
-    <div class="side-card">
-      <div class="side-title">Shop by Genre</div>
-      <div class="side-genre-list" id="side-genre-list"></div>
-    </div>
-
+  <aside class="sidebar" aria-label="Buy info">
     <div class="side-card">
       <div class="side-title">How It Works</div>
       <div class="side-step">
@@ -524,8 +521,8 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
   </aside>
 </main>
 
-<!-- SEO Content Blocks -->
-<section class="seo-block" aria-label="Beat categories">
+<!-- SEO Content Blocks (hidden from users, visible to search engines) -->
+<section class="sr-only" aria-hidden="true">
   <div class="seo-grid">
     <article class="seo-card">
       <h3>Buy <span class="hl">Reggaeton Beats</span> Online</h3>
@@ -746,7 +743,6 @@ async function loadBeats() {
     allBeats = (d.beats || []).filter(b => b.active !== false);
     document.getElementById('stat-beats').textContent = allBeats.length;
     buildHeroShowcase();
-    buildSideGenres();
     buildFilterChips();
     injectProductSchema();
     filterBeats();
@@ -820,21 +816,6 @@ function buildHeroShowcase() {
     </div>`).join('');
 }
 
-function buildSideGenres() {
-  const counts = {};
-  allBeats.forEach(b => { if (b.genre) counts[b.genre] = (counts[b.genre]||0)+1; });
-  const list = document.getElementById('side-genre-list');
-  const entries = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
-  list.innerHTML = `
-    <div class="side-genre-link" onclick="clearGenre()" data-gside="__all__">
-      <span>All Beats</span><span class="side-genre-count">${allBeats.length}</span>
-    </div>
-    ${entries.map(([g,c])=>`
-      <div class="side-genre-link" onclick="setGenreFilter('${g}')" data-gside="${g}">
-        <span>${GENRE_ICONS[g]||GENRE_ICONS.default} ${g}</span><span class="side-genre-count">${c}</span>
-      </div>`).join('')}`;
-}
-
 function buildFilterChips() {
   const genres = [...new Set(allBeats.map(b=>b.genre).filter(Boolean))].sort();
   const moods  = [...new Set(allBeats.map(b=>b.mood).filter(Boolean))].sort();
@@ -853,7 +834,6 @@ function clearGenre() { activeGenre = null; syncGenreUI(); updateHeadingForGenre
 function toggleGenre(g) { activeGenre = activeGenre===g ? null : g; syncGenreUI(); updateHeadingForGenre(activeGenre); filterBeats(); }
 function syncGenreUI() {
   document.querySelectorAll('[data-genre]').forEach(el=>el.classList.toggle('active',el.dataset.genre===activeGenre));
-  document.querySelectorAll('[data-gside]').forEach(el=>el.classList.toggle('active',el.dataset.gside===(activeGenre||'__all__')));
 }
 function toggleMood(m) {
   activeMood = activeMood===m ? null : m;
