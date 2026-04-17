@@ -502,6 +502,45 @@ app.get('/admin/licenses', requireAdminKey, async (req, res) => {
   }
 });
 
+// GET /admin/offers?status=pending — list exclusive-rights offers
+app.get('/admin/offers', requireAdminKey, async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    let query = supabase.from('exclusive_offers').select('*').order('created_at', { ascending: false }).limit(200);
+    if (req.query.status) query = query.eq('status', req.query.status);
+    const { data, error } = await query;
+    if (error) {
+      console.warn('exclusive_offers list warning:', error.message);
+      return res.json({ success: true, offers: [] });
+    }
+    res.json({ success: true, offers: data || [] });
+  } catch (err) {
+    res.json({ success: true, offers: [], error: err.message });
+  }
+});
+
+// PATCH /admin/offers/:id — update status (accepted | declined | archived)
+app.patch('/admin/offers/:id', requireAdminKey, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, note } = req.body || {};
+    if (!id) return res.status(400).json({ error: 'id required' });
+    if (!status) return res.status(400).json({ error: 'status required' });
+    if (!['pending', 'accepted', 'declined', 'archived'].includes(status)) {
+      return res.status(400).json({ error: 'invalid status' });
+    }
+    const supabase = getSupabaseClient();
+    const patch = { status, updated_at: new Date().toISOString() };
+    if (note) patch.admin_note = note;
+    const { error } = await supabase.from('exclusive_offers').update(patch).eq('id', id);
+    if (error) throw new Error(error.message);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Admin offer update error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PUT /admin/licenses — body: { licenses: {lease, premium, stems, exclusive} }
 app.put('/admin/licenses', requireAdminKey, async (req, res) => {
   try {
