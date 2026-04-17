@@ -541,6 +541,72 @@ app.patch('/admin/offers/:id', requireAdminKey, async (req, res) => {
   }
 });
 
+// GET /admin/analytics?days=30 — real analytics from customer_events + favorites + orders
+app.get('/admin/analytics', requireAdminKey, async (req, res) => {
+  try {
+    const days = Math.max(1, Math.min(180, parseInt(req.query.days, 10) || 30));
+    const since = new Date(Date.now() - days * 86400000).toISOString();
+    const supabase = getSupabaseClient();
+    const [evtsRes, favsRes, ordersRes] = await Promise.all([
+      supabase.from('customer_events').select('user_id, action, event_data, created_at').gte('created_at', since).limit(50000),
+      supabase.from('favorites').select('beat_id, user_id, created_at').gte('created_at', since).limit(20000),
+      supabase.from('orders').select('id, customer_email, total, created_at').gte('created_at', since).limit(10000),
+    ]);
+    const evts = evtsRes.data || [];
+    const favs = favsRes.data || [];
+    const orders = ordersRes.data || [];
+
+    const playsByBeat = {};
+    const actionCounts = {};
+    const uniqueUsers = new Set();
+    const dailyPlays = {};
+    evts.forEach(e => {
+      actionCounts[e.action] = (actionCounts[e.action] || 0) + 1;
+      if (e.user_id) uniqueUsers.add(e.user_id);
+      if (e.action === 'play') {
+        const bid = e.event_data?.beatId || e.event_data?.beat_id;
+        if (bid) playsByBeat[bid] = (playsByBeat[bid] || 0) + 1;
+        const d = (e.created_at || '').slice(0, 10);
+        if (d) dailyPlays[d] = (dailyPlays[d] || 0) + 1;
+      }
+    });
+
+    const favsByBeat = {};
+    favs.forEach(f => { favsByBeat[f.beat_id] = (favsByBeat[f.beat_id] || 0) + 1; });
+
+    const revenue = orders.reduce((s, o) => s + (parseFloat(o.total) || 0), 0);
+
+    const topBeats = Object.entries(playsByBeat)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([beatId, plays]) => ({ beatId, plays, favorites: favsByBeat[beatId] || 0 }));
+
+    const series = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      series.push({ date: d, plays: dailyPlays[d] || 0 });
+    }
+
+    res.json({
+      success: true,
+      windowDays: days,
+      totals: {
+        events: evts.length,
+        plays: actionCounts.play || 0,
+        favorites: favs.length,
+        orders: orders.length,
+        revenue: +revenue.toFixed(2),
+        uniqueUsers: uniqueUsers.size,
+      },
+      actionCounts,
+      topBeats,
+      series,
+    });
+  } catch (err) {
+    res.json({ success: true, totals: {}, topBeats: [], series: [], error: err.message });
+  }
+});
+
 // GET /admin/customers — real customer list with play/favorite/order aggregates
 app.get('/admin/customers', requireAdminKey, async (req, res) => {
   try {
