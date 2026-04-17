@@ -58,16 +58,46 @@ header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-fi
 .cart-btn:hover{border-color:var(--accent);color:var(--accent)}
 .cart-badge{background:var(--accent);color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:none;align-items:center;justify-content:center;position:absolute;top:-6px;right:-6px;padding:0 4px}
 
-/* ── Compact Banner ── */
-.mini-banner{position:relative;padding:28px 24px 20px;overflow:hidden;border-bottom:1px solid var(--border)}
-.mini-banner-bg{position:absolute;inset:0;background:radial-gradient(ellipse 70% 100% at 50% -10%,rgba(230,57,70,.2) 0%,transparent 55%),radial-gradient(ellipse 40% 80% at 85% 120%,rgba(139,92,246,.1) 0%,transparent 60%);pointer-events:none}
-.mini-banner-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;position:relative}
-.mini-banner h1{font-size:clamp(22px,3.4vw,34px);font-weight:900;line-height:1.15;letter-spacing:-.5px}
-.mini-banner h1 .hl{background:linear-gradient(135deg,var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.mini-banner-sub{color:var(--dim);font-size:13px;margin-top:6px;max-width:540px;line-height:1.5}
-.mini-stats{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
-.mini-stat{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--text)}
-.mini-stat svg{color:var(--green);flex-shrink:0}
+/* ── Elegant Hero Banner ── */
+.hero-banner{position:relative;overflow:hidden;border-bottom:1px solid var(--border);min-height:260px}
+.hero-marquee-wrap{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.hero-marquee{display:flex;gap:14px;padding:14px 0;height:100%;align-items:center;opacity:.22;filter:blur(1.5px) saturate(1.3);animation:marquee 80s linear infinite;will-change:transform}
+.hero-marquee img{width:130px;height:130px;border-radius:12px;object-fit:cover;flex-shrink:0;background:var(--surface2)}
+@keyframes marquee{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
+.hero-overlay{position:absolute;inset:0;background:linear-gradient(92deg,rgba(6,6,10,.96) 0%,rgba(6,6,10,.82) 42%,rgba(6,6,10,.45) 70%,rgba(6,6,10,.25) 100%),radial-gradient(ellipse 40% 80% at 0% 50%,rgba(230,57,70,.28) 0%,transparent 60%),radial-gradient(ellipse 30% 70% at 100% 100%,rgba(245,158,11,.12) 0%,transparent 60%);z-index:1;pointer-events:none}
+.hero-inner{position:relative;z-index:2;max-width:1400px;margin:0 auto;padding:38px 24px;display:grid;grid-template-columns:1.3fr 1fr;gap:28px;align-items:center}
+.hero-left{min-width:0}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:2.5px;color:var(--accent);text-transform:uppercase;margin-bottom:12px;padding:5px 11px;background:rgba(230,57,70,.1);border:1px solid rgba(230,57,70,.25);border-radius:16px}
+.hero-eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hero-banner h1{font-size:clamp(28px,4.2vw,46px);font-weight:900;line-height:1.1;letter-spacing:-1px;margin-bottom:12px}
+.hero-banner h1 .hl{background:linear-gradient(135deg,var(--accent) 0%,var(--gold) 60%,var(--accent) 100%);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 4s linear infinite}
+@keyframes shimmer{0%{background-position:0% center}100%{background-position:200% center}}
+.hero-sub{color:var(--text);opacity:.72;font-size:14px;line-height:1.55;max-width:520px;margin-bottom:18px}
+.hero-cta{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.hero-btn{display:inline-flex;align-items:center;gap:7px;padding:11px 20px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;border:none;transition:all .2s;text-decoration:none}
+.hero-btn.primary{background:linear-gradient(135deg,var(--accent),#ff4d5a);color:#fff;box-shadow:0 8px 24px rgba(230,57,70,.35)}
+.hero-btn.primary:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(230,57,70,.5)}
+.hero-btn.ghost{background:rgba(255,255,255,.05);color:var(--text);border:1px solid var(--border);backdrop-filter:blur(12px)}
+.hero-btn.ghost:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2)}
+.hero-stats{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.hero-stat{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--text)}
+.hero-stat svg{color:var(--green);flex-shrink:0}
+.hero-stat .num{color:var(--gold);font-weight:900}
+/* Featured beat cards (right side of banner) */
+.hero-featured{display:flex;gap:14px;justify-content:flex-end;align-items:center;perspective:1000px;min-height:180px}
+.hero-feat-card{position:relative;width:130px;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .4s cubic-bezier(.2,.8,.3,1.2),box-shadow .3s;box-shadow:0 16px 48px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.04)}
+.hero-feat-card:nth-child(1){transform:rotate(-5deg) translateY(10px)}
+.hero-feat-card:nth-child(2){transform:translateY(-8px);z-index:2;width:142px}
+.hero-feat-card:nth-child(3){transform:rotate(5deg) translateY(10px)}
+.hero-feat-card:hover{transform:translateY(-16px) rotate(0) scale(1.06);z-index:10;box-shadow:0 24px 60px rgba(230,57,70,.4)}
+.hero-feat-cover{width:100%;aspect-ratio:1;object-fit:cover;background:var(--surface2);display:block}
+.hero-feat-play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.8);width:42px;height:42px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:all .25s;box-shadow:0 6px 24px rgba(230,57,70,.6)}
+.hero-feat-card:hover .hero-feat-play{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.hero-feat-info{padding:8px 10px 10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.6));position:absolute;left:0;right:0;bottom:0}
+.hero-feat-title{font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hero-feat-genre{font-size:9px;color:var(--gold);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-top:2px}
+.hero-feat-placeholder{width:130px;height:180px;background:linear-gradient(135deg,var(--surface2),var(--surface3));border-radius:14px;border:1px solid var(--border);animation:pulse 2s ease-in-out infinite}
 
 /* ── Filters ── */
 .filters{padding:10px 24px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:60px;z-index:90}
@@ -329,13 +359,18 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
   .layout{grid-template-columns:1fr}
   .sidebar{position:static;order:2;flex-direction:row;flex-wrap:wrap}
   .side-card{flex:1;min-width:240px}
+  .hero-inner{grid-template-columns:1fr;padding:26px 20px;gap:20px}
+  .hero-featured{justify-content:flex-start}
+  .hero-banner{min-height:auto}
 }
 @media(max-width:768px){
   header{padding:0 14px;height:54px}
   .header-nav{display:none}
-  .mini-banner{padding:20px 14px 16px}
-  .mini-banner h1{font-size:20px}
-  .mini-banner-sub{font-size:12px;display:none}
+  .hero-inner{padding:22px 14px}
+  .hero-banner h1{font-size:24px}
+  .hero-sub{font-size:12px}
+  .hero-feat-card{width:90px}
+  .hero-feat-card:nth-child(2){width:100px}
   .filters{padding:8px 14px;top:54px}
   .layout{padding:14px 14px calc(var(--player-h) + 32px)}
   .beats-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
@@ -381,19 +416,30 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
   </div>
 </header>
 
-<!-- Compact Banner -->
-<section class="mini-banner" aria-label="Hero">
-  <div class="mini-banner-bg"></div>
-  <div class="mini-banner-inner">
-    <div>
-      <h1 id="page-h1">Buy <span class="hl">Reggaeton</span>, <span class="hl">Trap</span> & <span class="hl">Hip-Hop Beats</span></h1>
-      <p class="mini-banner-sub" id="page-sub">Premium rap instrumentals for artists. Perreo, dembow, Latin trap, drill, boom bap & more. Lease from <strong>$29.99</strong>. MP3/WAV delivered instantly.</p>
+<!-- Elegant Hero Banner with Cover Art Showcase -->
+<section class="hero-banner" aria-label="Hero">
+  <div class="hero-marquee-wrap"><div class="hero-marquee" id="hero-marquee"></div></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-inner">
+    <div class="hero-left">
+      <div class="hero-eyebrow">NEW DROPS · REGGAETON · TRAP · HIP-HOP</div>
+      <h1 id="page-h1">Premium <span class="hl">Reggaeton</span>, <span class="hl">Trap</span> & <span class="hl">Hip-Hop</span> Beats</h1>
+      <p class="hero-sub" id="page-sub">Professionally mixed instrumentals for artists who demand more. Perreo, dembow, Latin trap, drill, boom bap & more. Instant MP3/WAV delivery after checkout.</p>
+      <div class="hero-cta">
+        <a href="#catalog" class="hero-btn primary" onclick="event.preventDefault();document.getElementById('catalog').scrollIntoView({behavior:'smooth'})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Browse All Beats
+        </a>
+        <a href="#" class="hero-btn ghost" onclick="event.preventDefault();setGenreFilter('Reggaeton')">🔥 Reggaeton</a>
+        <a href="#" class="hero-btn ghost" onclick="event.preventDefault();setGenreFilter('Trap')">💣 Trap</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <span class="num" id="stat-beats">—</span>&nbsp;Beats Available</div>
+        <div class="hero-stat"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Instant Delivery</div>
+        <div class="hero-stat"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Lease from&nbsp;<span class="num">$29.99</span></div>
+      </div>
     </div>
-    <div class="mini-stats">
-      <div class="mini-stat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <span id="stat-beats">—</span> Beats</div>
-      <div class="mini-stat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Instant Delivery</div>
-      <div class="mini-stat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Secure Stripe</div>
-    </div>
+    <div class="hero-featured" id="hero-featured" aria-label="Featured beats"></div>
   </div>
 </section>
 
@@ -699,6 +745,7 @@ async function loadBeats() {
     const d = await r.json();
     allBeats = (d.beats || []).filter(b => b.active !== false);
     document.getElementById('stat-beats').textContent = allBeats.length;
+    buildHeroShowcase();
     buildSideGenres();
     buildFilterChips();
     injectProductSchema();
@@ -742,6 +789,35 @@ function handleUrlParams() {
   if (p.get('beat')) { const b = allBeats.find(x => x.id === p.get('beat')); if (b) openDetail(b.id); }
   if (p.get('search')) { document.getElementById('search-input').value = p.get('search'); filterBeats(); }
   if (p.get('genre')) { setGenreFilter(p.get('genre')); }
+}
+
+function buildHeroShowcase() {
+  // Background marquee: all covers, duplicated for seamless loop
+  const covers = allBeats.filter(b => b.cover_url).map(b => b.cover_url);
+  if (covers.length) {
+    const m = document.getElementById('hero-marquee');
+    const html = covers.map(c => `<img src="${esc(c)}" alt="" loading="lazy">`).join('');
+    // Duplicate for seamless infinite scroll
+    m.innerHTML = html + html;
+  }
+
+  // 3 featured beats — prioritize ones with cover art, pick newest
+  const withCovers = allBeats.filter(b => b.cover_url);
+  const pool = (withCovers.length >= 3 ? withCovers : allBeats).slice(0, 3);
+  const featuredEl = document.getElementById('hero-featured');
+  if (!pool.length) { featuredEl.innerHTML = ''; return; }
+  // Arrange middle card last so z-index DOM order works
+  featuredEl.innerHTML = pool.map(b => `
+    <div class="hero-feat-card" onclick="openDetail('${b.id}')" role="button" aria-label="View ${esc(b.title)}">
+      ${b.cover_url ? `<img class="hero-feat-cover" src="${esc(b.cover_url)}" alt="${esc(b.title)} beat cover" loading="lazy">` : `<div class="hero-feat-cover" style="display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--surface2),var(--surface3))"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1" opacity=".2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`}
+      <button class="hero-feat-play" onclick="event.stopPropagation();playBeat('${b.id}')" aria-label="Play ${esc(b.title)}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      </button>
+      <div class="hero-feat-info">
+        <div class="hero-feat-title">${esc(b.title)}</div>
+        <div class="hero-feat-genre">${esc(b.genre||'Beat')}${b.bpm?' · '+b.bpm+' BPM':''}</div>
+      </div>
+    </div>`).join('');
 }
 
 function buildSideGenres() {
