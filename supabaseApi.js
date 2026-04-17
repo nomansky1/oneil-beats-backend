@@ -56,10 +56,26 @@ async function addBeatToDB(beatData) {
 }
 
 async function updateBeatInDB(beatId, updates) {
-  const allowedFields = ['title', 'genre', 'subgenre', 'bpm', 'key', 'mood', 'price', 'lease_price', 'premium_price', 'stems_price', 'stem_price', 'exclusive_price', 'tags', 'audio_url', 'cover_url', 'cover_art_url', 'wav_url', 'stem_url', 'active'];
+  // Frontend uses plural/verbose names; DB uses singular. Remap before writing.
+  const keyMap = {
+    stems_price: 'stem_price',
+    cover_art_url: 'cover_url',
+    stems_url: 'stem_url',
+  };
+  const allowedDbColumns = new Set([
+    'title', 'genre', 'subgenre', 'bpm', 'key', 'mood', 'price',
+    'lease_price', 'premium_price', 'stem_price', 'exclusive_price',
+    'tags', 'audio_url', 'cover_url', 'wav_url', 'stem_url', 'active',
+  ]);
   const filtered = {};
   for (const [k, v] of Object.entries(updates)) {
-    if (allowedFields.includes(k) && v !== undefined) filtered[k] = v;
+    if (v === undefined || v === '') continue;
+    const dbKey = keyMap[k] || k;
+    if (!allowedDbColumns.has(dbKey)) continue;
+    if (['bpm'].includes(dbKey)) filtered[dbKey] = parseInt(v) || null;
+    else if (['price', 'lease_price', 'premium_price', 'stem_price', 'exclusive_price'].includes(dbKey)) filtered[dbKey] = parseFloat(v);
+    else if (dbKey === 'tags' && Array.isArray(v)) filtered[dbKey] = v.join(',');
+    else filtered[dbKey] = v;
   }
   const { error } = await supabase.from('beats').update(filtered).eq('id', beatId);
   if (error) throw new Error(`Update beat error: ${error.message}`);
