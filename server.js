@@ -1519,6 +1519,37 @@ app.get('/purchases', async (req, res) => {
   }
 });
 
+// GET /orders/lookup — public order history lookup by email (used by storefront)
+app.get('/orders/lookup', async (req, res) => {
+  try {
+    const email = req.query.email;
+    if (!email) return res.status(400).json({ error: 'email query param required' });
+
+    const orders = await getOrdersByEmail(email);
+    const baseUrl = process.env.APP_URL || 'https://oneil-beats-backend.vercel.app';
+
+    const result = orders.map(order => ({
+      orderId: order.id,
+      status: order.status,
+      paidAt: order.paid_at,
+      totalAmount: order.total_amount,
+      items: (order.order_items || []).map(item => ({
+        beatTitle: item.beat_title,
+        licenseType: item.license_type,
+        price: item.price,
+        coverUrl: item.cover_url,
+        downloadUrl: item.mp3_url ? `${baseUrl}/download/${order.id}/${item.beat_id}?format=mp3` : null,
+        licenseUrl: `${baseUrl}/license/${order.id}/${item.beat_id}`,
+      })),
+    }));
+
+    res.json({ success: true, orders: result });
+  } catch (err) {
+    console.error('Order lookup error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // FILE DOWNLOADS & LICENSE
 // ──────────────────────────────────────────────────────────────────────────────

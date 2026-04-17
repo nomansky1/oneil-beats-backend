@@ -3,159 +3,313 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Buy rap beats & instrumentals — Trap, Drill, Boom Bap and more. Instant download, all licenses.">
-<title>O'Neil Beats — Buy Rap Beats & Instrumentals</title>
+<title>Buy Rap Beats & Instrumentals Online | O'Neil Beats — Trap, Drill, Boom Bap</title>
+<meta name="description" content="Buy premium rap beats and instrumentals online. Trap beats, Drill instrumentals, Boom Bap, Lo-Fi, R&B and more. Instant MP3/WAV delivery. Lease from $29.99.">
+<meta name="keywords" content="buy rap beats, buy trap beats online, rap instrumentals for sale, drill beats, boom bap beats, buy beats online, exclusive rap beats, trap instrumentals download, hip hop beats, buy beats cheap">
+<link rel="canonical" href="https://oneilbeats.store/">
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://oneilbeats.store/">
+<meta property="og:title" content="Buy Rap Beats & Instrumentals | O'Neil Beats">
+<meta property="og:description" content="Premium rap beats and instrumentals — Trap, Drill, Boom Bap & more. Instant delivery. Lease from $29.99.">
+<meta property="og:image" content="https://oneilbeats.store/og-image.jpg">
+<meta property="og:site_name" content="O'Neil Beats">
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Buy Rap Beats & Instrumentals | O'Neil Beats">
+<meta name="twitter:description" content="Premium rap beats — Trap, Drill, Boom Bap, Lo-Fi. Instant delivery. Lease from $29.99.">
+<!-- Structured Data: Organization -->
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"MusicStore","name":"O'Neil Beats","url":"https://oneilbeats.store","description":"Premium rap beats and instrumentals for sale online","email":"produceroneil@gmail.com","sameAs":[]}</script>
+<!-- Structured Data: WebSite SearchAction -->
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"O'Neil Beats","url":"https://oneilbeats.store","potentialAction":{"@type":"SearchAction","target":"https://oneilbeats.store/?search={search_term_string}","query-input":"required name=search_term_string"}}</script>
+<!-- Structured Data: FAQ -->
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What types of rap beats do you sell?","acceptedAnswer":{"@type":"Answer","text":"We sell Trap beats, Drill instrumentals, Boom Bap, Lo-Fi, R&B, Afrobeats, and more. All beats are available in multiple license tiers."}},{"@type":"Question","name":"What is included with a Lease license?","acceptedAnswer":{"@type":"Answer","text":"A Lease license includes an MP3 file, non-exclusive rights, up to 100,000 streams and 10,000 downloads. Producer credit required."}},{"@type":"Question","name":"What is a Premium Lease?","acceptedAnswer":{"@type":"Answer","text":"A Premium Lease includes MP3 + WAV high-quality audio files, non-exclusive rights, unlimited streams, and radio distribution rights."}},{"@type":"Question","name":"What does Stems / Track Out mean?","acceptedAnswer":{"@type":"Answer","text":"Stems (Track Out) includes all individual track files separated — drums, melody, bass, etc. — giving you full production control in your DAW."}},{"@type":"Question","name":"What is an Exclusive license?","acceptedAnswer":{"@type":"Answer","text":"An Exclusive license gives you full ownership of the beat. It is removed from the store after purchase so no one else can buy it."}},{"@type":"Question","name":"How do I receive my beats after purchase?","acceptedAnswer":{"@type":"Answer","text":"All beats are delivered instantly to your email after payment. You will receive a download link within minutes of purchase."}},{"@type":"Question","name":"Can I use these beats on YouTube and Spotify?","acceptedAnswer":{"@type":"Answer","text":"Yes. Lease licenses cover up to 100K streams. Premium Lease and above cover unlimited streaming on YouTube, Spotify, Apple Music, and all platforms."}},{"@type":"Question","name":"Do I need to credit the producer?","acceptedAnswer":{"@type":"Answer","text":"Yes, for Lease and Premium Lease licenses you must credit 'Prod. by O'Neil' in the song title or description. Exclusive licenses do not require producer credit."}}]}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg: #06060a; --surface: #0e0e16; --surface2: #14141f; --surface3: #1a1a28;
-  --accent: #e63946; --gold: #f59e0b; --purple: #8b5cf6; --green: #10b981;
-  --text: #e2e8f0; --dim: #64748b; --border: rgba(255,255,255,0.07);
-  --radius: 14px; --radius-sm: 8px; --player-h: 80px;
-}
+:root{--bg:#06060a;--surface:#0e0e16;--surface2:#14141f;--surface3:#1c1c2a;--accent:#e63946;--gold:#f59e0b;--purple:#8b5cf6;--green:#10b981;--text:#e2e8f0;--dim:#64748b;--border:rgba(255,255,255,0.07);--radius:14px;--radius-sm:8px;--player-h:80px}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:3px}
 
 /* ── Header ── */
-header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between}
-.logo{font-size:20px;font-weight:900;letter-spacing:5px;background:linear-gradient(135deg,var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none}
-.logo-sub{font-size:10px;color:var(--dim);letter-spacing:2px;margin-top:-2px}
-.header-right{display:flex;align-items:center;gap:12px}
-.cart-btn{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 16px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text);transition:all .15s;position:relative}
+header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);padding:0 32px;height:66px;display:flex;align-items:center;justify-content:space-between}
+.logo-wrap{display:flex;flex-direction:column}
+.logo-text{font-size:22px;font-weight:900;letter-spacing:6px;background:linear-gradient(135deg,var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo-sub{font-size:9px;color:var(--dim);letter-spacing:3px;margin-top:-2px}
+.header-nav{display:flex;align-items:center;gap:24px}
+.header-nav a{font-size:13px;font-weight:600;color:var(--dim);text-decoration:none;transition:color .15s}
+.header-nav a:hover{color:var(--text)}
+.header-right{display:flex;align-items:center;gap:10px}
+.cart-btn{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 18px;cursor:pointer;font-size:14px;font-weight:700;color:var(--text);transition:all .15s;position:relative}
 .cart-btn:hover{border-color:var(--accent);color:var(--accent)}
-.cart-badge{background:var(--accent);color:#fff;font-size:10px;font-weight:800;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:absolute;top:-6px;right:-6px;display:none}
+.cart-badge{background:var(--accent);color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:none;align-items:center;justify-content:center;position:absolute;top:-6px;right:-6px;padding:0 4px}
 
 /* ── Hero ── */
-.hero{text-align:center;padding:64px 24px 48px;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(230,57,70,.12) 0%,transparent 70%)}
-.hero h1{font-size:clamp(32px,6vw,64px);font-weight:900;line-height:1.1;margin-bottom:16px}
-.hero h1 span{background:linear-gradient(135deg,var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.hero p{color:var(--dim);font-size:16px;max-width:480px;margin:0 auto 32px;line-height:1.6}
-.hero-stats{display:flex;gap:32px;justify-content:center;flex-wrap:wrap}
-.hero-stat{text-align:center}
-.hero-stat-num{font-size:24px;font-weight:800;color:var(--text)}
-.hero-stat-label{font-size:12px;color:var(--dim);margin-top:2px}
+.hero{position:relative;text-align:center;padding:80px 24px 60px;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 100% 80% at 50% -10%,rgba(230,57,70,.15) 0%,transparent 65%),radial-gradient(ellipse 60% 50% at 80% 100%,rgba(139,92,246,.08) 0%,transparent 60%);pointer-events:none}
+.hero h1{font-size:clamp(36px,7vw,72px);font-weight:900;line-height:1.05;margin-bottom:20px;position:relative}
+.hero h1 .line2{background:linear-gradient(135deg,var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-sub{color:var(--dim);font-size:17px;max-width:520px;margin:0 auto 36px;line-height:1.65;position:relative}
+.hero-cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:48px;position:relative}
+.btn-primary{background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:14px 28px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.btn-primary:hover{background:#ff4d5a;transform:translateY(-1px);box-shadow:0 8px 24px rgba(230,57,70,.35)}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 28px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.btn-ghost:hover{border-color:rgba(255,255,255,.3);background:var(--surface2)}
+.hero-stats{display:flex;gap:40px;justify-content:center;flex-wrap:wrap;position:relative}
+.hero-stat-num{font-size:28px;font-weight:900}
+.hero-stat-label{font-size:12px;color:var(--dim);margin-top:3px;letter-spacing:.5px}
+
+/* ── Trust Bar ── */
+.trust-bar{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;gap:32px;justify-content:center;flex-wrap:wrap;align-items:center}
+.trust-item{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--dim)}
+.trust-item svg{color:var(--green);flex-shrink:0}
+
+/* ── How It Works ── */
+.section{padding:64px 32px}
+.section-label{font-size:11px;font-weight:800;letter-spacing:3px;color:var(--accent);margin-bottom:12px;text-transform:uppercase}
+.section-title{font-size:clamp(26px,4vw,40px);font-weight:900;margin-bottom:12px}
+.section-sub{color:var(--dim);font-size:15px;max-width:500px;line-height:1.6}
+.steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-top:40px}
+.step-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;position:relative}
+.step-num{font-size:48px;font-weight:900;background:linear-gradient(135deg,var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;margin-bottom:12px}
+.step-title{font-size:16px;font-weight:800;margin-bottom:8px}
+.step-desc{font-size:13px;color:var(--dim);line-height:1.6}
+
+/* ── Genre Browse ── */
+.genres-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:32px}
+.genre-tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 16px;cursor:pointer;transition:all .2s;text-align:center}
+.genre-tile:hover,.genre-tile.active{border-color:var(--accent);background:rgba(230,57,70,.08);transform:translateY(-2px)}
+.genre-icon{font-size:28px;margin-bottom:8px}
+.genre-name{font-size:13px;font-weight:700}
+.genre-count{font-size:11px;color:var(--dim);margin-top:3px}
 
 /* ── Filters ── */
-.filters{padding:20px 24px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:64px;z-index:90}
-.search-wrap{position:relative;margin-bottom:14px}
+.filters{padding:16px 32px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:66px;z-index:90}
+.search-wrap{position:relative;margin-bottom:12px;max-width:600px}
 .search-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 44px 11px 16px;color:var(--text);font-size:14px;outline:none;font-family:inherit;transition:border-color .15s}
 .search-input:focus{border-color:var(--accent)}
 .search-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--dim);pointer-events:none}
 .filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.filter-label{font-size:11px;color:var(--dim);font-weight:600;letter-spacing:1px;white-space:nowrap}
+.filter-label{font-size:10px;color:var(--dim);font-weight:700;letter-spacing:1.5px;white-space:nowrap;text-transform:uppercase}
 .chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-size:12px;font-weight:600;color:var(--dim);cursor:pointer;transition:all .15s;white-space:nowrap}
 .chip:hover{color:var(--text);border-color:rgba(255,255,255,.2)}
 .chip.active{background:rgba(230,57,70,.15);border-color:var(--accent);color:var(--accent)}
-.filter-divider{width:1px;height:20px;background:var(--border);flex-shrink:0}
-.beat-count{margin-left:auto;font-size:12px;color:var(--dim)}
+.filter-sep{width:1px;height:18px;background:var(--border);flex-shrink:0}
+.beat-count{margin-left:auto;font-size:12px;color:var(--dim);white-space:nowrap}
 
 /* ── Beat Grid ── */
-.catalog{padding:24px;padding-bottom:calc(var(--player-h) + 32px)}
-.beats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.catalog{padding:28px 32px;padding-bottom:calc(var(--player-h) + 48px)}
+.catalog-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.catalog-title{font-size:18px;font-weight:800}
+.beats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
 .beat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:all .2s;cursor:pointer;position:relative}
-.beat-card:hover{border-color:rgba(230,57,70,.3);transform:translateY(-2px);box-shadow:0 8px 32px rgba(230,57,70,.1)}
+.beat-card:hover{border-color:rgba(230,57,70,.35);transform:translateY(-3px);box-shadow:0 12px 40px rgba(230,57,70,.1)}
 .beat-card.playing{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 8px 32px rgba(230,57,70,.2)}
-.beat-cover{width:100%;aspect-ratio:1;object-fit:cover;background:var(--surface2);display:block}
-.beat-cover-placeholder{width:100%;aspect-ratio:1;background:linear-gradient(135deg,var(--surface2),var(--surface3));display:flex;align-items:center;justify-content:center}
-.beat-cover-placeholder svg{width:40px;height:40px;opacity:.2}
-.beat-play-overlay{position:absolute;top:0;left:0;right:0;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4);opacity:0;transition:opacity .2s}
-.beat-card:hover .beat-play-overlay{opacity:1}
-.beat-card.playing .beat-play-overlay{opacity:1;background:rgba(230,57,70,.2)}
-.play-btn{width:48px;height:48px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(230,57,70,.4)}
-.beat-info{padding:12px}
-.beat-title{font-size:14px;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.beat-meta{display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
-.beat-tag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--surface2)}
-.beat-tag.genre{color:var(--gold);background:rgba(245,158,11,.1)}
-.beat-tag.bpm{color:var(--dim)}
-.beat-tag.key{color:var(--purple);background:rgba(139,92,246,.1)}
-.beat-prices{display:flex;gap:6px;flex-wrap:wrap}
-.price-btn{flex:1;min-width:0;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 6px;text-align:center;cursor:pointer;transition:all .15s;font-family:inherit}
-.price-btn:hover,.price-btn.in-cart{background:rgba(230,57,70,.12);border-color:var(--accent)}
-.price-btn.in-cart{background:rgba(16,185,129,.12);border-color:var(--green)}
-.price-label{font-size:9px;font-weight:700;color:var(--dim);letter-spacing:.5px;display:block;margin-bottom:1px}
-.price-value{font-size:12px;font-weight:800;color:var(--text);display:block}
-.price-btn.in-cart .price-label{color:var(--green)}
-.price-btn.in-cart .price-value{color:var(--green)}
+.beat-cover-wrap{position:relative;aspect-ratio:1}
+.beat-cover{width:100%;height:100%;object-fit:cover;background:var(--surface2);display:block}
+.beat-cover-ph{width:100%;height:100%;background:linear-gradient(135deg,var(--surface2),var(--surface3));display:flex;align-items:center;justify-content:center}
+.play-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);opacity:0;transition:opacity .2s}
+.beat-card:hover .play-overlay,.beat-card.playing .play-overlay{opacity:1}
+.beat-card.playing .play-overlay{background:rgba(230,57,70,.15)}
+.play-circle{width:52px;height:52px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(230,57,70,.5)}
+.new-badge{position:absolute;top:10px;left:10px;background:var(--accent);color:#fff;font-size:9px;font-weight:800;padding:3px 8px;border-radius:10px;letter-spacing:.5px}
+.beat-info{padding:13px}
+.beat-title{font-size:14px;font-weight:700;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.beat-meta{display:flex;gap:5px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.btag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;cursor:pointer;transition:opacity .15s}
+.btag:hover{opacity:.75}
+.btag.genre{color:var(--gold);background:rgba(245,158,11,.12)}
+.btag.bpm{color:var(--dim);background:var(--surface2)}
+.btag.key{color:var(--purple);background:rgba(139,92,246,.12)}
+.btag.mood{color:var(--green);background:rgba(16,185,129,.1)}
+.beat-prices{display:flex;gap:5px}
+.price-btn{flex:1;min-width:0;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 4px;text-align:center;cursor:pointer;transition:all .15s;font-family:inherit}
+.price-btn:hover{background:rgba(230,57,70,.1);border-color:rgba(230,57,70,.4)}
+.price-btn.in-cart{background:rgba(16,185,129,.1);border-color:var(--green)}
+.price-btn.exclusive{border-color:rgba(245,158,11,.3)}
+.price-btn.exclusive:hover{background:rgba(245,158,11,.1);border-color:var(--gold)}
+.price-lbl{font-size:8px;font-weight:800;color:var(--dim);letter-spacing:.4px;display:block;margin-bottom:1px;text-transform:uppercase}
+.price-val{font-size:11px;font-weight:800;color:var(--text);display:block}
+.price-btn.in-cart .price-lbl,.price-btn.in-cart .price-val{color:var(--green)}
 
-/* ── Player Bar ── */
-#player-bar{position:fixed;bottom:0;left:0;right:0;height:var(--player-h);background:rgba(14,14,22,.97);backdrop-filter:blur(20px);border-top:1px solid var(--border);z-index:200;display:flex;align-items:center;gap:16px;padding:0 24px;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
-#player-bar.visible{transform:translateY(0)}
-.player-cover{width:48px;height:48px;border-radius:8px;object-fit:cover;background:var(--surface2);flex-shrink:0}
-.player-info{min-width:0;flex:1}
-.player-title{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.player-sub{font-size:11px;color:var(--dim);margin-top:2px}
-.player-controls{display:flex;align-items:center;gap:12px;flex:2;justify-content:center}
-.player-play{width:40px;height:40px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;flex-shrink:0;transition:opacity .15s}
-.player-play:hover{opacity:.85}
-.progress-wrap{flex:1;max-width:360px}
-.progress-bar{width:100%;height:4px;background:var(--surface3);border-radius:2px;cursor:pointer;position:relative}
-.progress-fill{height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .1s linear;pointer-events:none}
-.time-row{display:flex;justify-content:space-between;margin-top:4px}
-.time-label{font-size:10px;color:var(--dim)}
-.player-add-cart{background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;transition:opacity .15s}
-.player-add-cart:hover{opacity:.85}
+/* ── Beat Detail Modal ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:600;display:none;align-items:flex-end;justify-content:center;padding:0;backdrop-filter:blur(6px)}
+.overlay.open{display:flex}
+@media(min-width:700px){.overlay{align-items:center;padding:20px}}
+.detail-modal{background:var(--surface);border-radius:var(--radius) var(--radius) 0 0;width:100%;max-width:680px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;position:relative}
+@media(min-width:700px){.detail-modal{border-radius:var(--radius)}}
+.detail-top{display:flex;gap:20px;padding:24px;border-bottom:1px solid var(--border);flex-shrink:0}
+.detail-cover{width:110px;height:110px;border-radius:var(--radius-sm);object-fit:cover;background:var(--surface2);flex-shrink:0}
+.detail-cover-ph{width:110px;height:110px;border-radius:var(--radius-sm);background:var(--surface2);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.detail-info{flex:1;min-width:0}
+.detail-title{font-size:20px;font-weight:900;margin-bottom:6px;line-height:1.2}
+.detail-meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.detail-play{display:flex;align-items:center;gap:10px}
+.detail-play-btn{width:44px;height:44px;background:var(--accent);border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.detail-play-btn:hover{transform:scale(1.05);box-shadow:0 4px 16px rgba(230,57,70,.4)}
+.detail-play-label{font-size:13px;color:var(--dim)}
+.detail-close{position:absolute;top:16px;right:16px;background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--dim);font-size:18px;line-height:1}
+.detail-close:hover{color:var(--text)}
+.detail-body{padding:20px 24px;overflow-y:auto;flex:1}
+.license-section-title{font-size:11px;font-weight:800;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:14px}
+.license-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px}
+.lic-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;transition:all .2s;position:relative}
+.lic-card:hover{border-color:var(--accent);background:rgba(230,57,70,.08)}
+.lic-card.in-cart{border-color:var(--green);background:rgba(16,185,129,.08)}
+.lic-card.exclusive-card{border-color:rgba(245,158,11,.3)}
+.lic-card.exclusive-card:hover{border-color:var(--gold);background:rgba(245,158,11,.08)}
+.lic-name{font-size:13px;font-weight:800;margin-bottom:3px}
+.lic-price{font-size:20px;font-weight:900;margin-bottom:8px}
+.lic-price span{font-size:12px;font-weight:500;color:var(--dim)}
+.lic-lease .lic-name{color:var(--gold)}
+.lic-lease .lic-price{color:var(--gold)}
+.lic-premium .lic-name{color:var(--purple)}
+.lic-premium .lic-price{color:var(--purple)}
+.lic-stems .lic-name{color:var(--green)}
+.lic-stems .lic-price{color:var(--green)}
+.lic-excl .lic-name{color:var(--gold)}
+.lic-excl .lic-price{color:var(--gold)}
+.lic-features{list-style:none;font-size:11px;color:var(--dim);line-height:1.8}
+.lic-features li::before{content:"✓ ";color:var(--green)}
+.lic-add-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:10px;transition:opacity .15s}
+.lic-add-btn:hover{opacity:.85}
+.lic-card.in-cart .lic-add-btn{background:var(--green)}
+.detail-tags{margin-top:4px}
+.detail-tags-label{font-size:11px;font-weight:700;color:var(--dim);margin-bottom:8px;letter-spacing:.5px}
+.tags-wrap{display:flex;gap:6px;flex-wrap:wrap}
+.tag-chip{font-size:11px;font-weight:600;padding:4px 10px;border-radius:10px;background:var(--surface3);color:var(--dim);cursor:pointer;transition:all .15s;border:1px solid transparent}
+.tag-chip:hover{color:var(--accent);border-color:rgba(230,57,70,.3)}
+.detail-share{display:flex;align-items:center;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+.share-btn{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;font-size:12px;font-weight:700;color:var(--dim);cursor:pointer;transition:all .15s;font-family:inherit}
+.share-btn:hover{color:var(--text);border-color:rgba(255,255,255,.2)}
 
 /* ── Cart Modal ── */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:700;display:none;align-items:center;justify-content:center;padding:20px}
 .modal-bg.open{display:flex}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:520px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:520px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
 .modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
 .modal-header h2{font-size:18px;font-weight:800}
-.modal-close{background:none;border:none;color:var(--dim);font-size:24px;cursor:pointer;line-height:1;padding:4px}
-.modal-close:hover{color:var(--text)}
+.modal-close-x{background:none;border:none;color:var(--dim);font-size:24px;cursor:pointer;line-height:1;padding:4px}
+.modal-close-x:hover{color:var(--text)}
 .modal-body{padding:20px 24px;overflow-y:auto;flex:1}
 .modal-footer{padding:16px 24px;border-top:1px solid var(--border);flex-shrink:0}
 .cart-empty{text-align:center;padding:40px 0;color:var(--dim)}
 .cart-item{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
 .cart-item:last-child{border-bottom:none}
-.cart-item-cover{width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--surface2);flex-shrink:0}
-.cart-item-info{flex:1;min-width:0}
-.cart-item-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cart-item-license{font-size:11px;color:var(--dim);margin-top:2px}
-.cart-item-price{font-size:14px;font-weight:800;color:var(--text);flex-shrink:0}
-.cart-item-remove{background:none;border:none;color:var(--dim);cursor:pointer;font-size:18px;padding:4px;flex-shrink:0;line-height:1}
-.cart-item-remove:hover{color:var(--accent)}
-.cart-total{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;font-size:16px;font-weight:800}
-.cart-total span:last-child{color:var(--accent);font-size:20px}
-.email-field{margin-bottom:12px}
-.email-label{font-size:12px;font-weight:600;color:var(--dim);margin-bottom:6px;display:block}
-.email-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 14px;color:var(--text);font-size:14px;outline:none;font-family:inherit;transition:border-color .15s}
-.email-input:focus{border-color:var(--accent)}
-.checkout-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:8px}
-.checkout-btn:hover{opacity:.9}
+.ci-cover{width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--surface2);flex-shrink:0}
+.ci-info{flex:1;min-width:0}
+.ci-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ci-lic{font-size:11px;color:var(--dim);margin-top:2px}
+.ci-price{font-size:14px;font-weight:800;flex-shrink:0}
+.ci-remove{background:none;border:none;color:var(--dim);cursor:pointer;font-size:18px;padding:4px;flex-shrink:0;line-height:1}
+.ci-remove:hover{color:var(--accent)}
+.cart-total-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.cart-total-row span:first-child{font-size:14px;color:var(--dim);font-weight:600}
+.cart-total-row span:last-child{font-size:22px;font-weight:900;color:var(--accent)}
+.field-label{font-size:12px;font-weight:700;color:var(--dim);margin-bottom:6px;display:block;letter-spacing:.5px}
+.text-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 14px;color:var(--text);font-size:14px;outline:none;font-family:inherit;transition:border-color .15s;margin-bottom:10px}
+.text-input:focus{border-color:var(--accent)}
+.promo-row{display:flex;gap:8px;margin-bottom:14px}
+.promo-row .text-input{margin-bottom:0;flex:1}
+.promo-apply{background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 16px;color:var(--dim);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s}
+.promo-apply:hover{color:var(--text)}
+.checkout-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.checkout-btn:hover{background:#ff4d5a}
 .checkout-btn:disabled{opacity:.5;cursor:not-allowed}
 .checkout-note{font-size:11px;color:var(--dim);text-align:center;margin-top:10px}
+.lic-info-grid{background:var(--surface2);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:14px}
+.lic-info-row{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;font-size:11px;color:var(--dim);line-height:1.5}
+.lic-info-row:last-child{margin-bottom:0}
+.lic-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px}
 
-/* ── License Info ── */
-.license-info{background:var(--surface2);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--dim);line-height:1.7}
-.license-row{display:flex;gap:8px;align-items:center;margin-bottom:4px}
-.license-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+/* ── Order Lookup ── */
+.order-lookup{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:520px;margin:0 auto}
+.order-result{margin-top:20px}
+.order-item{background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:10px}
+.order-item-title{font-size:14px;font-weight:700;margin-bottom:4px}
+.order-item-sub{font-size:12px;color:var(--dim);margin-bottom:10px}
+.dl-btn{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;transition:opacity .15s}
+.dl-btn:hover{opacity:.85}
+
+/* ── FAQ ── */
+.faq-list{max-width:720px;margin:32px auto 0}
+.faq-item{border-bottom:1px solid var(--border)}
+.faq-q{display:flex;justify-content:space-between;align-items:center;padding:18px 0;cursor:pointer;font-size:15px;font-weight:700;gap:16px}
+.faq-q svg{flex-shrink:0;transition:transform .2s;color:var(--dim)}
+.faq-item.open .faq-q svg{transform:rotate(180deg);color:var(--accent)}
+.faq-a{font-size:14px;color:var(--dim);line-height:1.7;padding-bottom:18px;display:none}
+.faq-item.open .faq-a{display:block}
+
+/* ── Email Capture ── */
+.email-capture{background:linear-gradient(135deg,rgba(230,57,70,.12),rgba(245,158,11,.08));border:1px solid rgba(230,57,70,.2);border-radius:var(--radius);padding:40px 32px;text-align:center;max-width:600px;margin:0 auto}
+.email-capture h2{font-size:26px;font-weight:900;margin-bottom:8px}
+.email-capture p{color:var(--dim);font-size:14px;margin-bottom:24px}
+.email-form{display:flex;gap:10px;max-width:400px;margin:0 auto;flex-wrap:wrap}
+.email-form .text-input{margin-bottom:0;flex:1;min-width:200px}
+.email-form button{background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:11px 24px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;transition:opacity .15s}
+.email-form button:hover{opacity:.85}
+.email-note{font-size:11px;color:var(--dim);margin-top:12px}
+
+/* ── Player ── */
+#player-bar{position:fixed;bottom:0;left:0;right:0;height:var(--player-h);background:rgba(14,14,22,.97);backdrop-filter:blur(24px);border-top:1px solid var(--border);z-index:300;display:flex;align-items:center;gap:14px;padding:0 24px;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+#player-bar.visible{transform:translateY(0)}
+.p-cover{width:48px;height:48px;border-radius:8px;object-fit:cover;background:var(--surface2);flex-shrink:0}
+.p-info{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}
+.p-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-meta{font-size:11px;color:var(--dim)}
+.p-controls{display:flex;align-items:center;gap:12px;flex:2;justify-content:center}
+.p-play-btn{width:40px;height:40px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;flex-shrink:0;transition:opacity .15s}
+.p-play-btn:hover{opacity:.85}
+.progress-wrap{flex:1;max-width:340px}
+.progress-track{width:100%;height:4px;background:var(--surface3);border-radius:2px;cursor:pointer;position:relative}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .1s linear;pointer-events:none}
+.time-row{display:flex;justify-content:space-between;margin-top:4px}
+.time-lbl{font-size:10px;color:var(--dim)}
+.p-add-cart{background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;transition:opacity .15s;flex-shrink:0}
+.p-add-cart:hover{opacity:.85}
 
 /* ── Toast ── */
-.toast{position:fixed;bottom:calc(var(--player-h) + 16px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 20px;font-size:13px;font-weight:600;z-index:1000;opacity:0;pointer-events:none;white-space:nowrap;transition:all .25s;max-width:90vw;text-align:center}
+.toast{position:fixed;bottom:calc(var(--player-h) + 20px);left:50%;transform:translateX(-50%) translateY(16px);background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 20px;font-size:13px;font-weight:600;z-index:1000;opacity:0;pointer-events:none;white-space:nowrap;transition:all .25s;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.success{border-color:var(--green);color:var(--green)}
-
-/* ── Footer ── */
-footer{text-align:center;padding:40px 24px;color:var(--dim);font-size:12px;border-top:1px solid var(--border)}
-footer a{color:var(--dim);text-decoration:none}
+.toast.err{border-color:var(--accent);color:var(--accent)}
 
 /* ── Loading ── */
 .loading{display:flex;align-items:center;justify-content:center;padding:80px 24px;gap:12px;color:var(--dim)}
-.spinner{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+.spinner{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-@media(max-width:600px){
-  .hero{padding:40px 16px 32px}
-  .hero-stats{gap:20px}
-  .filters{padding:14px 16px;top:56px}
-  .catalog{padding:16px;padding-bottom:calc(var(--player-h) + 24px)}
+/* ── Footer ── */
+footer{background:var(--surface);border-top:1px solid var(--border);padding:40px 32px 24px}
+.footer-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:32px;margin-bottom:32px}
+.footer-col h4{font-size:12px;font-weight:800;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:14px}
+.footer-col a,.footer-col p{font-size:13px;color:var(--dim);text-decoration:none;display:block;margin-bottom:8px;line-height:1.6}
+.footer-col a:hover{color:var(--text)}
+.footer-bottom{border-top:1px solid var(--border);padding-top:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--dim)}
+.footer-logo{font-size:18px;font-weight:900;letter-spacing:5px;background:linear-gradient(135deg,var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  header{padding:0 16px;height:58px}
+  .header-nav{display:none}
+  .hero{padding:52px 16px 44px}
+  .hero-stats{gap:24px}
+  .trust-bar{padding:12px 16px;gap:16px}
+  .section{padding:44px 16px}
+  .filters{padding:12px 16px;top:58px}
+  .catalog{padding:16px;padding-bottom:calc(var(--player-h) + 32px)}
   .beats-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
-  .player-add-cart{display:none}
-  header{padding:0 16px;height:56px}
+  .footer-grid{grid-template-columns:1fr 1fr}
+  .detail-top{flex-direction:column}
+  .detail-cover,.detail-cover-ph{width:100%;height:200px;border-radius:var(--radius)}
+  .p-add-cart,.p-controls .progress-wrap{display:none}
+}
+@media(max-width:480px){
+  .beats-grid{grid-template-columns:1fr 1fr}
+  .footer-grid{grid-template-columns:1fr}
+  .email-form{flex-direction:column}
 }
 </style>
 </head>
@@ -163,12 +317,19 @@ footer a{color:var(--dim);text-decoration:none}
 
 <!-- Header -->
 <header>
-  <a href="/" class="logo" style="-webkit-text-fill-color:unset;background:none">
-    <div style="font-size:20px;font-weight:900;letter-spacing:5px;background:linear-gradient(135deg,#e63946,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent">O'NEIL</div>
+  <div class="logo-wrap">
+    <div class="logo-text">O'NEIL</div>
     <div class="logo-sub">BEATS STORE</div>
-  </a>
+  </div>
+  <nav class="header-nav" aria-label="Main navigation">
+    <a href="#catalog" onclick="scrollTo('#catalog')">Beats</a>
+    <a href="#how-it-works">How It Works</a>
+    <a href="#licensing">Licensing</a>
+    <a href="#faq">FAQ</a>
+    <a href="#orders">My Orders</a>
+  </nav>
   <div class="header-right">
-    <button class="cart-btn" onclick="openCart()">
+    <button class="cart-btn" onclick="openCart()" aria-label="Open cart">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.97 1.61h9.72a2 2 0 001.97-1.61L23 6H6"/></svg>
       Cart
       <span class="cart-badge" id="cart-badge">0</span>
@@ -177,145 +338,311 @@ footer a{color:var(--dim);text-decoration:none}
 </header>
 
 <!-- Hero -->
-<div class="hero">
-  <h1>Hard-Hitting Beats.<br><span>Ready to Record.</span></h1>
-  <p>Premium rap instrumentals — Trap, Drill, Boom Bap & more. Instant delivery after purchase.</p>
-  <div class="hero-stats">
-    <div class="hero-stat"><div class="hero-stat-num" id="stat-beats">—</div><div class="hero-stat-label">Beats Available</div></div>
-    <div class="hero-stat"><div class="hero-stat-num">Instant</div><div class="hero-stat-label">Delivery</div></div>
-    <div class="hero-stat"><div class="hero-stat-num">3</div><div class="hero-stat-label">License Types</div></div>
+<section class="hero" aria-label="Hero">
+  <div class="hero-bg"></div>
+  <h1>Premium Rap Beats.<br><span class="line2">Built to Go Viral.</span></h1>
+  <p class="hero-sub">Trap, Drill, Boom Bap, R&B and more — professionally crafted instrumentals ready for your next hit. Instant delivery after purchase.</p>
+  <div class="hero-cta">
+    <a href="#catalog" class="btn-primary" onclick="event.preventDefault();document.getElementById('catalog').scrollIntoView({behavior:'smooth'})">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Browse Beats
+    </a>
+    <a href="#how-it-works" class="btn-ghost" onclick="event.preventDefault();document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">How It Works</a>
   </div>
+  <div class="hero-stats">
+    <div><div class="hero-stat-num" id="stat-beats">—</div><div class="hero-stat-label">BEATS AVAILABLE</div></div>
+    <div><div class="hero-stat-num">Instant</div><div class="hero-stat-label">DELIVERY</div></div>
+    <div><div class="hero-stat-num">3+</div><div class="hero-stat-label">LICENSE TYPES</div></div>
+    <div><div class="hero-stat-num">100%</div><div class="hero-stat-label">ORIGINAL</div></div>
+  </div>
+</section>
+
+<!-- Trust Bar -->
+<div class="trust-bar" role="list">
+  <div class="trust-item" role="listitem"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Instant MP3/WAV Delivery</div>
+  <div class="trust-item" role="listitem"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Secure Stripe Checkout</div>
+  <div class="trust-item" role="listitem"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> All Genres Covered</div>
+  <div class="trust-item" role="listitem"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Lease from $29.99</div>
+  <div class="trust-item" role="listitem"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Exclusive Rights Available</div>
 </div>
 
-<!-- Filters -->
-<div class="filters">
+<!-- How It Works -->
+<section class="section" id="how-it-works" aria-labelledby="hiw-title">
+  <div style="max-width:900px;margin:0 auto">
+    <div class="section-label">Simple Process</div>
+    <h2 class="section-title" id="hiw-title">Buy Beats in 3 Steps</h2>
+    <p class="section-sub">From browse to recording in minutes. No account required.</p>
+    <div class="steps-grid">
+      <div class="step-card"><div class="step-num">01</div><div class="step-title">Browse & Preview</div><div class="step-desc">Listen to every beat for free. Filter by genre, mood, BPM, or key to find your perfect sound.</div></div>
+      <div class="step-card"><div class="step-num">02</div><div class="step-title">Pick Your License</div><div class="step-desc">Lease for $29.99, Premium Lease for WAV, Stems for full track-out, or Exclusive for full ownership.</div></div>
+      <div class="step-card"><div class="step-num">03</div><div class="step-title">Download Instantly</div><div class="step-desc">Pay securely via Stripe. Your files hit your inbox in seconds. Start recording immediately.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Genre Browse -->
+<section class="section" style="padding-top:0" id="genres" aria-labelledby="genre-title">
+  <div style="max-width:1200px;margin:0 auto">
+    <div class="section-label">By Genre</div>
+    <h2 class="section-title" id="genre-title">Shop Beats by Genre</h2>
+    <p class="section-sub">Browse <strong>rap beats</strong>, <strong>trap instrumentals</strong>, <strong>drill beats</strong> and more.</p>
+    <div class="genres-grid" id="genres-grid"></div>
+  </div>
+</section>
+
+<!-- Filters + Catalog -->
+<div class="filters" id="filters-bar" role="search">
   <div class="search-wrap">
-    <input class="search-input" id="search-input" type="text" placeholder="Search beats by title, genre, mood..." oninput="filterBeats()">
+    <input class="search-input" id="search-input" type="search" placeholder="Search beats — title, genre, mood, BPM, key…" aria-label="Search beats" oninput="filterBeats()">
     <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
   </div>
   <div class="filter-row">
-    <span class="filter-label">GENRE</span>
+    <span class="filter-label">Genre</span>
     <div id="genre-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-    <div class="filter-divider"></div>
-    <span class="filter-label">MOOD</span>
+    <div class="filter-sep"></div>
+    <span class="filter-label">Mood</span>
     <div id="mood-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-    <span class="beat-count" id="beat-count"></span>
+    <span class="beat-count" id="beat-count" aria-live="polite"></span>
   </div>
 </div>
 
-<!-- Catalog -->
-<div class="catalog">
-  <div id="loading" class="loading"><div class="spinner"></div> Loading beats...</div>
-  <div class="beats-grid" id="beats-grid"></div>
+<main class="catalog" id="catalog" role="main">
+  <div class="catalog-header">
+    <h2 class="catalog-title" id="catalog-heading">All Beats</h2>
+  </div>
+  <div id="loading" class="loading"><div class="spinner"></div><span>Loading beats…</span></div>
+  <div class="beats-grid" id="beats-grid" role="list" aria-label="Beat catalog"></div>
+</main>
+
+<!-- Email Capture -->
+<section class="section" id="newsletter" aria-labelledby="email-cap-title">
+  <div class="email-capture">
+    <h2 id="email-cap-title">Get a Free Beat</h2>
+    <p>Drop your email and get a free lease + first access to new drops.</p>
+    <div class="email-form">
+      <input class="text-input" id="email-cap-input" type="email" placeholder="yourname@email.com" aria-label="Email address">
+      <button onclick="submitEmailCapture()">Claim Free Beat</button>
+    </div>
+    <p class="email-note">No spam. Unsubscribe anytime.</p>
+    <div id="email-cap-msg" style="margin-top:12px;font-size:13px;display:none"></div>
+  </div>
+</section>
+
+<!-- Licensing Section -->
+<section class="section" id="licensing" aria-labelledby="lic-title">
+  <div style="max-width:900px;margin:0 auto">
+    <div class="section-label">License Options</div>
+    <h2 class="section-title" id="lic-title">What License Do I Need?</h2>
+    <p class="section-sub">Every beat comes with multiple licensing tiers. Here's what each one covers.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:32px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px">
+        <div style="font-size:24px;margin-bottom:8px">🎵</div>
+        <h3 style="font-size:15px;font-weight:800;color:var(--gold);margin-bottom:6px">Lease — from $29.99</h3>
+        <ul style="list-style:none;font-size:13px;color:var(--dim);line-height:1.9">
+          <li>✓ MP3 file</li><li>✓ Up to 100K streams</li><li>✓ Up to 10K downloads</li><li>✓ Non-exclusive</li><li>✓ Credit "Prod. by O'Neil"</li>
+        </ul>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px">
+        <div style="font-size:24px;margin-bottom:8px">🎧</div>
+        <h3 style="font-size:15px;font-weight:800;color:var(--purple);margin-bottom:6px">Premium Lease — from $99.99</h3>
+        <ul style="list-style:none;font-size:13px;color:var(--dim);line-height:1.9">
+          <li>✓ MP3 + WAV files</li><li>✓ Unlimited streams</li><li>✓ Radio distribution</li><li>✓ Non-exclusive</li><li>✓ Credit required</li>
+        </ul>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px">
+        <div style="font-size:24px;margin-bottom:8px">🎛️</div>
+        <h3 style="font-size:15px;font-weight:800;color:var(--green);margin-bottom:6px">Stems — from $199.99</h3>
+        <ul style="list-style:none;font-size:13px;color:var(--dim);line-height:1.9">
+          <li>✓ All track stems separated</li><li>✓ Full production control</li><li>✓ Unlimited streams</li><li>✓ Non-exclusive</li><li>✓ Credit required</li>
+        </ul>
+      </div>
+      <div style="background:var(--surface);border:1px solid rgba(245,158,11,.3);border-radius:var(--radius);padding:24px">
+        <div style="font-size:24px;margin-bottom:8px">👑</div>
+        <h3 style="font-size:15px;font-weight:800;color:var(--gold);margin-bottom:6px">Exclusive — Full Buyout</h3>
+        <ul style="list-style:none;font-size:13px;color:var(--dim);line-height:1.9">
+          <li>✓ All stems + WAV + MP3</li><li>✓ Full ownership</li><li>✓ Beat removed from store</li><li>✓ No credit needed</li><li>✓ 100% royalty control</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section" id="faq" style="padding-top:0" aria-labelledby="faq-title">
+  <div style="max-width:760px;margin:0 auto;text-align:center">
+    <div class="section-label">FAQ</div>
+    <h2 class="section-title" id="faq-title">Frequently Asked Questions</h2>
+    <p class="section-sub" style="margin:0 auto">Everything you need to know about buying rap beats online.</p>
+  </div>
+  <div class="faq-list" role="list">
+    <div class="faq-item" role="listitem"><div class="faq-q" onclick="toggleFaq(this)"><span>What types of rap beats do you sell?</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></div><div class="faq-a">We sell Trap beats, Drill instrumentals, Boom Bap, Lo-Fi, R&B, Afrobeats, and more. All beats are available in multiple license tiers from $29.99.</div></div>
+    <div class="faq-item" role="listitem"><div class="faq-q" onclick="toggleFaq(this)"><span>Can I use these beats on YouTube and Spotify?</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></div><div class="faq-a">Yes. Lease licenses cover up to 100K streams. Premium Lease and above cover unlimited streaming on YouTube, Spotify, Apple Music, Tidal, and all other platforms.</div></div>
+    <div class="faq-item" role="listitem"><div class="faq-q" onclick="toggleFaq(this)"><span>How do I get my beats after purchase?</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></div><div class="faq-a">Your download links are sent instantly to your email after payment via Stripe. No waiting, no delays — you can start recording within minutes.</div></div>
+    <div class="faq-item" role="listitem"><div class="faq-q" onclick="toggleFaq(this)"><span>Do I need to credit the producer?</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></div><div class="faq-a">For Lease and Premium Lease licenses, yes — include "Prod. by O'Neil" in your song title or description. Exclusive license holders do not need to credit the producer.</div></div>
+    <div class="faq-item" role="listitem"><div class="faq-q" onclick="toggleFaq(this)"><span>What is the difference between Lease and Exclusive?</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></div><div class="faq-a">A Lease is non-exclusive — meaning other artists can also buy the same beat. An Exclusive means you own the beat outright, it gets removed from the store, and no one else can purchase it.</div></div>
+    <div class="faq-item" role="listitem"><div class="faq-q" onclick="toggleFaq(this)"><span>Can I use leased beats for commercial mixtapes?</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></div><div class="faq-a">Yes, Lease and above cover commercial use including mixtapes, EPs, and albums up to the stream/download limits in your license agreement.</div></div>
+    <div class="faq-item" role="listitem"><div class="faq-q" onclick="toggleFaq(this)"><span>What if I lose my download link?</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></div><div class="faq-a">Use the "My Orders" section below — enter your email and your order history will appear with fresh download links.</div></div>
+  </div>
+</section>
+
+<!-- Order Lookup -->
+<section class="section" id="orders" aria-labelledby="orders-title">
+  <div style="max-width:600px;margin:0 auto;text-align:center;margin-bottom:32px">
+    <div class="section-label">Re-Download</div>
+    <h2 class="section-title" id="orders-title">My Orders</h2>
+    <p class="section-sub" style="margin:0 auto">Lost your download? Enter your email to retrieve your orders.</p>
+  </div>
+  <div class="order-lookup">
+    <label class="field-label" for="order-email">Email address used at checkout</label>
+    <div style="display:flex;gap:8px">
+      <input class="text-input" id="order-email" type="email" placeholder="yourname@email.com" style="margin-bottom:0;flex:1">
+      <button class="checkout-btn" style="width:auto;padding:11px 20px;font-size:13px" onclick="lookupOrders()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Look Up
+      </button>
+    </div>
+    <div id="order-results" class="order-result"></div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-grid">
+    <div class="footer-col">
+      <div class="footer-logo" style="margin-bottom:12px">O'NEIL</div>
+      <p>Premium rap beats and instrumentals for artists worldwide. Trap, Drill, Boom Bap, R&B and more.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Beats</h4>
+      <a href="#" onclick="event.preventDefault();setGenreFilter('Trap')">Buy Trap Beats</a>
+      <a href="#" onclick="event.preventDefault();setGenreFilter('Drill')">Buy Drill Beats</a>
+      <a href="#" onclick="event.preventDefault();setGenreFilter('Boom Bap')">Buy Boom Bap Beats</a>
+      <a href="#" onclick="event.preventDefault();setGenreFilter('Lo-Fi')">Buy Lo-Fi Beats</a>
+      <a href="#" onclick="event.preventDefault();setGenreFilter('R&B')">Buy R&B Beats</a>
+    </div>
+    <div class="footer-col">
+      <h4>Info</h4>
+      <a href="#how-it-works" onclick="event.preventDefault();document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">How It Works</a>
+      <a href="#licensing" onclick="event.preventDefault();document.getElementById('licensing').scrollIntoView({behavior:'smooth'})">Licensing Info</a>
+      <a href="#faq" onclick="event.preventDefault();document.getElementById('faq').scrollIntoView({behavior:'smooth'})">FAQ</a>
+      <a href="#orders" onclick="event.preventDefault();document.getElementById('orders').scrollIntoView({behavior:'smooth'})">My Orders</a>
+      <a href="mailto:produceroneil@gmail.com">Contact</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>&copy; 2026 O'Neil Beats. All rights reserved.</span>
+    <span>Beats for Trap · Drill · Boom Bap · R&amp;B · Lo-Fi · Afrobeats</span>
+  </div>
+</footer>
+
+<!-- Detail Modal -->
+<div class="overlay" id="detail-overlay" onclick="closeDetailOnBg(event)">
+  <div class="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+    <button class="detail-close" onclick="closeDetail()" aria-label="Close">×</button>
+    <div class="detail-top" id="detail-top"></div>
+    <div class="detail-body" id="detail-body"></div>
+  </div>
 </div>
 
-<!-- Player Bar -->
-<div id="player-bar">
-  <img class="player-cover" id="player-cover" src="" alt="">
-  <div class="player-info">
-    <div class="player-title" id="player-title">—</div>
-    <div class="player-sub" id="player-sub">—</div>
+<!-- Cart Modal -->
+<div class="modal-bg" id="cart-modal" onclick="closeCartOnBg(event)">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Shopping cart">
+    <div class="modal-header"><h2>Your Cart</h2><button class="modal-close-x" onclick="closeCart()">×</button></div>
+    <div class="modal-body" id="cart-body"></div>
+    <div class="modal-footer" id="cart-footer" style="display:none"></div>
   </div>
-  <div class="player-controls">
-    <button class="player-play" id="player-play-btn" onclick="togglePlay()">
+</div>
+
+<!-- Player -->
+<div id="player-bar" role="complementary" aria-label="Audio player">
+  <img class="p-cover" id="p-cover" src="" alt="" style="display:none">
+  <div class="p-info"><div class="p-title" id="p-title">—</div><div class="p-meta" id="p-meta">—</div></div>
+  <div class="p-controls">
+    <button class="p-play-btn" id="p-play-btn" onclick="togglePlay()" aria-label="Play/Pause">
       <svg id="play-icon" width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       <svg id="pause-icon" width="16" height="16" viewBox="0 0 24 24" fill="white" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
     </button>
     <div class="progress-wrap">
-      <div class="progress-bar" id="progress-bar" onclick="seekAudio(event)">
+      <div class="progress-track" id="progress-track" onclick="seekAudio(event)" role="slider" aria-label="Playback progress">
         <div class="progress-fill" id="progress-fill"></div>
       </div>
-      <div class="time-row">
-        <span class="time-label" id="time-current">0:00</span>
-        <span class="time-label" id="time-total">0:00</span>
-      </div>
+      <div class="time-row"><span class="time-lbl" id="t-cur">0:00</span><span class="time-lbl" id="t-tot">0:00</span></div>
     </div>
   </div>
-  <button class="player-add-cart" id="player-cart-btn" onclick="addCurrentToCart('lease')">+ Add to Cart</button>
+  <button class="p-add-cart" onclick="if(currentBeat)openDetail(currentBeat.id)">Buy This Beat</button>
 </div>
 
-<!-- Cart Modal -->
-<div class="modal-bg" id="cart-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Your Cart</h2>
-      <button class="modal-close" onclick="closeCart()">×</button>
-    </div>
-    <div class="modal-body" id="cart-body"></div>
-    <div class="modal-footer" id="cart-footer" style="display:none">
-      <div class="license-info">
-        <div class="license-row"><span class="license-dot" style="background:#f59e0b"></span><strong>Lease</strong> — Non-exclusive. Up to 100k streams/downloads.</div>
-        <div class="license-row"><span class="license-dot" style="background:#8b5cf6"></span><strong>Premium Lease</strong> — Non-exclusive. Unlimited streams + radio.</div>
-        <div class="license-row"><span class="license-dot" style="background:#10b981"></span><strong>Stems</strong> — All tracks separated. Full production control.</div>
-      </div>
-      <div class="cart-total"><span>Total</span><span id="cart-total-price">$0.00</span></div>
-      <div class="email-field">
-        <label class="email-label">Your email (for delivery)</label>
-        <input class="email-input" id="checkout-email" type="email" placeholder="yourname@email.com">
-      </div>
-      <button class="checkout-btn" id="checkout-btn" onclick="startCheckout()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>
-        Proceed to Checkout
-      </button>
-      <div class="checkout-note">Secure checkout powered by Stripe. Instant delivery after payment.</div>
-    </div>
-  </div>
-</div>
-
-<!-- Toast -->
-<div class="toast" id="toast"></div>
-
-<!-- Footer -->
-<footer>
-  <p>&copy; 2026 O'Neil Beats. All rights reserved. &nbsp;|&nbsp; <a href="mailto:produceroneil@gmail.com">Contact</a></p>
-</footer>
-
+<div class="toast" id="toast" role="alert" aria-live="assertive"></div>
 <audio id="audio-el" preload="metadata"></audio>
 
 <script>
 const API = 'https://oneil-beats-backend.vercel.app';
-let allBeats = [];
-let filteredBeats = [];
-let cart = [];
-let currentBeat = null;
-let isPlaying = false;
-let activeGenre = null;
-let activeMood = null;
+const GENRE_ICONS = {Trap:'🔥',Drill:'🧊','Boom Bap':'🎤','Lo-Fi':'☁️','R&B':'💜',Afrobeats:'🌍',Dancehall:'🎶','Hip-Hop':'🎵',Pop:'⭐',default:'🎧'};
+let allBeats = [], filteredBeats = [], cart = [], currentBeat = null, isPlaying = false;
+let activeGenre = null, activeMood = null;
 const audio = document.getElementById('audio-el');
 
-// ── Load Beats ──
+// ── Boot ──
 async function loadBeats() {
   try {
-    const res = await fetch(`${API}/beats`);
-    const data = await res.json();
-    allBeats = (data.beats || []).filter(b => b.active !== false);
-    document.getElementById('stat-beats').textContent = allBeats.length;
+    const r = await fetch(`${API}/beats`);
+    const d = await r.json();
+    allBeats = (d.beats || []).filter(b => b.active !== false);
+    document.getElementById('stat-beats').textContent = allBeats.length + '+';
+    buildGenreTiles();
     buildFilterChips();
     filterBeats();
-  } catch (e) {
-    document.getElementById('loading').innerHTML = '<p style="color:#64748b">Could not load beats. Please try again.</p>';
+    handleUrlBeat();
+  } catch(e) {
+    document.getElementById('loading').innerHTML = '<p style="color:var(--dim);text-align:center">Could not load beats. Please refresh.</p>';
   }
 }
 
+function handleUrlBeat() {
+  const p = new URLSearchParams(location.search);
+  const beatId = p.get('beat') || p.get('search');
+  if (p.get('beat')) { const b = allBeats.find(x => x.id === p.get('beat')); if (b) openDetail(b.id); }
+  if (p.get('search')) { document.getElementById('search-input').value = p.get('search'); filterBeats(); }
+}
+
+function buildGenreTiles() {
+  const counts = {};
+  allBeats.forEach(b => { if (b.genre) counts[b.genre] = (counts[b.genre]||0)+1; });
+  const grid = document.getElementById('genres-grid');
+  grid.innerHTML = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([g,c])=>`
+    <div class="genre-tile" onclick="setGenreFilter('${g}')" data-gtile="${g}" role="button" tabindex="0" aria-label="Browse ${g} beats">
+      <div class="genre-icon">${GENRE_ICONS[g]||GENRE_ICONS.default}</div>
+      <div class="genre-name">${g}</div>
+      <div class="genre-count">${c} beat${c!==1?'s':''}</div>
+    </div>`).join('');
+}
+
 function buildFilterChips() {
-  const genres = [...new Set(allBeats.map(b => b.genre).filter(Boolean))].sort();
-  const moods  = [...new Set(allBeats.map(b => b.mood).filter(Boolean))].sort();
-  document.getElementById('genre-chips').innerHTML = genres.map(g =>
-    `<button class="chip" onclick="toggleGenre('${g}')" data-genre="${g}">${g}</button>`
-  ).join('');
-  document.getElementById('mood-chips').innerHTML = moods.map(m =>
-    `<button class="chip" onclick="toggleMood('${m}')" data-mood="${m}">${m}</button>`
-  ).join('');
+  const genres = [...new Set(allBeats.map(b=>b.genre).filter(Boolean))].sort();
+  const moods  = [...new Set(allBeats.map(b=>b.mood).filter(Boolean))].sort();
+  document.getElementById('genre-chips').innerHTML = genres.map(g=>`<button class="chip" onclick="toggleGenre('${g}')" data-genre="${g}">${g}</button>`).join('');
+  document.getElementById('mood-chips').innerHTML  = moods.map(m=>`<button class="chip" onclick="toggleMood('${m}')" data-mood="${m}">${m}</button>`).join('');
+}
+
+function setGenreFilter(g) {
+  activeGenre = g;
+  document.querySelectorAll('[data-genre]').forEach(el=>el.classList.toggle('active',el.dataset.genre===g));
+  document.querySelectorAll('[data-gtile]').forEach(el=>el.classList.toggle('active',el.dataset.gtile===g));
+  document.getElementById('catalog-heading').textContent = g + ' Beats';
+  document.getElementById('catalog').scrollIntoView({behavior:'smooth'});
+  filterBeats();
 }
 
 function toggleGenre(g) {
-  activeGenre = activeGenre === g ? null : g;
-  document.querySelectorAll('[data-genre]').forEach(el => el.classList.toggle('active', el.dataset.genre === activeGenre));
+  activeGenre = activeGenre===g ? null : g;
+  document.querySelectorAll('[data-genre]').forEach(el=>el.classList.toggle('active',el.dataset.genre===activeGenre));
+  document.querySelectorAll('[data-gtile]').forEach(el=>el.classList.toggle('active',el.dataset.gtile===activeGenre));
+  document.getElementById('catalog-heading').textContent = activeGenre ? activeGenre+' Beats' : 'All Beats';
   filterBeats();
 }
 function toggleMood(m) {
-  activeMood = activeMood === m ? null : m;
-  document.querySelectorAll('[data-mood]').forEach(el => el.classList.toggle('active', el.dataset.mood === activeMood));
+  activeMood = activeMood===m ? null : m;
+  document.querySelectorAll('[data-mood]').forEach(el=>el.classList.toggle('active',el.dataset.mood===activeMood));
   filterBeats();
 }
 
@@ -324,255 +651,277 @@ function filterBeats() {
   filteredBeats = allBeats.filter(b => {
     if (activeGenre && b.genre !== activeGenre) return false;
     if (activeMood && b.mood !== activeMood) return false;
-    if (q) {
-      const hay = `${b.title} ${b.genre} ${b.mood} ${b.tags || ''} ${b.key || ''} ${b.bpm || ''}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
+    if (q) { const hay = `${b.title} ${b.genre} ${b.mood} ${b.tags||''} ${b.key||''} ${b.bpm||''}`.toLowerCase(); if (!hay.includes(q)) return false; }
     return true;
   });
-  document.getElementById('beat-count').textContent = `${filteredBeats.length} beat${filteredBeats.length !== 1 ? 's' : ''}`;
+  document.getElementById('beat-count').textContent = `${filteredBeats.length} beat${filteredBeats.length!==1?'s':''}`;
   renderGrid();
 }
 
+// ── Render ──
 function renderGrid() {
   document.getElementById('loading').style.display = 'none';
   const grid = document.getElementById('beats-grid');
-  if (!filteredBeats.length) {
-    grid.innerHTML = '<p style="color:var(--dim);grid-column:1/-1;text-align:center;padding:40px 0">No beats found. Try a different filter.</p>';
-    return;
-  }
-  grid.innerHTML = filteredBeats.map(b => beatCardHTML(b)).join('');
+  if (!filteredBeats.length) { grid.innerHTML = '<p style="color:var(--dim);grid-column:1/-1;text-align:center;padding:60px 0">No beats found. Try a different filter.</p>'; return; }
+  grid.innerHTML = filteredBeats.map(b => beatCard(b)).join('');
 }
 
-function beatCardHTML(b) {
-  const inCartIds = cart.map(c => c.beatId + c.licenseType);
-  const leaseInCart = inCartIds.includes(b.id + 'lease');
-  const premInCart  = inCartIds.includes(b.id + 'premium');
-  const stemsInCart = b.stems_price && inCartIds.includes(b.id + 'stems');
-  const isPlaying2 = currentBeat && currentBeat.id === b.id && isPlaying;
-  const coverHTML = b.cover_url
-    ? `<img class="beat-cover" src="${b.cover_url}" alt="${esc(b.title)}" loading="lazy">`
-    : `<div class="beat-cover-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`;
-  return `
-<div class="beat-card${currentBeat && currentBeat.id === b.id ? ' playing' : ''}" id="card-${b.id}">
-  <div style="position:relative" onclick="playBeat('${b.id}')">
-    ${coverHTML}
-    <div class="beat-play-overlay">
-      <div class="play-btn">
-        ${isPlaying2
-          ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`
-          : `<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>`}
-      </div>
-    </div>
+function beatCard(b) {
+  const cartIds = cart.map(c=>c.beatId+'_'+c.licenseType);
+  const lInCart = cartIds.includes(b.id+'_lease'), pInCart = cartIds.includes(b.id+'_premium'), sInCart = cartIds.includes(b.id+'_stems');
+  const isPlaying2 = currentBeat?.id===b.id && isPlaying;
+  const cover = b.cover_url ? `<img class="beat-cover" src="${esc(b.cover_url)}" alt="${esc(b.title)} beat cover art" loading="lazy">` : `<div class="beat-cover-ph"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1" opacity=".15"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`;
+  const playIcon = isPlaying2 ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>` : `<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+  return `<article class="beat-card${currentBeat?.id===b.id?' playing':''}" id="card-${b.id}" role="listitem" aria-label="${esc(b.title)}">
+  <div class="beat-cover-wrap" onclick="playBeat('${b.id}')" role="button" tabindex="0" aria-label="Preview ${esc(b.title)}">
+    ${cover}
+    <div class="play-overlay"><div class="play-circle">${playIcon}</div></div>
   </div>
   <div class="beat-info">
-    <div class="beat-title" title="${esc(b.title)}">${esc(b.title)}</div>
+    <h3 class="beat-title" title="${esc(b.title)}">${esc(b.title)}</h3>
     <div class="beat-meta">
-      ${b.genre ? `<span class="beat-tag genre">${esc(b.genre)}</span>` : ''}
-      ${b.bpm ? `<span class="beat-tag bpm">${b.bpm} BPM</span>` : ''}
-      ${b.key ? `<span class="beat-tag key">${esc(b.key)}</span>` : ''}
+      ${b.genre?`<span class="btag genre" onclick="event.stopPropagation();setGenreFilter('${b.genre}')" role="button" title="Filter by ${b.genre}">${esc(b.genre)}</span>`:''}
+      ${b.bpm?`<span class="btag bpm">${b.bpm} BPM</span>`:''}
+      ${b.key?`<span class="btag key">${esc(b.key)}</span>`:''}
     </div>
     <div class="beat-prices">
-      <button class="price-btn${leaseInCart ? ' in-cart' : ''}" onclick="event.stopPropagation();addToCart('${b.id}','lease')">
-        <span class="price-label">${leaseInCart ? '✓ LEASE' : 'LEASE'}</span>
-        <span class="price-value">$${Number(b.lease_price || 29.99).toFixed(2)}</span>
+      <button class="price-btn${lInCart?' in-cart':''}" onclick="event.stopPropagation();addToCart('${b.id}','lease')" aria-label="Add lease to cart">
+        <span class="price-lbl">${lInCart?'✓ ':''} Lease</span>
+        <span class="price-val">$${fmt$(b.lease_price||29.99)}</span>
       </button>
-      <button class="price-btn${premInCart ? ' in-cart' : ''}" onclick="event.stopPropagation();addToCart('${b.id}','premium')">
-        <span class="price-label">${premInCart ? '✓ PREMIUM' : 'PREMIUM'}</span>
-        <span class="price-value">$${Number(b.premium_price || 99.99).toFixed(2)}</span>
+      <button class="price-btn${pInCart?' in-cart':''}" onclick="event.stopPropagation();addToCart('${b.id}','premium')" aria-label="Add premium lease to cart">
+        <span class="price-lbl">${pInCart?'✓ ':''} Premium</span>
+        <span class="price-val">$${fmt$(b.premium_price||99.99)}</span>
       </button>
-      ${b.stems_price ? `
-      <button class="price-btn${stemsInCart ? ' in-cart' : ''}" onclick="event.stopPropagation();addToCart('${b.id}','stems')">
-        <span class="price-label">${stemsInCart ? '✓ STEMS' : 'STEMS'}</span>
-        <span class="price-value">$${Number(b.stems_price).toFixed(2)}</span>
-      </button>` : ''}
+      <button class="price-btn" onclick="event.stopPropagation();openDetail('${b.id}')" aria-label="View all licenses for ${esc(b.title)}" style="background:rgba(230,57,70,.08);border-color:rgba(230,57,70,.2)">
+        <span class="price-lbl" style="color:var(--accent)">More</span>
+        <span class="price-val" style="color:var(--accent);font-size:16px">+</span>
+      </button>
     </div>
   </div>
-</div>`;
+</article>`;
 }
 
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// ── Beat Detail Modal ──
+function openDetail(id) {
+  const b = allBeats.find(x=>x.id===id);
+  if (!b) return;
+  const cartIds = cart.map(c=>c.beatId+'_'+c.licenseType);
+  // Update URL
+  history.pushState(null,'',`?beat=${id}`);
+  // Update og meta for sharing
+  document.title = `${b.title} — Buy ${b.genre||'Rap'} Beat | O'Neil Beats`;
+  // Cover
+  const coverHTML = b.cover_url ? `<img class="detail-cover" src="${esc(b.cover_url)}" alt="${esc(b.title)} instrumental cover">` : `<div class="detail-cover-ph"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1" opacity=".2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`;
+  const isNowPlaying = currentBeat?.id===id;
+  document.getElementById('detail-top').innerHTML = `
+    ${coverHTML}
+    <div class="detail-info">
+      <h2 class="detail-title" id="detail-title">${esc(b.title)}</h2>
+      <div class="detail-meta">
+        ${b.genre?`<span class="btag genre">${esc(b.genre)}</span>`:''}
+        ${b.subgenre?`<span class="btag" style="color:var(--dim);background:var(--surface2)">${esc(b.subgenre)}</span>`:''}
+        ${b.bpm?`<span class="btag bpm">${b.bpm} BPM</span>`:''}
+        ${b.key?`<span class="btag key">${esc(b.key)}</span>`:''}
+        ${b.mood?`<span class="btag mood">${esc(b.mood)}</span>`:''}
+      </div>
+      <div class="detail-play">
+        <button class="detail-play-btn" onclick="playBeat('${b.id}')" aria-label="${isNowPlaying&&isPlaying?'Pause':'Play'} preview">
+          ${isNowPlaying&&isPlaying ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>` : `<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>`}
+        </button>
+        <span class="detail-play-label">${isNowPlaying&&isPlaying?'Now Playing — click to pause':'Preview beat'}</span>
+      </div>
+    </div>`;
+  const licCards = [
+    {id:'lease',cls:'lic-lease',name:'Lease',price:b.lease_price||29.99,feats:['MP3 file included','Up to 100K streams','Up to 10K downloads','Non-exclusive rights','Credit: Prod. by O\'Neil']},
+    {id:'premium',cls:'lic-premium',name:'Premium Lease',price:b.premium_price||99.99,feats:['MP3 + WAV files','Unlimited streams','Radio distribution','Non-exclusive rights','Credit required']},
+    ...(b.stems_price?[{id:'stems',cls:'lic-stems',name:'Stems / Track Out',price:b.stems_price,feats:['All stems separated','Full DAW control','Unlimited streams','Non-exclusive rights','Credit required']}]:[]),
+    ...(b.exclusive_price?[{id:'exclusive',cls:'lic-excl exclusive-card',name:'Exclusive',price:b.exclusive_price,feats:['All files included','Full ownership','Beat removed from store','No credit required','100% royalty control']}]:[]),
+  ];
+  const tags = b.tags ? (typeof b.tags==='string' ? b.tags.split(',').map(t=>t.trim()).filter(Boolean) : b.tags) : [];
+  document.getElementById('detail-body').innerHTML = `
+    <div class="license-section-title">Choose Your License</div>
+    <div class="license-cards">
+      ${licCards.map(l=>{const inCart=cartIds.includes(b.id+'_'+l.id);return `
+      <div class="lic-card ${l.cls}${inCart?' in-cart':''}" onclick="addToCart('${b.id}','${l.id}')">
+        <div class="lic-name">${l.name}</div>
+        <div class="lic-price">$${fmt$(l.price)}<span>/one-time</span></div>
+        <ul class="lic-features">${l.feats.map(f=>`<li>${f}</li>`).join('')}</ul>
+        <button class="lic-add-btn" aria-label="Add ${l.name} to cart">${inCart?'✓ Added to Cart':'Add to Cart'}</button>
+      </div>`}).join('')}
+    </div>
+    ${tags.length?`<div class="detail-tags"><div class="detail-tags-label">TAGS</div><div class="tags-wrap">${tags.map(t=>`<button class="tag-chip" onclick="closeDetail();filterByTag('${esc(t)}')">${esc(t)}</button>`).join('')}</div></div>`:''}
+    <div class="detail-share">
+      <button class="share-btn" onclick="shareBeat('${b.id}','${esc(b.title)}')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Share This Beat
+      </button>
+      <button class="share-btn" onclick="playBeat('${b.id}');closeDetail()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Preview
+      </button>
+    </div>`;
+  document.getElementById('detail-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  track('view_beat', {beatId:id, beatTitle:b.title});
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  history.pushState(null,'','?');
+  document.title = "Buy Rap Beats & Instrumentals Online | O'Neil Beats";
+}
+function closeDetailOnBg(e) { if (e.target === document.getElementById('detail-overlay')) closeDetail(); }
+
+function filterByTag(tag) {
+  document.getElementById('search-input').value = tag;
+  filterBeats();
+  document.getElementById('catalog').scrollIntoView({behavior:'smooth'});
+}
+
+function shareBeat(id, title) {
+  const url = `https://oneilbeats.store/?beat=${id}`;
+  if (navigator.share) { navigator.share({title:`${title} — O'Neil Beats`, url}); }
+  else { navigator.clipboard.writeText(url).then(()=>showToast('Link copied!','success')); }
+}
 
 // ── Playback ──
 function playBeat(id) {
-  const beat = allBeats.find(b => b.id === id);
-  if (!beat) return;
-  const audioUrl = beat.audio_url || beat.mp3_url;
-  if (!audioUrl) { showToast('No preview available'); return; }
-
-  if (currentBeat && currentBeat.id === id) {
-    togglePlay(); return;
-  }
-  currentBeat = beat;
-  audio.src = audioUrl;
-  audio.play().then(() => {
-    isPlaying = true;
-    showPlayer();
-    updatePlayerUI();
-    trackPlay(id);
-  }).catch(() => showToast('Could not play preview'));
-  renderGrid();
+  const b = allBeats.find(x=>x.id===id);
+  if (!b) return;
+  const url = b.audio_url || b.mp3_url;
+  if (!url) { showToast('No preview available'); return; }
+  if (currentBeat?.id===id) { togglePlay(); renderGrid(); return; }
+  currentBeat = b;
+  audio.src = url;
+  audio.play().then(()=>{ isPlaying=true; showPlayer(); updatePlayerUI(); track('play',{beatId:id}); renderGrid(); }).catch(()=>showToast('Could not load preview'));
 }
-
 function togglePlay() {
   if (!currentBeat) return;
-  if (isPlaying) { audio.pause(); isPlaying = false; }
-  else { audio.play(); isPlaying = true; }
-  updatePlayerUI();
-  renderGrid();
+  if (isPlaying) { audio.pause(); isPlaying=false; } else { audio.play(); isPlaying=true; }
+  updatePlayerUI(); renderGrid();
 }
-
 function updatePlayerUI() {
-  const beat = currentBeat;
-  if (!beat) return;
-  document.getElementById('player-title').textContent = beat.title;
-  document.getElementById('player-sub').textContent = [beat.genre, beat.bpm ? beat.bpm + ' BPM' : null, beat.key].filter(Boolean).join(' · ');
-  const cover = document.getElementById('player-cover');
-  cover.src = beat.cover_url || '';
-  cover.style.display = beat.cover_url ? 'block' : 'none';
-  document.getElementById('play-icon').style.display = isPlaying ? 'none' : 'block';
-  document.getElementById('pause-icon').style.display = isPlaying ? 'block' : 'none';
+  if (!currentBeat) return;
+  document.getElementById('p-title').textContent = currentBeat.title;
+  document.getElementById('p-meta').textContent = [currentBeat.genre, currentBeat.bpm?currentBeat.bpm+' BPM':null, currentBeat.key].filter(Boolean).join(' · ');
+  const cover = document.getElementById('p-cover');
+  if (currentBeat.cover_url) { cover.src=currentBeat.cover_url; cover.style.display='block'; } else { cover.style.display='none'; }
+  document.getElementById('play-icon').style.display = isPlaying?'none':'block';
+  document.getElementById('pause-icon').style.display = isPlaying?'block':'none';
 }
-
 function showPlayer() { document.getElementById('player-bar').classList.add('visible'); }
-
-audio.addEventListener('timeupdate', () => {
-  if (!audio.duration) return;
-  const pct = (audio.currentTime / audio.duration) * 100;
-  document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('time-current').textContent = fmt(audio.currentTime);
-  document.getElementById('time-total').textContent = fmt(audio.duration);
-});
-audio.addEventListener('ended', () => { isPlaying = false; updatePlayerUI(); renderGrid(); });
-audio.addEventListener('pause', () => { isPlaying = false; updatePlayerUI(); });
-audio.addEventListener('play', () => { isPlaying = true; updatePlayerUI(); });
-
-function seekAudio(e) {
-  if (!audio.duration) return;
-  const bar = document.getElementById('progress-bar');
-  const pct = e.offsetX / bar.offsetWidth;
-  audio.currentTime = pct * audio.duration;
-}
-
-function fmt(s) {
-  if (!s || isNaN(s)) return '0:00';
-  const m = Math.floor(s / 60), ss = Math.floor(s % 60);
-  return `${m}:${ss.toString().padStart(2,'0')}`;
-}
+audio.addEventListener('timeupdate',()=>{ if(!audio.duration)return; const p=(audio.currentTime/audio.duration)*100; document.getElementById('progress-fill').style.width=p+'%'; document.getElementById('t-cur').textContent=fmtT(audio.currentTime); document.getElementById('t-tot').textContent=fmtT(audio.duration); });
+audio.addEventListener('ended',()=>{ isPlaying=false; updatePlayerUI(); renderGrid(); });
+audio.addEventListener('pause',()=>{ isPlaying=false; updatePlayerUI(); });
+audio.addEventListener('play',()=>{ isPlaying=true; updatePlayerUI(); });
+function seekAudio(e) { if(!audio.duration)return; const b=document.getElementById('progress-track'); audio.currentTime=(e.offsetX/b.offsetWidth)*audio.duration; }
+function fmtT(s) { if(!s||isNaN(s))return'0:00'; return`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`; }
 
 // ── Cart ──
 function addToCart(beatId, licenseType) {
-  const beat = allBeats.find(b => b.id === beatId);
-  if (!beat) return;
-  const price = licenseType === 'premium' ? beat.premium_price :
-                licenseType === 'stems'   ? beat.stems_price   :
-                licenseType === 'exclusive' ? beat.exclusive_price : beat.lease_price;
-  const existing = cart.findIndex(c => c.beatId === beatId && c.licenseType === licenseType);
-  if (existing >= 0) { cart.splice(existing, 1); showToast('Removed from cart'); }
-  else {
-    const sameBeat = cart.findIndex(c => c.beatId === beatId);
-    if (sameBeat >= 0) cart.splice(sameBeat, 1);
-    cart.push({ beatId, beatTitle: beat.title, licenseType, price: Number(price), cover: beat.cover_url });
-    showToast(`${beat.title} — ${licenseType.charAt(0).toUpperCase()+licenseType.slice(1)} added!`, 'success');
-  }
-  updateCartBadge();
-  renderGrid();
+  const b = allBeats.find(x=>x.id===beatId);
+  if (!b) return;
+  const price = {lease:b.lease_price||29.99, premium:b.premium_price||99.99, stems:b.stems_price, exclusive:b.exclusive_price}[licenseType];
+  if (!price) return;
+  const sameIdx = cart.findIndex(c=>c.beatId===beatId);
+  const exactIdx = cart.findIndex(c=>c.beatId===beatId&&c.licenseType===licenseType);
+  if (exactIdx>=0) { cart.splice(exactIdx,1); showToast('Removed from cart'); }
+  else { if(sameIdx>=0) cart.splice(sameIdx,1); cart.push({beatId,beatTitle:b.title,licenseType,price:Number(price),cover:b.cover_url}); showToast(`${b.title} — ${licenseType} added!`,'success'); }
+  updateCartBadge(); renderGrid();
+  if (document.getElementById('detail-overlay').classList.contains('open')) openDetail(beatId);
 }
-
-function addCurrentToCart(lt) { if (currentBeat) addToCart(currentBeat.id, lt); }
-
-function updateCartBadge() {
-  const badge = document.getElementById('cart-badge');
-  badge.textContent = cart.length;
-  badge.style.display = cart.length ? 'flex' : 'none';
-}
-
-function openCart() {
-  document.getElementById('cart-modal').classList.add('open');
-  renderCartBody();
-}
+function updateCartBadge() { const badge=document.getElementById('cart-badge'); badge.textContent=cart.length; badge.style.display=cart.length?'flex':'none'; }
+function openCart() { document.getElementById('cart-modal').classList.add('open'); renderCartBody(); }
 function closeCart() { document.getElementById('cart-modal').classList.remove('open'); }
+function closeCartOnBg(e) { if(e.target===document.getElementById('cart-modal'))closeCart(); }
 
 function renderCartBody() {
-  const body = document.getElementById('cart-body');
-  const footer = document.getElementById('cart-footer');
-  if (!cart.length) {
-    body.innerHTML = '<div class="cart-empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="1.5" style="margin-bottom:12px;display:block;margin-inline:auto"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.97 1.61h9.72a2 2 0 001.97-1.61L23 6H6"/></svg><p>Your cart is empty</p><p style="font-size:12px;margin-top:6px">Add beats to get started</p></div>';
-    footer.style.display = 'none'; return;
-  }
-  const licenseLabels = { lease: 'Lease', premium: 'Premium Lease', stems: 'Stems (Track Out)', exclusive: 'Exclusive' };
-  body.innerHTML = cart.map((item, i) => `
-<div class="cart-item">
-  ${item.cover ? `<img class="cart-item-cover" src="${item.cover}" alt="">` : '<div class="cart-item-cover"></div>'}
-  <div class="cart-item-info">
-    <div class="cart-item-title">${esc(item.beatTitle)}</div>
-    <div class="cart-item-license">${licenseLabels[item.licenseType] || item.licenseType}</div>
-  </div>
-  <div class="cart-item-price">$${item.price.toFixed(2)}</div>
-  <button class="cart-item-remove" onclick="removeCartItem(${i})">×</button>
-</div>`).join('');
-  const total = cart.reduce((s, c) => s + c.price, 0);
-  document.getElementById('cart-total-price').textContent = '$' + total.toFixed(2);
-  footer.style.display = 'block';
+  const body=document.getElementById('cart-body'), footer=document.getElementById('cart-footer');
+  const licLabels={lease:'Lease',premium:'Premium Lease',stems:'Stems / Track Out',exclusive:'Exclusive'};
+  if (!cart.length) { body.innerHTML='<div class="cart-empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="1.5" style="margin:0 auto 12px;display:block"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.97 1.61h9.72a2 2 0 001.97-1.61L23 6H6"/></svg><p>Your cart is empty</p><p style="font-size:12px;margin-top:4px">Add beats to get started</p></div>'; footer.style.display='none'; return; }
+  body.innerHTML = cart.map((item,i)=>`<div class="cart-item">${item.cover?`<img class="ci-cover" src="${item.cover}" alt="">`:'<div class="ci-cover"></div>'}<div class="ci-info"><div class="ci-title">${esc(item.beatTitle)}</div><div class="ci-lic">${licLabels[item.licenseType]||item.licenseType}</div></div><div class="ci-price">$${item.price.toFixed(2)}</div><button class="ci-remove" onclick="removeCartItem(${i})" aria-label="Remove">×</button></div>`).join('');
+  const total=cart.reduce((s,c)=>s+c.price,0);
+  footer.style.display='block';
+  footer.innerHTML=`
+    <div class="lic-info-grid">
+      <div class="lic-info-row"><span class="lic-dot" style="background:var(--gold)"></span><span><strong>Lease</strong> — MP3, up to 100K streams, non-exclusive</span></div>
+      <div class="lic-info-row"><span class="lic-dot" style="background:var(--purple)"></span><span><strong>Premium</strong> — MP3+WAV, unlimited streams, radio ready</span></div>
+      <div class="lic-info-row"><span class="lic-dot" style="background:var(--green)"></span><span><strong>Stems</strong> — All tracks separated, full production control</span></div>
+    </div>
+    <div class="cart-total-row"><span>Total</span><span>$${total.toFixed(2)}</span></div>
+    <label class="field-label" for="checkout-email">Your email (for delivery)</label>
+    <input class="text-input" id="checkout-email" type="email" placeholder="yourname@email.com">
+    <div class="promo-row"><input class="text-input" id="promo-input" type="text" placeholder="Promo code (optional)"><button class="promo-apply" onclick="applyPromo()">Apply</button></div>
+    <div id="promo-msg" style="font-size:12px;color:var(--green);margin-bottom:10px;display:none"></div>
+    <button class="checkout-btn" id="checkout-btn" onclick="startCheckout()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>
+      Secure Checkout — $${total.toFixed(2)}
+    </button>
+    <p class="checkout-note">Stripe secured · Instant delivery to email</p>`;
 }
-
-function removeCartItem(i) {
-  cart.splice(i, 1);
-  updateCartBadge();
-  renderGrid();
-  renderCartBody();
-}
+function removeCartItem(i) { cart.splice(i,1); updateCartBadge(); renderGrid(); renderCartBody(); }
+function applyPromo() { showToast('No promo code found','err'); }
 
 // ── Checkout ──
 async function startCheckout() {
-  const email = document.getElementById('checkout-email').value.trim();
-  if (!email || !email.includes('@')) { showToast('Enter a valid email'); return; }
+  const email=(document.getElementById('checkout-email')?.value||'').trim();
+  if (!email||!email.includes('@')) { showToast('Enter a valid email address'); return; }
   if (!cart.length) return;
-  const btn = document.getElementById('checkout-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-color:rgba(255,255,255,.3);border-top-color:#fff"></div> Processing...';
+  const btn=document.getElementById('checkout-btn');
+  btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:18px;height:18px;border-color:rgba(255,255,255,.3);border-top-color:#fff"></div> Processing…';
   try {
-    const res = await fetch(`${API}/checkout`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        customerEmail: email,
-        cartItems: cart.map(c => ({ beatId: c.beatId, beatTitle: c.beatTitle, licenseType: c.licenseType, price: c.price })),
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Checkout failed');
-    if (data.url) window.location.href = data.url;
-  } catch (e) {
-    showToast('Checkout error: ' + e.message);
-    btn.disabled = false;
-    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg> Proceed to Checkout';
-  }
+    const r=await fetch(`${API}/checkout`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customerEmail:email,cartItems:cart.map(c=>({beatId:c.beatId,beatTitle:c.beatTitle,licenseType:c.licenseType,price:c.price}))})});
+    const d=await r.json();
+    if (!r.ok) throw new Error(d.error||'Checkout failed');
+    if (d.url) window.location.href=d.url;
+  } catch(e) { showToast('Checkout error: '+e.message,'err'); btn.disabled=false; btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg> Secure Checkout'; }
 }
+
+// ── Order Lookup ──
+async function lookupOrders() {
+  const email=(document.getElementById('order-email')?.value||'').trim();
+  if (!email||!email.includes('@')) { showToast('Enter your email address'); return; }
+  const el=document.getElementById('order-results');
+  el.innerHTML='<div class="loading" style="padding:20px 0"><div class="spinner"></div> Looking up orders…</div>';
+  try {
+    const r=await fetch(`${API}/orders/lookup?email=${encodeURIComponent(email)}`);
+    const d=await r.json();
+    const orders=d.orders||[];
+    if (!orders.length) { el.innerHTML='<p style="color:var(--dim);font-size:13px;margin-top:16px;text-align:center">No orders found for that email.</p>'; return; }
+    el.innerHTML=orders.map(o=>`<div class="order-item"><div class="order-item-title">${esc(o.beat_title||'Beat')} — ${(o.license_type||'lease').charAt(0).toUpperCase()+(o.license_type||'lease').slice(1)}</div><div class="order-item-sub">Ordered ${new Date(o.created_at).toLocaleDateString()}</div>${o.download_url?`<a class="dl-btn" href="${o.download_url}" download><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download</a>`:'<p style="font-size:12px;color:var(--dim)">Download link expired — contact produceroneil@gmail.com</p>'}</div>`).join('');
+  } catch(e) { el.innerHTML='<p style="color:var(--dim);font-size:13px;margin-top:16px">Could not look up orders. Try again.</p>'; }
+}
+
+// ── Email Capture ──
+async function submitEmailCapture() {
+  const email=(document.getElementById('email-cap-input')?.value||'').trim();
+  const msg=document.getElementById('email-cap-msg');
+  if (!email||!email.includes('@')) { showToast('Enter a valid email'); return; }
+  try {
+    await fetch(`${API}/customer/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,source:'web_capture'})});
+    msg.textContent='🎉 You\'re in! Check your email for your free beat.'; msg.style.display='block'; msg.style.color='var(--green)';
+    document.getElementById('email-cap-input').value='';
+    track('email_capture',{email});
+  } catch(e) { showToast('Something went wrong — try again'); }
+}
+
+// ── FAQ ──
+function toggleFaq(el) { el.closest('.faq-item').classList.toggle('open'); }
 
 // ── Analytics ──
-function trackPlay(beatId) {
-  fetch(`${API}/customer/track`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'play', data: { beatId, source: 'web' } }),
-  }).catch(() => {});
+function track(action, data) {
+  fetch(`${API}/customer/track`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,data:{...data,source:'web'}})}).catch(()=>{});
 }
 
-// ── Toast ──
-let toastTimer;
-function showToast(msg, type) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show' + (type ? ' ' + type : '');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
-}
+// ── Utils ──
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmt$(n) { return Number(n).toFixed(2); }
+let toastT;
+function showToast(msg,type) { const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'+(type?' '+type:''); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3000); }
 
-// Close cart on bg click
-document.getElementById('cart-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeCart();
-});
-
+// Boot
 loadBeats();
 </script>
 </body>
