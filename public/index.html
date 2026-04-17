@@ -38,6 +38,7 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Where can I buy reggaeton beats online?","acceptedAnswer":{"@type":"Answer","text":"You can buy reggaeton beats directly at oneilbeats.store. We offer modern reggaeton, perreo, dembow, and old school reggaeton instrumentals with instant MP3/WAV delivery. Leases start at $29.99."}},{"@type":"Question","name":"Where can I buy trap beats online?","acceptedAnswer":{"@type":"Answer","text":"Trap beats, drill beats, and Latin trap instrumentals are available at oneilbeats.store. Every trap beat includes a Lease, Premium Lease, Stems, and Exclusive license option."}},{"@type":"Question","name":"What types of beats do you sell?","acceptedAnswer":{"@type":"Answer","text":"We sell Reggaeton, Trap, Drill, Latin Trap, Boom Bap, Lo-Fi, R&B, Afrobeats, Dembow, and Perreo beats. All are available in multiple license tiers."}},{"@type":"Question","name":"What is included with a Lease license?","acceptedAnswer":{"@type":"Answer","text":"A Lease license includes an MP3 file, non-exclusive rights, up to 100,000 streams and 10,000 downloads. Producer credit required: Prod. by O'Neil."}},{"@type":"Question","name":"What is a Premium Lease?","acceptedAnswer":{"@type":"Answer","text":"A Premium Lease includes MP3 + WAV high-quality audio files, non-exclusive rights, unlimited streams, and radio distribution rights."}},{"@type":"Question","name":"What does Stems / Track Out include?","acceptedAnswer":{"@type":"Answer","text":"Stems (Track Out) includes all individual track stems separated — drums, melody, bass, 808s — giving you full production control in your DAW."}},{"@type":"Question","name":"What is an Exclusive license?","acceptedAnswer":{"@type":"Answer","text":"An Exclusive license gives you full ownership of the beat. It is removed from the store so no one else can buy it. No producer credit required."}},{"@type":"Question","name":"How do I receive my beats after purchase?","acceptedAnswer":{"@type":"Answer","text":"All beats are delivered instantly to your email after payment. Download links arrive within seconds of checkout."}},{"@type":"Question","name":"Can I use these beats on YouTube, Spotify, and Apple Music?","acceptedAnswer":{"@type":"Answer","text":"Yes. Lease licenses cover up to 100K streams. Premium Lease and above cover unlimited streaming on YouTube, Spotify, Apple Music, Tidal, SoundCloud and all platforms."}},{"@type":"Question","name":"¿Dónde puedo comprar beats de reggaeton?","acceptedAnswer":{"@type":"Answer","text":"En oneilbeats.store puedes comprar beats de reggaeton, perreo, dembow y trap latino. Entrega inmediata por email. Licencias desde $29.99."}}]}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#06060a;--surface:#0e0e16;--surface2:#14141f;--surface3:#1c1c2a;--accent:#e63946;--gold:#f59e0b;--purple:#8b5cf6;--green:#10b981;--text:#e2e8f0;--dim:#64748b;--border:rgba(255,255,255,0.07);--radius:14px;--radius-sm:8px;--player-h:80px}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -66,9 +67,55 @@ header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-fi
 .header-nav a{font-size:13px;font-weight:600;color:var(--dim);text-decoration:none;transition:color .15s}
 .header-nav a:hover{color:var(--text)}
 .header-right{display:flex;align-items:center;gap:10px}
-.cart-btn{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 16px;cursor:pointer;font-size:13px;font-weight:700;color:var(--text);transition:all .15s;position:relative;font-family:inherit}
+.cart-btn{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 16px;cursor:pointer;font-size:13px;font-weight:700;color:var(--text);transition:all .15s;position:relative;font-family:inherit;min-height:38px}
 .cart-btn:hover{border-color:var(--accent);color:var(--accent)}
 .cart-badge{background:var(--accent);color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:none;align-items:center;justify-content:center;position:absolute;top:-6px;right:-6px;padding:0 4px}
+/* ── Account button + dropdown ── */
+.acct-wrap{position:relative}
+.acct-btn{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;cursor:pointer;font-size:13px;font-weight:700;color:var(--text);font-family:inherit;transition:all .15s;min-height:38px}
+.acct-btn:hover{border-color:var(--accent);color:var(--accent)}
+.acct-avatar{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--gold));color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;overflow:hidden;flex-shrink:0}
+.acct-avatar img{width:100%;height:100%;object-fit:cover}
+.acct-name{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.acct-menu{position:absolute;right:0;top:calc(100% + 8px);min-width:220px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 20px 60px rgba(0,0,0,.6);padding:6px;display:none;z-index:300}
+.acct-menu.open{display:block}
+.acct-menu-header{padding:10px 12px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.acct-menu-email{font-size:12px;color:var(--text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acct-menu-sub{font-size:10px;color:var(--dim);margin-top:2px}
+.acct-menu-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;background:none;border:none;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;border-radius:6px;font-family:inherit;text-align:left;text-decoration:none}
+.acct-menu-item:hover{background:var(--surface2);color:var(--accent)}
+.acct-menu-item svg{color:var(--dim);flex-shrink:0}
+.acct-menu-item:hover svg{color:var(--accent)}
+.acct-menu-divider{height:1px;background:var(--border);margin:4px 0}
+/* ── Mobile hamburger ── */
+.menu-toggle{display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);width:38px;height:38px;align-items:center;justify-content:center;cursor:pointer;color:var(--text);font-family:inherit}
+.menu-toggle:hover{border-color:var(--accent);color:var(--accent)}
+/* ── Auth Modal ── */
+.auth-modal{background:var(--surface);border-radius:var(--radius);width:100%;max-width:420px;padding:28px 24px;position:relative}
+.auth-close{position:absolute;top:14px;right:14px;background:var(--surface2);border:none;width:32px;height:32px;border-radius:50%;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.auth-close:hover{background:var(--accent);color:#fff}
+.auth-title{font-size:22px;font-weight:900;margin-bottom:6px;letter-spacing:-.4px}
+.auth-sub{font-size:12px;color:var(--dim);margin-bottom:22px}
+.auth-google{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#1a1a1a;border:none;border-radius:var(--radius-sm);padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;margin-bottom:14px;min-height:46px}
+.auth-google:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(255,255,255,.12)}
+.auth-divider{display:flex;align-items:center;gap:10px;font-size:10px;color:var(--dim);font-weight:700;letter-spacing:1.5px;margin:14px 0}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.auth-field{margin-bottom:10px}
+.auth-label{font-size:11px;color:var(--dim);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px;display:block}
+.auth-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 14px;color:var(--text);font-size:14px;outline:none;font-family:inherit;transition:border-color .15s;min-height:44px}
+.auth-input:focus{border-color:var(--accent)}
+.auth-submit{width:100%;background:linear-gradient(135deg,var(--accent),#ff4d5a);color:#fff;border:none;border-radius:var(--radius-sm);padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:8px;min-height:48px;transition:all .15s}
+.auth-submit:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(230,57,70,.4)}
+.auth-submit:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.auth-toggle{font-size:12px;color:var(--dim);text-align:center;margin-top:14px}
+.auth-toggle a{color:var(--accent);font-weight:700;text-decoration:none;cursor:pointer}
+.auth-toggle a:hover{text-decoration:underline}
+.auth-error{background:rgba(230,57,70,.1);border:1px solid rgba(230,57,70,.3);color:var(--accent);padding:10px 12px;border-radius:6px;font-size:12px;margin-bottom:12px;display:none}
+.auth-error.show{display:block}
+.auth-success{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--green);padding:10px 12px;border-radius:6px;font-size:12px;margin-bottom:12px;display:none}
+.auth-success.show{display:block}
+.auth-forgot{font-size:11px;color:var(--dim);text-align:right;margin-top:-4px;margin-bottom:4px;cursor:pointer;font-weight:600}
+.auth-forgot:hover{color:var(--accent)}
 
 /* ── Elegant Hero Banner — Carousel-first ── */
 .hero-banner{position:relative;overflow:hidden;border-bottom:1px solid var(--border)}
@@ -416,9 +463,17 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
   .feat-card.sz-near{width:180px}
   .feat-card.sz-side{width:140px}
 }
-@media(max-width:768px){
-  header{padding:0 14px;height:54px}
+@media(max-width:860px){
   .header-nav{display:none}
+  .menu-toggle{display:flex}
+  .header-nav.mobile-open{display:flex;position:fixed;top:64px;left:0;right:0;bottom:0;background:rgba(6,6,10,.98);backdrop-filter:blur(20px);flex-direction:column;align-items:stretch;padding:24px;gap:0;z-index:200;overflow-y:auto}
+  .header-nav.mobile-open a{padding:16px 4px;font-size:16px;border-bottom:1px solid var(--border);color:var(--text)}
+  .acct-name{display:none}
+  .cart-btn span:not(.cart-badge){display:none}
+  .cart-btn{padding:7px 10px}
+}
+@media(max-width:768px){
+  header{padding:0 12px;height:60px}
   .hero-inner{padding:18px 10px}
   .hero-tagline{font-size:14px}
   .feat-card.sz-center{width:200px}
@@ -456,23 +511,67 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
       <div class="logo-sub">BEATS STORE</div>
     </div>
   </a>
-  <nav class="header-nav" aria-label="Main navigation">
-    <a href="#catalog">Beats</a>
-    <a href="#" onclick="event.preventDefault();setGenreFilter('Reggaeton')">Reggaeton</a>
-    <a href="#" onclick="event.preventDefault();setGenreFilter('Trap')">Trap</a>
-    <a href="#" onclick="event.preventDefault();setGenreFilter('Hip-Hop')">Hip-Hop</a>
-    <a href="#" onclick="event.preventDefault();setGenreFilter('Drill')">Drill</a>
-    <a href="#faq">FAQ</a>
-    <a href="#orders">My Orders</a>
+  <nav class="header-nav" id="header-nav" aria-label="Main navigation">
+    <a href="#catalog" onclick="closeMobileNav()">Beats</a>
+    <a href="#" onclick="event.preventDefault();setGenreFilter('Reggaeton');closeMobileNav()">Reggaeton</a>
+    <a href="#" onclick="event.preventDefault();setGenreFilter('Trap');closeMobileNav()">Trap</a>
+    <a href="#" onclick="event.preventDefault();setGenreFilter('Hip-Hop');closeMobileNav()">Hip-Hop</a>
+    <a href="#" onclick="event.preventDefault();setGenreFilter('Drill');closeMobileNav()">Drill</a>
+    <a href="#faq" onclick="closeMobileNav()">FAQ</a>
+    <a href="#orders" onclick="closeMobileNav()">My Orders</a>
   </nav>
   <div class="header-right">
+    <div class="acct-wrap">
+      <button class="acct-btn" id="acct-btn" onclick="toggleAcctMenu(event)" aria-label="Account">
+        <span class="acct-avatar" id="acct-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+        <span class="acct-name" id="acct-name">Sign In</span>
+      </button>
+      <div class="acct-menu" id="acct-menu"></div>
+    </div>
     <button class="cart-btn" onclick="openCart()" aria-label="Open cart">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.97 1.61h9.72a2 2 0 001.97-1.61L23 6H6"/></svg>
-      Cart
+      <span>Cart</span>
       <span class="cart-badge" id="cart-badge">0</span>
+    </button>
+    <button class="menu-toggle" onclick="toggleMobileNav()" aria-label="Open menu">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
   </div>
 </header>
+
+<!-- Auth Modal -->
+<div class="overlay" id="auth-overlay" onclick="closeAuthOnBg(event)" aria-hidden="true">
+  <div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <button class="auth-close" onclick="closeAuth()" aria-label="Close">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h2 class="auth-title" id="auth-title">Sign in</h2>
+    <p class="auth-sub" id="auth-sub">Track your orders, save favorites, get exclusive drops.</p>
+    <div class="auth-error" id="auth-error"></div>
+    <div class="auth-success" id="auth-success"></div>
+    <button class="auth-google" onclick="signInGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 8 3l5.7-5.7C34 6.3 29.3 4.5 24 4.5 13.2 4.5 4.5 13.2 4.5 24S13.2 43.5 24 43.5c10.8 0 19.5-8.7 19.5-19.5 0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16.1 19 13.5 24 13.5c3 0 5.8 1.1 8 3l5.7-5.7C34 6.3 29.3 4.5 24 4.5 16.3 4.5 9.7 8.8 6.3 14.7z"/><path fill="#4CAF50" d="M24 43.5c5.2 0 9.9-1.7 13.4-4.7l-6.2-5.2c-2 1.5-4.5 2.4-7.2 2.4-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.6 39.2 16.3 43.5 24 43.5z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.6l6.2 5.2C42 35.2 43.5 30 43.5 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+      Continue with Google
+    </button>
+    <div class="auth-divider">OR</div>
+    <form id="auth-form" onsubmit="submitAuth(event)">
+      <div class="auth-field">
+        <label class="auth-label" for="auth-email">Email</label>
+        <input class="auth-input" id="auth-email" type="email" autocomplete="email" required>
+      </div>
+      <div class="auth-field">
+        <label class="auth-label" for="auth-password">Password</label>
+        <input class="auth-input" id="auth-password" type="password" autocomplete="current-password" minlength="6" required>
+      </div>
+      <div class="auth-forgot" onclick="forgotPassword()" id="auth-forgot-link">Forgot password?</div>
+      <button class="auth-submit" type="submit" id="auth-submit">Sign in</button>
+    </form>
+    <div class="auth-toggle">
+      <span id="auth-toggle-text">New here?</span>
+      <a id="auth-toggle-link" onclick="toggleAuthMode()">Create an account</a>
+    </div>
+  </div>
+</div>
 
 <!-- Elegant Hero Banner with Cover Art Showcase -->
 <section class="hero-banner" aria-label="Hero">
@@ -806,10 +905,16 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
 
 <script>
 const API = 'https://oneil-beats-backend.vercel.app';
+const SUPABASE_URL = 'https://thmqqplnrjwimgqubkhp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRobXFxcGxucmp3aW1ncXVia2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzMxMjgsImV4cCI6MjA5MTE0OTEyOH0.jjnJ9wPNq-vqkku80T1HydTGrqMhKeQsfbJThhHyDi8';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
 const GENRE_ICONS = {Reggaeton:'🔥',Trap:'💣',Drill:'🧊','Boom Bap':'🎤','Lo-Fi':'☁️','R&B':'💜',Afrobeats:'🌍',Dancehall:'🎶','Hip-Hop':'🎵',Pop:'⭐',default:'🎧'};
 let allBeats = [], filteredBeats = [], cart = [], currentBeat = null, isPlaying = false;
 let activeGenre = null, activeMood = null;
 let viewMode = localStorage.getItem('ob_view') || 'grid';
+let currentUser = null;
+let favorites = new Set();
+let authMode = 'signin';
 const audio = document.getElementById('audio-el');
 
 function setView(mode) {
@@ -1255,7 +1360,8 @@ async function startCheckout() {
 }
 
 async function lookupOrders() {
-  const email=(document.getElementById('order-email')?.value||'').trim();
+  let email=(document.getElementById('order-email')?.value||'').trim();
+  if (!email && currentUser?.email) email = currentUser.email;
   if (!email||!email.includes('@')) { showToast('Enter your email address'); return; }
   const el=document.getElementById('order-results');
   el.innerHTML='<div class="loading" style="padding:20px 0"><div class="spinner"></div> Looking up orders…</div>';
@@ -1283,6 +1389,194 @@ function fmt$(n) { return Number(n).toFixed(2); }
 let toastT;
 function showToast(msg,type) { const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'+(type?' '+type:''); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3000); }
 
+// ───────────── AUTH ─────────────
+function openAuth(mode) {
+  setAuthMode(mode || 'signin');
+  document.getElementById('auth-overlay').classList.add('open');
+  document.getElementById('auth-error').classList.remove('show');
+  document.getElementById('auth-success').classList.remove('show');
+  setTimeout(() => document.getElementById('auth-email').focus(), 50);
+}
+function closeAuth() { document.getElementById('auth-overlay').classList.remove('open'); }
+function closeAuthOnBg(e) { if (e.target === document.getElementById('auth-overlay')) closeAuth(); }
+function setAuthMode(mode) {
+  authMode = mode;
+  const isUp = mode === 'signup';
+  document.getElementById('auth-title').textContent = isUp ? 'Create account' : 'Sign in';
+  document.getElementById('auth-sub').textContent = isUp
+    ? 'Join to track orders, save favorites, and get exclusive drops.'
+    : 'Track your orders, save favorites, get exclusive drops.';
+  document.getElementById('auth-submit').textContent = isUp ? 'Create account' : 'Sign in';
+  document.getElementById('auth-toggle-text').textContent = isUp ? 'Already have an account?' : 'New here?';
+  document.getElementById('auth-toggle-link').textContent = isUp ? 'Sign in' : 'Create an account';
+  document.getElementById('auth-forgot-link').style.display = isUp ? 'none' : 'block';
+  document.getElementById('auth-password').setAttribute('autocomplete', isUp ? 'new-password' : 'current-password');
+}
+function toggleAuthMode() { setAuthMode(authMode === 'signin' ? 'signup' : 'signin'); }
+function authError(msg) { const e=document.getElementById('auth-error'); e.textContent = msg; e.classList.add('show'); document.getElementById('auth-success').classList.remove('show'); }
+function authSuccess(msg) { const e=document.getElementById('auth-success'); e.textContent = msg; e.classList.add('show'); document.getElementById('auth-error').classList.remove('show'); }
+
+async function submitAuth(ev) {
+  ev.preventDefault();
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const btn = document.getElementById('auth-submit');
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    if (authMode === 'signup') {
+      const { data, error } = await sb.auth.signUp({ email, password });
+      if (error) throw error;
+      if (data?.session) { closeAuth(); }
+      else { authSuccess('Check your email to confirm your account.'); }
+    } else {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      closeAuth();
+    }
+  } catch (e) { authError(e.message || 'Something went wrong'); }
+  finally { btn.disabled = false; btn.textContent = authMode === 'signup' ? 'Create account' : 'Sign in'; }
+}
+
+async function signInGoogle() {
+  try {
+    const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + window.location.pathname } });
+    if (error) throw error;
+  } catch (e) { authError(e.message || 'Google sign-in failed'); }
+}
+
+async function forgotPassword() {
+  const email = document.getElementById('auth-email').value.trim();
+  if (!email || !email.includes('@')) { authError('Enter your email above first'); return; }
+  try {
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
+    if (error) throw error;
+    authSuccess('Reset link sent — check your inbox.');
+  } catch (e) { authError(e.message || 'Could not send reset email'); }
+}
+
+async function signOut() {
+  await sb.auth.signOut().catch(() => {});
+  currentUser = null;
+  favorites = new Set();
+  renderAccount();
+  closeAcctMenu();
+  showToast('Signed out');
+}
+
+function renderAccount() {
+  const name = document.getElementById('acct-name');
+  const av = document.getElementById('acct-avatar');
+  if (currentUser) {
+    const meta = currentUser.user_metadata || {};
+    const display = meta.full_name || meta.name || currentUser.email?.split('@')[0] || 'Account';
+    name.textContent = display;
+    if (meta.avatar_url) av.innerHTML = `<img src="${esc(meta.avatar_url)}" alt="">`;
+    else av.textContent = (display[0] || '?').toUpperCase();
+  } else {
+    name.textContent = 'Sign In';
+    av.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+  }
+}
+
+function toggleAcctMenu(ev) {
+  ev?.stopPropagation();
+  if (!currentUser) { openAuth('signin'); return; }
+  const m = document.getElementById('acct-menu');
+  const isOpen = m.classList.contains('open');
+  if (isOpen) { closeAcctMenu(); return; }
+  const meta = currentUser.user_metadata || {};
+  const display = meta.full_name || meta.name || currentUser.email?.split('@')[0] || 'Account';
+  m.innerHTML = `
+    <div class="acct-menu-header">
+      <div class="acct-menu-email">${esc(display)}</div>
+      <div class="acct-menu-sub">${esc(currentUser.email || '')}</div>
+    </div>
+    <a class="acct-menu-item" href="#orders" onclick="closeAcctMenu();loadMyOrders()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2h-4v-7H9v7H5a2 2 0 01-2-2z"/></svg>
+      My Orders
+    </a>
+    <a class="acct-menu-item" href="#catalog" onclick="closeAcctMenu();showFavorites()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      My Favorites <span style="margin-left:auto;color:var(--dim);font-size:11px">${favorites.size}</span>
+    </a>
+    <div class="acct-menu-divider"></div>
+    <button class="acct-menu-item" onclick="signOut()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign out
+    </button>`;
+  m.classList.add('open');
+}
+function closeAcctMenu() { document.getElementById('acct-menu').classList.remove('open'); }
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.acct-wrap')) closeAcctMenu();
+});
+
+function loadMyOrders() {
+  if (!currentUser?.email) return;
+  document.getElementById('order-email').value = currentUser.email;
+  document.getElementById('orders').scrollIntoView({ behavior: 'smooth' });
+  setTimeout(lookupOrders, 300);
+}
+
+async function loadFavorites() {
+  if (!currentUser) { favorites = new Set(); return; }
+  try {
+    const r = await fetch(`${API}/favorites?userId=${encodeURIComponent(currentUser.id)}`);
+    const d = await r.json();
+    favorites = new Set((d.favorites || d.beatIds || []).map(x => typeof x === 'string' ? x : x.beatId));
+  } catch(e) { favorites = new Set(); }
+}
+async function toggleFavorite(beatId, ev) {
+  ev?.stopPropagation();
+  if (!currentUser) { openAuth('signin'); return; }
+  const isFav = favorites.has(beatId);
+  if (isFav) favorites.delete(beatId); else favorites.add(beatId);
+  document.querySelectorAll(`[data-fav-id="${beatId}"]`).forEach(el => el.classList.toggle('on', !isFav));
+  try {
+    await fetch(`${API}/favorites`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ userId: currentUser.id, beatId, favorited: !isFav })
+    });
+  } catch(e) {}
+}
+function showFavorites() {
+  if (!favorites.size) { showToast('No favorites yet — tap the heart on any beat'); return; }
+  filteredBeats = allBeats.filter(b => favorites.has(b.id));
+  renderBeats();
+  document.getElementById('catalog-heading').textContent = 'My Favorites';
+  document.getElementById('catalog').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function syncCustomerProfile() {
+  if (!currentUser) return;
+  try {
+    const meta = currentUser.user_metadata || {};
+    await fetch(`${API}/customer/register`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        id: currentUser.id, email: currentUser.email,
+        name: meta.full_name || meta.name || '', phone: currentUser.phone || ''
+      })
+    });
+  } catch (e) {}
+}
+
+sb.auth.onAuthStateChange(async (_event, session) => {
+  currentUser = session?.user || null;
+  renderAccount();
+  if (currentUser) { await syncCustomerProfile(); await loadFavorites(); }
+});
+sb.auth.getSession().then(async ({ data }) => {
+  currentUser = data?.session?.user || null;
+  renderAccount();
+  if (currentUser) { await syncCustomerProfile(); await loadFavorites(); }
+});
+
+// ───────────── MOBILE NAV ─────────────
+function toggleMobileNav() { document.getElementById('header-nav').classList.toggle('mobile-open'); }
+function closeMobileNav() { document.getElementById('header-nav').classList.remove('mobile-open'); }
+
+// ───────────── INIT ─────────────
 setView(viewMode);
 loadBeats();
 </script>
