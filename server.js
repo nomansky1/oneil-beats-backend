@@ -550,7 +550,7 @@ app.get('/admin/analytics', requireAdminKey, async (req, res) => {
     const [evtsRes, favsRes, ordersRes] = await Promise.all([
       supabase.from('customer_events').select('user_id, action, event_data, created_at').gte('created_at', since).limit(50000),
       supabase.from('favorites').select('beat_id, user_id, created_at').gte('created_at', since).limit(20000),
-      supabase.from('orders').select('id, customer_email, total, created_at').gte('created_at', since).limit(10000),
+      supabase.from('orders').select('id, customer_email, total_amount, created_at').gte('created_at', since).limit(10000),
     ]);
     const evts = evtsRes.data || [];
     const favs = favsRes.data || [];
@@ -574,7 +574,7 @@ app.get('/admin/analytics', requireAdminKey, async (req, res) => {
     const favsByBeat = {};
     favs.forEach(f => { favsByBeat[f.beat_id] = (favsByBeat[f.beat_id] || 0) + 1; });
 
-    const revenue = orders.reduce((s, o) => s + (parseFloat(o.total) || 0), 0);
+    const revenue = orders.reduce((s, o) => s + (parseFloat(o.total_amount) || 0), 0);
 
     const topBeats = Object.entries(playsByBeat)
       .sort((a, b) => b[1] - a[1])
@@ -684,7 +684,7 @@ app.get('/admin/orders', requireAdminKey, async (req, res) => {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('orders')
-      .select('id, customer_email, customer_name, total, status, created_at, order_items(beat_id, beat_title, license_type)')
+      .select('id, customer_email, customer_name, total_amount, status, created_at, order_items(beat_id, beat_title, license_type)')
       .order('created_at', { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
