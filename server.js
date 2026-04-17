@@ -126,8 +126,13 @@ async function sendPushNotification(expoPushTokens, title, body, data = {}) {
 }
 
 // ── Express Setup ────────────────────────────────────────────────────────────
+const path = require('path');
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: ['https://oneilbeats.store', 'https://www.oneilbeats.store', /localhost/, /\.vercel\.app$/],
+  credentials: true,
+}));
+app.use(express.static(path.join(__dirname, 'public')));
 // Skip JSON body parsing for raw-body routes (webhook + chunked upload)
 app.use((req, res, next) => {
   if (req.path === '/webhook' || req.path === '/upload/drive-proxy-chunk') return next();
