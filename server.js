@@ -154,6 +154,41 @@ function requireAdminKey(req, res, next) {
   next();
 }
 
+// ── Admin Session: exchange Supabase access_token for admin key ──────────────
+// Lets the Uploader app sign in with Google and auto-receive the admin key if
+// the authenticated email is on the allowlist. No password/admin-key typing.
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'produceroneil@gmail.com')
+  .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+app.post('/admin/session', async (req, res) => {
+  try {
+    const { access_token } = req.body || {};
+    if (!access_token) return res.status(400).json({ error: 'Missing access_token' });
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+      return res.status(500).json({ error: 'Supabase not configured on server' });
+    }
+    const r = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        'Authorization': `Bearer ${access_token}`,
+        'apikey': process.env.SUPABASE_ANON_KEY,
+      },
+    });
+    if (!r.ok) return res.status(401).json({ error: 'Invalid or expired token' });
+    const user = await r.json();
+    const email = (user?.email || '').toLowerCase();
+    if (!email) return res.status(401).json({ error: 'Email not present on user' });
+    if (!ADMIN_EMAILS.includes(email)) {
+      return res.status(403).json({ error: 'Not an authorized admin email' });
+    }
+    if (!process.env.ADMIN_KEY) {
+      return res.status(500).json({ error: 'ADMIN_KEY not set on server' });
+    }
+    return res.json({ adminKey: process.env.ADMIN_KEY, email });
+  } catch (e) {
+    return res.status(500).json({ error: e.message || 'Server error' });
+  }
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // HEALTH / STATUS
 // ──────────────────────────────────────────────────────────────────────────────
