@@ -541,6 +541,58 @@ app.patch('/admin/offers/:id', requireAdminKey, async (req, res) => {
   }
 });
 
+// GET /admin/customers — real customer list with play/favorite/order aggregates
+app.get('/admin/customers', requireAdminKey, async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { data: customers, error: cErr } = await supabase
+      .from('customers')
+      .select('*')
+      .order('last_seen', { ascending: false })
+      .limit(500);
+    if (cErr) {
+      console.warn('customers fetch skipped:', cErr.message);
+      return res.json({ success: true, customers: [] });
+    }
+    const rows = customers || [];
+    const ids = rows.map(c => c.id).filter(Boolean);
+    const playMap = {};
+    const favMap = {};
+    if (ids.length) {
+      try {
+        const { data: evts } = await supabase
+          .from('customer_events')
+          .select('user_id, action')
+          .in('user_id', ids)
+          .limit(20000);
+        (evts || []).forEach(e => {
+          if (e.action === 'play') playMap[e.user_id] = (playMap[e.user_id] || 0) + 1;
+        });
+      } catch (_) {}
+      try {
+        const { data: favs } = await supabase
+          .from('favorites')
+          .select('user_id')
+          .in('user_id', ids);
+        (favs || []).forEach(f => { favMap[f.user_id] = (favMap[f.user_id] || 0) + 1; });
+      } catch (_) {}
+    }
+    const out = rows.map(c => ({
+      id: c.id,
+      email: c.email || '',
+      name: c.name || '',
+      phone: c.phone || '',
+      joined: c.created_at || null,
+      lastActive: c.last_seen || null,
+      plays: playMap[c.id] || 0,
+      favorites: favMap[c.id] || 0,
+    }));
+    res.json({ success: true, customers: out });
+  } catch (err) {
+    res.json({ success: true, customers: [], error: err.message });
+  }
+});
+
 // PUT /admin/licenses — body: { licenses: {lease, premium, stems, exclusive} }
 app.put('/admin/licenses', requireAdminKey, async (req, res) => {
   try {
