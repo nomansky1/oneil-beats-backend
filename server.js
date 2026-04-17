@@ -442,17 +442,22 @@ app.post('/favorites', async (req, res) => {
   }
 });
 
-// POST /promo/check-first-purchase — returns { firstTime: boolean }
-app.post('/promo/check-first-purchase', async (req, res) => {
+// GET/POST /promo/check-first-purchase — email via query or body
+// Returns { eligible, firstTime, paidOrders, promoCode }
+async function checkFirstPurchaseHandler(req, res) {
   try {
-    const { email } = req.body || {};
-    if (!email) return res.json({ firstTime: true });
+    const email = (req.body && req.body.email) || req.query.email;
+    if (!email) return res.json({ eligible: true, firstTime: true, promoCode: 'FIRST10' });
     const orders = await getOrdersByEmail(email);
-    res.json({ firstTime: (orders || []).length === 0, paidOrders: (orders || []).length });
+    const count = (orders || []).length;
+    const firstTime = count === 0;
+    res.json({ eligible: firstTime, firstTime, paidOrders: count, promoCode: 'FIRST10' });
   } catch (err) {
-    res.json({ firstTime: true, error: err.message });
+    res.json({ eligible: true, firstTime: true, promoCode: 'FIRST10', error: err.message });
   }
-});
+}
+app.get('/promo/check-first-purchase', checkFirstPurchaseHandler);
+app.post('/promo/check-first-purchase', checkFirstPurchaseHandler);
 
 // ──────────────────────────────────────────────────────────────────────────────
 // ADMIN BEAT CRUD + LICENSE TERMS
