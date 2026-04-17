@@ -1554,6 +1554,52 @@ app.get('/orders/lookup', async (req, res) => {
 // FILE DOWNLOADS & LICENSE
 // ──────────────────────────────────────────────────────────────────────────────
 
+// GET /preview/:id — stream MP3 preview (proxies Drive/Supabase through backend
+// so the <audio> tag gets a real audio/mpeg stream with proper CORS)
+app.get('/preview/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const beats = await fetchBeatsFromDB();
+    const b = beats.find(x => x.id === id);
+    if (!b) return res.status(404).json({ error: 'Beat not found' });
+    let url = b.audio_url || b.mp3_url;
+    if (!url) return res.status(404).json({ error: 'No preview available' });
+
+    // Normalize Drive links to the direct-download variant
+    const driveMatch = url.match(/drive\.google\.com\/(?:uc\?.*?id=|file\/d\/)([^&/?]+)/);
+    if (driveMatch) url = `https://drive.google.com/uc?export=download&confirm=1&id=${driveMatch[1]}`;
+
+    const upstream = await fetch(url, {
+      headers: req.headers.range ? { Range: req.headers.range } : {},
+      redirect: 'follow',
+    });
+    if (!upstream.ok && upstream.status !== 206) {
+      return res.status(502).json({ error: `Upstream ${upstream.status}` });
+    }
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    const len = upstream.headers.get('content-length');
+    const range = upstream.headers.get('content-range');
+    if (len) res.setHeader('Content-Length', len);
+    if (range) res.setHeader('Content-Range', range);
+    if (upstream.status === 206) res.status(206);
+
+    const reader = upstream.body.getReader();
+    res.on('close', () => { try { reader.cancel(); } catch {} });
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(Buffer.from(value));
+    }
+    res.end();
+  } catch (err) {
+    console.error('Preview stream error:', err);
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+    else res.end();
+  }
+});
+
 // GET /download/:orderId/:beatId — download beat files (mp3, wav, stems)
 app.get('/download/:orderId/:beatId', async (req, res) => {
   try {
