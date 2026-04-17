@@ -267,6 +267,53 @@ header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-fi
 @keyframes favPop{0%{transform:scale(1)}45%{transform:scale(1.35)}100%{transform:scale(1)}}
 .list-view .fav-btn{width:28px;height:28px;top:4px;right:4px}
 .list-view .fav-btn svg{width:14px;height:14px}
+.share-btn-mini{position:absolute;top:8px;left:8px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:3;transition:transform .15s,background .15s;padding:0;opacity:0}
+.beat-card:hover .share-btn-mini{opacity:1}
+.share-btn-mini:hover{background:rgba(230,57,70,.85);transform:scale(1.08)}
+.share-btn-mini svg{width:15px;height:15px;fill:none;stroke:#fff;stroke-width:2}
+.list-view .share-btn-mini{display:none}
+
+/* Skeleton shimmer */
+.skel-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.skel-cover{aspect-ratio:1;background:linear-gradient(90deg,var(--surface2) 0%,var(--surface3) 50%,var(--surface2) 100%);background-size:200% 100%;animation:shimmer 1.3s infinite}
+.skel-line{height:10px;border-radius:4px;background:linear-gradient(90deg,var(--surface2) 0%,var(--surface3) 50%,var(--surface2) 100%);background-size:200% 100%;animation:shimmer 1.3s infinite;margin:10px}
+.skel-line.sm{width:40%;height:8px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* Waveform in player */
+.waveform{display:flex;align-items:center;gap:2px;height:24px;width:100%;cursor:pointer;padding:2px 0}
+.wf-bar{flex:1;background:var(--dim);border-radius:1px;opacity:.55;transition:background .1s,opacity .1s;min-height:3px}
+.wf-bar.played{background:var(--accent);opacity:1}
+.wf-bar.current{background:var(--accent);opacity:1;box-shadow:0 0 6px rgba(230,57,70,.6)}
+
+/* Sort dropdown */
+.sort-wrap{display:inline-flex;align-items:center;gap:6px;margin-left:8px}
+.sort-select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:600;padding:7px 26px 7px 10px;border-radius:var(--radius-sm);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 8px center}
+.sort-select:hover{border-color:var(--accent)}
+@media (max-width:640px){.sort-wrap{margin-left:0}.sort-select{font-size:11px;padding:6px 22px 6px 8px}}
+
+/* Similar beats */
+.similar-wrap{margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}
+.similar-title{font-size:13px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:12px}
+.similar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.similar-item{cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;transition:transform .15s,border-color .15s}
+.similar-item:hover{transform:translateY(-2px);border-color:rgba(230,57,70,.4)}
+.similar-item img,.similar-item .similar-ph{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.similar-ph{background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:22px}
+.similar-info{padding:6px 8px 8px}
+.similar-name{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.similar-meta{font-size:10px;color:var(--dim);margin-top:2px}
+
+/* License compare quick table */
+.lic-compare{margin-top:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.lic-compare-title{padding:10px 14px;font-size:12px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--border);background:var(--surface2)}
+.lic-compare table{width:100%;border-collapse:collapse;font-size:12px}
+.lic-compare th,.lic-compare td{padding:9px 10px;text-align:center;border-bottom:1px solid var(--border)}
+.lic-compare th{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);font-weight:700;background:var(--surface2)}
+.lic-compare td:first-child,.lic-compare th:first-child{text-align:left;color:var(--text);font-weight:600}
+.lic-compare tr:last-child td{border-bottom:0}
+.lic-compare .y{color:var(--green);font-weight:700}
+.lic-compare .n{color:var(--dim)}
 .play-circle{width:48px;height:48px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(230,57,70,.5)}
 .beat-info{padding:12px}
 .beat-title{font-size:13px;font-weight:700;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -664,6 +711,16 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
         <h2 class="catalog-title" id="catalog-heading">All Beats</h2>
         <p class="catalog-sub" id="catalog-sub">Preview every beat free. Lease, stems, or exclusive rights available.</p>
       </div>
+      <div class="sort-wrap">
+        <select class="sort-select" id="sort-select" onchange="setSort(this.value)" aria-label="Sort beats">
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="price_asc">Price: Low → High</option>
+          <option value="price_desc">Price: High → Low</option>
+          <option value="liked">Most Liked</option>
+          <option value="az">Title A → Z</option>
+        </select>
+      </div>
       <div class="view-toggle" role="group" aria-label="View mode">
         <button class="view-btn active" id="view-grid" onclick="setView('grid')" aria-label="Grid view">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -676,7 +733,14 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
       </div>
     </div>
     <div id="beats-grid" class="beats-grid" role="list" aria-label="Beat catalog">
-      <div id="loading" class="loading"><div class="spinner"></div><span>Loading beats…</span></div>
+      <div class="skel-card"><div class="skel-cover"></div><div class="skel-line"></div><div class="skel-line sm"></div></div>
+      <div class="skel-card"><div class="skel-cover"></div><div class="skel-line"></div><div class="skel-line sm"></div></div>
+      <div class="skel-card"><div class="skel-cover"></div><div class="skel-line"></div><div class="skel-line sm"></div></div>
+      <div class="skel-card"><div class="skel-cover"></div><div class="skel-line"></div><div class="skel-line sm"></div></div>
+      <div class="skel-card"><div class="skel-cover"></div><div class="skel-line"></div><div class="skel-line sm"></div></div>
+      <div class="skel-card"><div class="skel-cover"></div><div class="skel-line"></div><div class="skel-line sm"></div></div>
+      <div class="skel-card"><div class="skel-cover"></div><div class="skel-line"></div><div class="skel-line sm"></div></div>
+      <div class="skel-card"><div class="skel-cover"></div><div class="skel-line"></div><div class="skel-line sm"></div></div>
     </div>
   </div>
 
@@ -898,7 +962,8 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
       <svg id="pause-icon" width="16" height="16" viewBox="0 0 24 24" fill="white" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
     </button>
     <div class="progress-wrap">
-      <div class="progress-track" id="progress-track" onclick="seekAudio(event)" role="slider" aria-label="Playback progress">
+      <div class="waveform" id="waveform" onclick="seekWaveform(event)" role="slider" aria-label="Playback progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+      <div class="progress-track" id="progress-track" onclick="seekAudio(event)" role="presentation" style="display:none">
         <div class="progress-fill" id="progress-fill"></div>
       </div>
       <div class="time-row"><span class="time-lbl" id="t-cur">0:00</span><span class="time-lbl" id="t-tot">0:00</span></div>
@@ -917,6 +982,22 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
 const GENRE_ICONS = {Reggaeton:'🔥',Trap:'💣',Drill:'🧊','Boom Bap':'🎤','Lo-Fi':'☁️','R&B':'💜',Afrobeats:'🌍',Dancehall:'🎶','Hip-Hop':'🎵',Pop:'⭐',default:'🎧'};
 let allBeats = [], filteredBeats = [], cart = [], currentBeat = null, isPlaying = false;
+let sortMode = 'newest';
+function setSort(mode) { sortMode = mode; filterBeats(); }
+function applySort(arr) {
+  const a = arr.slice();
+  const dt = b => new Date(b.created_at || b.createdAt || b.updated_at || 0).getTime() || 0;
+  const pr = b => Number(b.lease_price || 29.99);
+  const lk = b => Number(b.likes || b.favorites_count || 0);
+  switch (sortMode) {
+    case 'oldest': return a.sort((x,y) => dt(x) - dt(y));
+    case 'price_asc': return a.sort((x,y) => pr(x) - pr(y));
+    case 'price_desc': return a.sort((x,y) => pr(y) - pr(x));
+    case 'liked': return a.sort((x,y) => lk(y) - lk(x));
+    case 'az': return a.sort((x,y) => (x.title||'').localeCompare(y.title||''));
+    case 'newest': default: return a.sort((x,y) => dt(y) - dt(x));
+  }
+}
 let activeGenre = null, activeMood = null;
 let viewMode = localStorage.getItem('ob_view') || 'grid';
 let currentUser = null;
@@ -1149,6 +1230,7 @@ function filterBeats() {
     }
     return true;
   });
+  filteredBeats = applySort(filteredBeats);
   document.getElementById('beat-count').textContent = `${filteredBeats.length} beat${filteredBeats.length!==1?'s':''}`;
   renderGrid();
 }
@@ -1171,6 +1253,9 @@ function beatCard(b) {
     <div class="play-overlay"><div class="play-circle">${playIcon}</div></div>
     <button class="fav-btn${favorites.has(b.id)?' on':''}" data-fav-id="${b.id}" onclick="toggleFavorite('${b.id}',event)" aria-label="${favorites.has(b.id)?'Remove from favorites':'Add to favorites'}" aria-pressed="${favorites.has(b.id)}">
       <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    </button>
+    <button class="share-btn-mini" onclick="event.stopPropagation();shareBeat('${b.id}','${esc(b.title)}')" aria-label="Share ${esc(b.title)}" title="Share">
+      <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
     </button>
   </div>
   <div class="beat-info">
@@ -1242,7 +1327,22 @@ function openDetail(id) {
         <button class="lic-add-btn">${inCart?'✓ Added to Cart':'Add to Cart'}</button>
       </div>`}).join('')}
     </div>
+    <div class="lic-compare">
+      <div class="lic-compare-title">License Comparison</div>
+      <table>
+        <thead><tr><th>Feature</th><th>Lease</th><th>Premium</th>${b.stems_price?'<th>Stems</th>':''}${b.exclusive_price?'<th>Exclusive</th>':''}</tr></thead>
+        <tbody>
+          <tr><td>MP3</td><td class="y">✓</td><td class="y">✓</td>${b.stems_price?'<td class="y">✓</td>':''}${b.exclusive_price?'<td class="y">✓</td>':''}</tr>
+          <tr><td>WAV</td><td class="n">—</td><td class="y">✓</td>${b.stems_price?'<td class="y">✓</td>':''}${b.exclusive_price?'<td class="y">✓</td>':''}</tr>
+          <tr><td>Stems</td><td class="n">—</td><td class="n">—</td>${b.stems_price?'<td class="y">✓</td>':''}${b.exclusive_price?'<td class="y">✓</td>':''}</tr>
+          <tr><td>Streams</td><td>100K</td><td>Unlimited</td>${b.stems_price?'<td>Unlimited</td>':''}${b.exclusive_price?'<td>Unlimited</td>':''}</tr>
+          <tr><td>Credit req.</td><td class="y">Yes</td><td class="y">Yes</td>${b.stems_price?'<td class="y">Yes</td>':''}${b.exclusive_price?'<td class="n">No</td>':''}</tr>
+          <tr><td>Full ownership</td><td class="n">—</td><td class="n">—</td>${b.stems_price?'<td class="n">—</td>':''}${b.exclusive_price?'<td class="y">✓</td>':''}</tr>
+        </tbody>
+      </table>
+    </div>
     ${tags.length?`<div class="detail-tags"><div class="detail-tags-label">TAGS</div><div class="tags-wrap">${tags.map(t=>`<button class="tag-chip" onclick="closeDetail();filterByTag('${esc(t)}')">${esc(t)}</button>`).join('')}</div></div>`:''}
+    ${renderSimilarBeats(b)}
     <div class="detail-share">
       <button class="share-btn" onclick="shareBeat('${b.id}','${esc(b.title)}')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
@@ -1272,6 +1372,29 @@ function filterByTag(tag) {
   document.getElementById('catalog').scrollIntoView({behavior:'smooth'});
 }
 
+function renderSimilarBeats(b) {
+  const pool = allBeats.filter(x => x.id !== b.id);
+  const scored = pool.map(x => {
+    let s = 0;
+    if (x.genre && x.genre === b.genre) s += 3;
+    if (x.mood && x.mood === b.mood) s += 2;
+    if (x.subgenre && x.subgenre === b.subgenre) s += 2;
+    if (x.bpm && b.bpm && Math.abs(Number(x.bpm) - Number(b.bpm)) <= 10) s += 1;
+    return { b: x, s };
+  }).filter(o => o.s > 0).sort((a, c) => c.s - a.s).slice(0, 6);
+  if (!scored.length) return '';
+  return `<div class="similar-wrap">
+    <div class="similar-title">You might also like</div>
+    <div class="similar-grid">
+      ${scored.map(o => {
+        const x = o.b;
+        const img = x.cover_url ? `<img src="${esc(x.cover_url)}" alt="${esc(x.title)}" loading="lazy">` : `<div class="similar-ph">🎧</div>`;
+        return `<div class="similar-item" onclick="openDetail('${x.id}')">${img}<div class="similar-info"><div class="similar-name">${esc(x.title)}</div><div class="similar-meta">${esc(x.genre||'')}${x.bpm?' · '+x.bpm+' BPM':''}</div></div></div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
 function shareBeat(id, title) {
   const url = `https://oneilbeats.store/?beat=${id}`;
   if (navigator.share) { navigator.share({title:`${title} — O'Neil Beats`, url}).catch(()=>{}); }
@@ -1285,6 +1408,7 @@ function playBeat(id) {
   if (!b.audio_url && !b.mp3_url) { showToast('No preview available'); return; }
   if (currentBeat?.id===id) { togglePlay(); renderGrid(); return; }
   currentBeat = b;
+  buildWaveform(id);
   audio.src = `${API}/preview/${id}`;
   audio.play().then(()=>{
     isPlaying=true; showPlayer(); updatePlayerUI(); track('play',{beatId:id}); renderGrid();
@@ -1308,7 +1432,77 @@ function updatePlayerUI() {
   document.getElementById('pause-icon').style.display = isPlaying?'block':'none';
 }
 function showPlayer() { document.getElementById('player-bar').classList.add('visible'); }
-audio.addEventListener('timeupdate',()=>{ if(!audio.duration)return; const p=(audio.currentTime/audio.duration)*100; document.getElementById('progress-fill').style.width=p+'%'; document.getElementById('t-cur').textContent=fmtT(audio.currentTime); document.getElementById('t-tot').textContent=fmtT(audio.duration); });
+const WF_BARS = 60;
+function buildWaveform(seed) {
+  const wf = document.getElementById('waveform');
+  if (!wf) return;
+  let s = 0; const str = String(seed || 'default');
+  for (let i = 0; i < str.length; i++) s = (s * 31 + str.charCodeAt(i)) >>> 0;
+  const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return (s & 0xffff) / 0xffff; };
+  const bars = [];
+  for (let i = 0; i < WF_BARS; i++) {
+    const wave = Math.sin(i / 5) * 0.25 + Math.sin(i / 2.1) * 0.15 + 0.55;
+    const h = Math.max(12, Math.min(100, (wave + rnd() * 0.4) * 90));
+    bars.push(`<div class="wf-bar" data-i="${i}" style="height:${h}%"></div>`);
+  }
+  wf.innerHTML = bars.join('');
+}
+function updateWaveformProgress() {
+  if (!audio.duration) return;
+  const wf = document.getElementById('waveform');
+  if (!wf || !wf.children.length) return;
+  const pct = (audio.currentTime / audio.duration) * WF_BARS;
+  const cur = Math.floor(pct);
+  for (let i = 0; i < wf.children.length; i++) {
+    const el = wf.children[i];
+    el.classList.toggle('played', i < cur);
+    el.classList.toggle('current', i === cur);
+  }
+  wf.setAttribute('aria-valuenow', Math.round((audio.currentTime / audio.duration) * 100));
+}
+function playPrevBeat() {
+  if (!currentBeat || !filteredBeats.length) return;
+  const i = filteredBeats.findIndex(x => x.id === currentBeat.id);
+  const prev = filteredBeats[(i - 1 + filteredBeats.length) % filteredBeats.length];
+  if (prev) playBeat(prev.id);
+}
+function playNextBeat() {
+  if (!currentBeat || !filteredBeats.length) return;
+  const i = filteredBeats.findIndex(x => x.id === currentBeat.id);
+  const next = filteredBeats[(i + 1) % filteredBeats.length];
+  if (next) playBeat(next.id);
+}
+document.addEventListener('keydown', (e) => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.code === 'Space') {
+    if (!currentBeat) return;
+    e.preventDefault(); togglePlay();
+  } else if (e.key === 'ArrowRight' && e.shiftKey) {
+    e.preventDefault(); playNextBeat();
+  } else if (e.key === 'ArrowLeft' && e.shiftKey) {
+    e.preventDefault(); playPrevBeat();
+  } else if (e.key === 'ArrowRight') {
+    if (!currentBeat || !audio.duration) return;
+    audio.currentTime = Math.min(audio.duration, audio.currentTime + 5);
+  } else if (e.key === 'ArrowLeft') {
+    if (!currentBeat || !audio.duration) return;
+    audio.currentTime = Math.max(0, audio.currentTime - 5);
+  } else if (e.key === 'Escape') {
+    const d = document.getElementById('detail-overlay');
+    if (d && d.classList.contains('open')) closeDetail();
+  }
+});
+
+function seekWaveform(e) {
+  if (!audio.duration) return;
+  const wf = document.getElementById('waveform');
+  const r = wf.getBoundingClientRect();
+  audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration;
+}
+buildWaveform();
+audio.addEventListener('timeupdate',()=>{ if(!audio.duration)return; const p=(audio.currentTime/audio.duration)*100; document.getElementById('progress-fill').style.width=p+'%'; document.getElementById('t-cur').textContent=fmtT(audio.currentTime); document.getElementById('t-tot').textContent=fmtT(audio.duration); updateWaveformProgress(); });
 audio.addEventListener('ended',()=>{ isPlaying=false; updatePlayerUI(); renderGrid(); });
 audio.addEventListener('pause',()=>{ isPlaying=false; updatePlayerUI(); });
 audio.addEventListener('play',()=>{ isPlaying=true; updatePlayerUI(); });
@@ -1535,7 +1729,7 @@ async function loadFavorites() {
     const d = await r.json();
     favorites = new Set((d.favorites || d.beatIds || []).map(x => typeof x === 'string' ? x : x.beatId));
   } catch(e) { favorites = new Set(); }
-  try { if (typeof renderBeats === 'function' && Array.isArray(filteredBeats)) renderBeats(); } catch(e) {}
+  try { if (typeof renderGrid === 'function' && Array.isArray(filteredBeats)) renderGrid(); } catch(e) {}
 }
 async function toggleFavorite(beatId, ev) {
   ev?.stopPropagation();
@@ -1553,7 +1747,7 @@ async function toggleFavorite(beatId, ev) {
 function showFavorites() {
   if (!favorites.size) { showToast('No favorites yet — tap the heart on any beat'); return; }
   filteredBeats = allBeats.filter(b => favorites.has(b.id));
-  renderBeats();
+  renderGrid();
   document.getElementById('catalog-heading').textContent = 'My Favorites';
   document.getElementById('catalog').scrollIntoView({ behavior: 'smooth' });
 }
