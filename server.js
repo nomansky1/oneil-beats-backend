@@ -1834,6 +1834,116 @@ app.post('/notification/send', requireAdminKey, async (req, res) => {
   }
 });
 
+// ──────────────────────────────────────────────────────────────────────────────
+// FREE BEAT OF THE WEEK + EMAIL SUBSCRIBERS
+// ──────────────────────────────────────────────────────────────────────────────
+// Required Supabase tables (paste in SQL editor if not present):
+//   create table if not exists email_subscribers (
+//     id uuid primary key default gen_random_uuid(),
+//     email text unique not null,
+//     token text not null,
+//     consent boolean not null default false,
+//     source text default 'unknown',
+//     created_at timestamptz default now(),
+//     unsubscribed_at timestamptz
+//   );
+//   alter table beats add column if not exists is_free_weekly boolean default false;
+
+// POST /subscribe/free-beat — public; { email, consent, source? }
+// CAN-SPAM/GDPR: requires explicit consent=true. Returns { success, alreadySubscribed }.
+app.post('/subscribe/free-beat', async (req, res) => {
+  try {
+    const { email, consent, source } = req.body || {};
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return res.status(400).json({ error: 'Valid email required' });
+    }
+    if (consent !== true) {
+      return res.status(400).json({ error: 'Marketing consent required' });
+    }
+    const supabase = getSupabaseClient();
+    const token = require('crypto').randomBytes(24).toString('hex');
+    let alreadySubscribed = false;
+    try {
+      const { data: existing } = await supabase.from('email_subscribers').select('id, unsubscribed_at').eq('email', email).maybeSingle();
+      if (existing) {
+        alreadySubscribed = !existing.unsubscribed_at;
+        await supabase.from('email_subscribers').update({
+          consent: true,
+          source: source || 'unknown',
+          unsubscribed_at: null,
+        }).eq('email', email);
+      } else {
+        await supabase.from('email_subscribers').insert([{
+          email, token, consent: true, source: source || 'unknown',
+        }]);
+      }
+    } catch (dbErr) {
+      console.warn('subscribe insert skipped:', dbErr.message);
+    }
+    res.json({ success: true, alreadySubscribed });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /unsubscribe?email=...&token=... — one-click unsubscribe link from emails
+app.get('/unsubscribe', async (req, res) => {
+  try {
+    const { email, token } = req.query;
+    if (!email || !token) return res.status(400).send('Missing email or token');
+    const supabase = getSupabaseClient();
+    const { data: row } = await supabase.from('email_subscribers').select('id, token').eq('email', email).maybeSingle();
+    if (!row || row.token !== token) return res.status(404).send('Subscription not found or token invalid');
+    await supabase.from('email_subscribers').update({ unsubscribed_at: new Date().toISOString() }).eq('email', email);
+    res.set('Content-Type', 'text/html').send(`<!doctype html><html><head><meta charset="utf-8"><title>Unsubscribed</title><style>body{font-family:system-ui;background:#06060a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;padding:20px}h1{color:#e63946}</style></head><body><div><h1>You're unsubscribed</h1><p>${email} will no longer receive Free Beat of the Week emails.</p><p style="color:#666;font-size:12px;margin-top:24px">Changed your mind? <a href="https://oneilbeats.store" style="color:#e63946">Resubscribe on the site.</a></p></div></body></html>`);
+  } catch (err) {
+    res.status(500).send('Error: ' + err.message);
+  }
+});
+
+// GET /featured-free — public; returns the currently featured free beat (or null)
+app.get('/featured-free', async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase.from('beats').select('*').eq('is_free_weekly', true).limit(1);
+    if (error) return res.json({ success: true, beat: null });
+    const beat = (data && data[0]) || null;
+    res.set('Cache-Control', 'public, max-age=120');
+    res.json({ success: true, beat });
+  } catch (err) {
+    res.json({ success: true, beat: null, error: err.message });
+  }
+});
+
+// POST /admin/featured-free — admin; { beatId | null } sets one beat as featured (clears others)
+app.post('/admin/featured-free', requireAdminKey, async (req, res) => {
+  try {
+    const { beatId } = req.body || {};
+    const supabase = getSupabaseClient();
+    await supabase.from('beats').update({ is_free_weekly: false }).neq('id', '00000000-0000-0000-0000-000000000000');
+    if (beatId) {
+      const { error } = await supabase.from('beats').update({ is_free_weekly: true }).eq('id', beatId);
+      if (error) return res.status(500).json({ error: error.message });
+    }
+    res.json({ success: true, beatId: beatId || null });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /admin/subscribers — admin; subscriber stats
+app.get('/admin/subscribers', requireAdminKey, async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase.from('email_subscribers').select('email, consent, source, created_at, unsubscribed_at').order('created_at', { ascending: false }).limit(500);
+    if (error) return res.json({ success: true, subscribers: [], error: error.message });
+    const active = (data || []).filter(s => !s.unsubscribed_at);
+    res.json({ success: true, total: data?.length || 0, active: active.length, subscribers: data || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─�
 // ──────────────────────────────────────────────────────────────────────────────
 // STRIPE WEBHOOK
