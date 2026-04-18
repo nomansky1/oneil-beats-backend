@@ -1118,14 +1118,35 @@ app.post('/upload/analyze-audio', requireAdminKey, upload.single('audio'), async
     const fftMag = fftJs.util.fftMag;
 
     let pcmData = null, sampleRate = null;
-    const isWav = (file.originalname || '').toLowerCase().endsWith('.wav') ||
-                  (file.mimetype || '').includes('wav');
-    try {
-      const wavDecoder = require('wav-decoder');
-      const decoded = await wavDecoder.decode(file.buffer);
-      pcmData = decoded.channelData[0];
-      sampleRate = decoded.sampleRate;
-    } catch (_) { /* MP3 or undecodable — fall back to filename */ }
+    const nameLc = (file.originalname || '').toLowerCase();
+    const mimeLc = (file.mimetype || '').toLowerCase();
+    const isWav = nameLc.endsWith('.wav') || mimeLc.includes('wav');
+    const isMp3 = nameLc.endsWith('.mp3') || mimeLc.includes('mpeg') || mimeLc.includes('mp3');
+
+    if (isWav) {
+      try {
+        const wavDecoder = require('wav-decoder');
+        const decoded = await wavDecoder.decode(file.buffer);
+        pcmData = decoded.channelData[0];
+        sampleRate = decoded.sampleRate;
+      } catch (_) { /* fall through */ }
+    }
+
+    if (!pcmData) {
+      try {
+        const { MPEGDecoder } = await import('mpg123-decoder');
+        const decoder = new MPEGDecoder();
+        await decoder.ready;
+        const decoded = decoder.decode(new Uint8Array(file.buffer));
+        if (decoded && decoded.channelData && decoded.channelData[0]) {
+          pcmData = decoded.channelData[0];
+          sampleRate = decoded.sampleRate;
+        }
+        decoder.free();
+      } catch (e) {
+        console.warn('MP3 decode failed:', e.message);
+      }
+    }
 
     if (!pcmData) {
       const key = fromName.key;
@@ -1133,7 +1154,7 @@ app.post('/upload/analyze-audio', requireAdminKey, upload.single('audio'), async
       return res.json({
         success: true, bpm, key, mood: _moodFrom(bpm, key),
         source: 'filename',
-        note: isWav ? null : 'Upload WAV for spectral analysis',
+        note: isMp3 ? 'MP3 decode unavailable — using filename' : 'Upload WAV/MP3 for spectral analysis',
       });
     }
 
@@ -1267,6 +1288,130 @@ app.post('/upload/convert-wav-to-mp3', requireAdminKey, upload.single('audio'), 
     res.status(500).json({ error: err.message });
   }
 });
+
+// POST /upload/tag-beat — bake producer tag into MP3 at BPM-aligned bar intervals
+// Fields: audio (MP3 file), tag (MP3 file), bpm, bars (4/8/16/32), firstBar (0/4/8/16),
+//         volume (0-1.2), duck (bool), offsetMs (int, can be negative)
+app.post('/upload/tag-beat', requireAdminKey,
+  upload.fields([{ name: 'audio', maxCount: 1 }, { name: 'tag', maxCount: 1 }]),
+  async (req, res) => {
+    try {
+      const audioFile = req.files?.audio?.[0];
+      const tagFile = req.files?.tag?.[0];
+      if (!audioFile) return res.status(400).json({ error: 'audio file required' });
+      if (!tagFile) return res.status(400).json({ error: 'tag file required' });
+
+      const bpm = Number(req.body.bpm) || 120;
+      const bars = Number(req.body.bars) || 8;
+      const firstBar = Number(req.body.firstBar) || 0;
+      const volume = Math.max(0, Math.min(1.5, Number(req.body.volume) || 0.85));
+      const duck = String(req.body.duck) === 'true' || req.body.duck === true;
+      const offsetMs = Number(req.body.offsetMs) || 0;
+
+      const { MPEGDecoder } = await import('mpg123-decoder');
+      const lamejs = await import('@breezystack/lamejs');
+
+      const decodeMp3 = async (buf) => {
+        const d = new MPEGDecoder();
+        await d.ready;
+        const out = d.decode(new Uint8Array(buf));
+        d.free();
+        return out; // { channelData: [L, R?], sampleRate, samplesDecoded }
+      };
+
+      const beat = await decodeMp3(audioFile.buffer);
+      const tag = await decodeMp3(tagFile.buffer);
+      if (!beat?.channelData?.[0]) throw new Error('Beat MP3 decode failed');
+      if (!tag?.channelData?.[0]) throw new Error('Tag MP3 decode failed');
+
+      const sampleRate = beat.sampleRate;
+      const beatL = beat.channelData[0];
+      const beatR = beat.channelData[1] || beat.channelData[0];
+
+      // Resample tag if sample rates differ (linear resample)
+      const resample = (src, srcRate, dstRate) => {
+        if (srcRate === dstRate) return src;
+        const ratio = srcRate / dstRate;
+        const dstLen = Math.floor(src.length / ratio);
+        const out = new Float32Array(dstLen);
+        for (let i = 0; i < dstLen; i++) {
+          const srcPos = i * ratio;
+          const i0 = Math.floor(srcPos);
+          const i1 = Math.min(i0 + 1, src.length - 1);
+          const frac = srcPos - i0;
+          out[i] = src[i0] * (1 - frac) + src[i1] * frac;
+        }
+        return out;
+      };
+      const tagL = resample(tag.channelData[0], tag.sampleRate, sampleRate);
+      const tagR = resample(tag.channelData[1] || tag.channelData[0], tag.sampleRate, sampleRate);
+
+      // Copy beat into output buffers
+      const outL = new Float32Array(beatL);
+      const outR = new Float32Array(beatR);
+
+      // Compute tag positions
+      const secondsPerBar = (60 / bpm) * 4;
+      const samplesPerBar = Math.round(secondsPerBar * sampleRate);
+      const offsetSamples = Math.round((offsetMs / 1000) * sampleRate);
+      const firstSample = firstBar * samplesPerBar + offsetSamples;
+      const stepSamples = bars * samplesPerBar;
+      const tagLen = tagL.length;
+      const duckFactor = duck ? 0.5 : 1.0;
+
+      let pos = firstSample;
+      while (pos < outL.length) {
+        if (pos >= 0) {
+          const fadeLen = Math.min(Math.round(0.01 * sampleRate), Math.floor(tagLen / 4));
+          for (let i = 0; i < tagLen && pos + i < outL.length; i++) {
+            if (pos + i < 0) continue;
+            let env = 1;
+            if (i < fadeLen) env = i / fadeLen;
+            else if (i > tagLen - fadeLen) env = (tagLen - i) / fadeLen;
+            const sL = tagL[i] * volume * env;
+            const sR = tagR[i] * volume * env;
+            outL[pos + i] = outL[pos + i] * duckFactor + sL;
+            outR[pos + i] = outR[pos + i] * duckFactor + sR;
+          }
+        }
+        pos += stepSamples;
+      }
+
+      // Encode back to MP3
+      const toInt16 = (f32) => {
+        const out = new Int16Array(f32.length);
+        for (let i = 0; i < f32.length; i++) {
+          const s = Math.max(-1, Math.min(1, f32[i]));
+          out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        }
+        return out;
+      };
+      const i16L = toInt16(outL);
+      const i16R = toInt16(outR);
+
+      const encoder = new lamejs.Mp3Encoder(2, sampleRate, 192);
+      const blockSize = 1152;
+      const chunks = [];
+      for (let i = 0; i < i16L.length; i += blockSize) {
+        const lChunk = i16L.subarray(i, i + blockSize);
+        const rChunk = i16R.subarray(i, i + blockSize);
+        const mp3buf = encoder.encodeBuffer(lChunk, rChunk);
+        if (mp3buf.length > 0) chunks.push(Buffer.from(mp3buf));
+      }
+      const tail = encoder.flush();
+      if (tail.length > 0) chunks.push(Buffer.from(tail));
+
+      const mp3Buffer = Buffer.concat(chunks);
+      const baseName = (audioFile.originalname || 'tagged').replace(/\.mp3$/i, '') || 'tagged';
+      res.set('Content-Type', 'audio/mpeg');
+      res.set('Content-Disposition', `attachment; filename="${baseName}_tagged.mp3"`);
+      res.send(mp3Buffer);
+    } catch (err) {
+      console.error('tag-beat error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
 
 // POST /upload/proxy-image — fetch an image URL and return it (for CORS-blocked images)
 app.post('/upload/proxy-image', requireAdminKey, async (req, res) => {
