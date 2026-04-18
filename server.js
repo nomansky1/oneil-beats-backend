@@ -164,13 +164,14 @@ app.post('/admin/session', async (req, res) => {
   try {
     const { access_token } = req.body || {};
     if (!access_token) return res.status(400).json({ error: 'Missing access_token' });
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-      return res.status(500).json({ error: 'Supabase not configured on server' });
+    const supabaseApiKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY;
+    if (!process.env.SUPABASE_URL || !supabaseApiKey) {
+      return res.status(500).json({ error: 'Supabase not configured on server (missing SUPABASE_URL or SUPABASE_ANON_KEY/SERVICE_KEY)' });
     }
     const r = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`, {
       headers: {
         'Authorization': `Bearer ${access_token}`,
-        'apikey': process.env.SUPABASE_ANON_KEY,
+        'apikey': supabaseApiKey,
       },
     });
     if (!r.ok) return res.status(401).json({ error: 'Invalid or expired token' });
@@ -379,6 +380,43 @@ app.get('/beats', async (req, res) => {
   } catch (err) {
     console.error('Fetch beats error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /analytics/trending?days=7&limit=10 — public trending beats by play count
+// Returns: { success, trending: [{ beatId, plays, favorites }] }
+app.get('/analytics/trending', async (req, res) => {
+  try {
+    const days = Math.max(1, Math.min(90, parseInt(req.query.days, 10) || 7));
+    const limit = Math.max(1, Math.min(50, parseInt(req.query.limit, 10) || 10));
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    let trending = [];
+    try {
+      const supabase = getSupabaseClient();
+      const [eventsRes, favsRes] = await Promise.all([
+        supabase.from('customer_events').select('event_data, action, created_at').eq('action', 'play').gte('created_at', since).limit(20000),
+        supabase.from('favorites').select('beat_id').gte('created_at', since).limit(20000),
+      ]);
+      const playsByBeat = {};
+      (eventsRes.data || []).forEach(e => {
+        const id = e.event_data && e.event_data.beatId;
+        if (id) playsByBeat[id] = (playsByBeat[id] || 0) + 1;
+      });
+      const favsByBeat = {};
+      (favsRes.data || []).forEach(r => {
+        if (r.beat_id) favsByBeat[r.beat_id] = (favsByBeat[r.beat_id] || 0) + 1;
+      });
+      trending = Object.entries(playsByBeat)
+        .map(([beatId, plays]) => ({ beatId, plays, favorites: favsByBeat[beatId] || 0 }))
+        .sort((a, b) => (b.plays + b.favorites * 2) - (a.plays + a.favorites * 2))
+        .slice(0, limit);
+    } catch (dbErr) {
+      console.warn('trending query skipped:', dbErr.message);
+    }
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({ success: true, days, trending });
+  } catch (err) {
+    res.json({ success: true, trending: [], error: err.message });
   }
 });
 
@@ -1181,6 +1219,55 @@ app.post('/upload/analyze-audio', requireAdminKey, upload.single('audio'), async
   }
 });
 
+// POST /upload/convert-wav-to-mp3 — convert uploaded WAV to MP3 (320kbps), returns MP3 binary
+app.post('/upload/convert-wav-to-mp3', requireAdminKey, upload.single('audio'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'No audio file provided' });
+
+    const wavDecoder = require('wav-decoder');
+    const lamejs = await import('@breezystack/lamejs');
+
+    const decoded = await wavDecoder.decode(file.buffer);
+    const sampleRate = decoded.sampleRate;
+    const channels = decoded.channelData.length;
+    const numChannels = channels >= 2 ? 2 : 1;
+
+    const toInt16 = (floatArr) => {
+      const out = new Int16Array(floatArr.length);
+      for (let i = 0; i < floatArr.length; i++) {
+        const s = Math.max(-1, Math.min(1, floatArr[i]));
+        out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      }
+      return out;
+    };
+
+    const left = toInt16(decoded.channelData[0]);
+    const right = numChannels === 2 ? toInt16(decoded.channelData[1]) : null;
+
+    const encoder = new lamejs.Mp3Encoder(numChannels, sampleRate, 320);
+    const blockSize = 1152;
+    const chunks = [];
+    for (let i = 0; i < left.length; i += blockSize) {
+      const lChunk = left.subarray(i, i + blockSize);
+      const rChunk = right ? right.subarray(i, i + blockSize) : null;
+      const mp3buf = rChunk ? encoder.encodeBuffer(lChunk, rChunk) : encoder.encodeBuffer(lChunk);
+      if (mp3buf.length > 0) chunks.push(Buffer.from(mp3buf));
+    }
+    const tail = encoder.flush();
+    if (tail.length > 0) chunks.push(Buffer.from(tail));
+
+    const mp3Buffer = Buffer.concat(chunks);
+    const baseName = (file.originalname || 'converted').replace(/\.wav$/i, '') || 'converted';
+    res.set('Content-Type', 'audio/mpeg');
+    res.set('Content-Disposition', `attachment; filename="${baseName}.mp3"`);
+    res.send(mp3Buffer);
+  } catch (err) {
+    console.error('convert-wav-to-mp3 error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /upload/proxy-image — fetch an image URL and return it (for CORS-blocked images)
 app.post('/upload/proxy-image', requireAdminKey, async (req, res) => {
   try {
@@ -1752,6 +1839,80 @@ app.post('/notification/send', requireAdminKey, async (req, res) => {
 // STRIPE WEBHOOK
 // ──────────────────────────────────────────────────────────────────────────────
 
+// POST /payment/sheet — native Stripe PaymentSheet flow (Apple Pay / Google Pay / cards)
+// Returns ephemeralKey + paymentIntent + customer for @stripe/stripe-react-native PaymentSheet.
+app.post('/payment/sheet', async (req, res) => {
+  try {
+    const { customerEmail, cartItems } = req.body;
+    if (!customerEmail || !Array.isArray(cartItems) || cartItems.length === 0) {
+      return res.status(400).json({ error: 'customerEmail and cartItems required' });
+    }
+
+    // Server-side price validation (mirror /checkout)
+    const allBeats = await fetchBeatsFromDB();
+    const beatById = new Map(allBeats.map(b => [b.id, b]));
+    const validatedItems = [];
+    for (const item of cartItems) {
+      const beat = beatById.get(item.beatId);
+      if (!beat) return res.status(400).json({ error: `Beat ${item.beatId} not found or inactive` });
+      const priceKey =
+        item.licenseType === 'exclusive' ? 'exclusive_price' :
+        item.licenseType === 'premium'   ? 'premium_price'   :
+        item.licenseType === 'stems'     ? 'stems_price'     :
+                                           'lease_price';
+      const serverPrice = parseFloat(beat[priceKey]);
+      if (!serverPrice || isNaN(serverPrice) || serverPrice <= 0) {
+        return res.status(400).json({ error: `Invalid price for ${beat.title} (${item.licenseType})` });
+      }
+      validatedItems.push({
+        beatId: beat.id,
+        beatTitle: beat.title,
+        licenseType: item.licenseType,
+        price: serverPrice,
+      });
+    }
+    const totalAmount = validatedItems.reduce((s, it) => s + it.price, 0);
+    const orderId = uuidv4();
+
+    await createOrder({ orderId, customerEmail, cartItems: validatedItems, totalAmount });
+
+    // Find or create Stripe Customer for the email (required for ephemeralKey)
+    let customer;
+    const existing = await stripe.customers.list({ email: customerEmail, limit: 1 });
+    customer = existing.data[0] || await stripe.customers.create({ email: customerEmail });
+
+    const ephemeralKey = await stripe.ephemeralKeys.create(
+      { customer: customer.id },
+      { apiVersion: '2024-06-20' }
+    );
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(totalAmount * 100),
+      currency: 'usd',
+      customer: customer.id,
+      receipt_email: customerEmail,
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        orderId,
+        beatTitles: validatedItems.map(i => i.beatTitle).join(' | ').slice(0, 480),
+      },
+      description: `O'Neil Beats Order #${orderId.slice(0, 8)}`,
+    });
+
+    res.json({
+      orderId,
+      paymentIntent: paymentIntent.client_secret,
+      ephemeralKey: ephemeralKey.secret,
+      customer: customer.id,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || null,
+      amount: totalAmount,
+    });
+  } catch (err) {
+    console.error('Payment sheet error:', err);
+    res.status(500).json({ error: err.message || 'Payment sheet setup failed' });
+  }
+});
+
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
@@ -1793,6 +1954,31 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         }
       } catch (fulfillErr) {
         console.error('Order fulfillment error:', fulfillErr);
+      }
+    }
+  }
+
+  // Native PaymentSheet (Apple Pay / Google Pay / cards via mobile app) succeeds via PaymentIntent.
+  if (event.type === 'payment_intent.succeeded') {
+    const pi = event.data.object;
+    const orderId = pi.metadata?.orderId;
+    if (orderId) {
+      try {
+        const beats = await fetchBeatsFromDB();
+        await fulfillOrder({
+          orderId,
+          stripeSessionId: pi.id,
+          customerEmail: pi.receipt_email || pi.charges?.data?.[0]?.billing_details?.email || '',
+          customerName: pi.charges?.data?.[0]?.billing_details?.name || '',
+          beats,
+        });
+        const order = await getOrderById(orderId);
+        const items = order?.order_items || [];
+        if (order && order.customer_email && items.length > 0) {
+          await sendFulfillmentEmail(order, orderId, items);
+        }
+      } catch (e) {
+        console.error('PaymentIntent fulfillment error:', e);
       }
     }
   }
