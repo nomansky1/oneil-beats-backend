@@ -1311,7 +1311,7 @@ app.post('/upload/cover-from-url', requireAdminKey, async (req, res) => {
 // POST /upload/beat-metadata — register beat in DB (no file upload, just metadata + URLs)
 app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
   try {
-    const { title, genre, subgenre, bpm, key, mood, tags, lease_price, premium_price, stems_price, exclusive_price, audio_url, wav_url, stem_url, cover_url, announce, announce_title, announce_body } = req.body;
+    const { title, genre, subgenre, bpm, key, mood, tags, lease_price, premium_price, stems_price, exclusive_price, audio_url, audio_original_url, wav_url, stem_url, cover_url, announce, announce_title, announce_body } = req.body;
     if (!title) return res.status(400).json({ error: 'Title is required' });
 
     const beatId = await addBeatToDB({
@@ -1322,7 +1322,8 @@ app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
       premium_price: premium_price || 99.99,
       stems_price: stems_price || 199.99,
       exclusive_price: exclusive_price || null,
-      audio_url: audio_url || '', wav_url: wav_url || '', stem_url: stem_url || '',
+      audio_url: audio_url || '', audio_original_url: audio_original_url || '',
+      wav_url: wav_url || '', stem_url: stem_url || '',
       cover_url: cover_url || '',
     });
 
