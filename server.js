@@ -2030,6 +2030,55 @@ app.get('/admin/subscribers', requireAdminKey, async (req, res) => {
   }
 });
 
+// POST /referral/get-or-create — auto-creates a Stripe promotion code for the user's referral code.
+// Idempotent: safe to call multiple times. Returns the same code derived from userId.
+// Code formula MUST match the customer app: 'OB-' + last 6 alphanumeric chars of userId, uppercased.
+app.post('/referral/get-or-create', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    const code = 'OB-' + String(userId).replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase();
+
+    // 1. If a Stripe promotion code with this exact code already exists, return it.
+    const existing = await stripe.promotionCodes.list({ code, limit: 1 });
+    if (existing.data.length > 0) {
+      return res.json({ success: true, code, status: 'already_exists' });
+    }
+
+    // 2. Get or create the shared "Referral $10 off" coupon (one for all referrals).
+    let coupon = null;
+    const coupons = await stripe.coupons.list({ limit: 100 });
+    coupon = coupons.data.find(c => c.metadata && c.metadata.purpose === 'referral_10_off');
+    if (!coupon) {
+      coupon = await stripe.coupons.create({
+        amount_off: 1000, // $10
+        currency: 'usd',
+        duration: 'once',
+        name: 'Referral $10 off',
+        metadata: { purpose: 'referral_10_off' },
+      });
+    }
+
+    // 3. Create the per-user promotion code, restricted to first-time customers, $20 minimum.
+    const promo = await stripe.promotionCodes.create({
+      coupon: coupon.id,
+      code,
+      max_redemptions: 100,
+      restrictions: {
+        first_time_transaction: true,
+        minimum_amount: 2000,
+        minimum_amount_currency: 'usd',
+      },
+      metadata: { user_id: userId, type: 'referral' },
+    });
+
+    res.json({ success: true, code, status: 'created', promoId: promo.id });
+  } catch (err) {
+    console.error('Referral create error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /account/delete — Apple-compliant account deletion.
 // Requires the user's Supabase access_token (so the delete is authenticated by the user themselves).
 // Order records are PRESERVED for tax/accounting compliance (per Privacy Policy section 6).
