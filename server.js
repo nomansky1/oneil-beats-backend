@@ -1678,6 +1678,92 @@ app.get('/orders/lookup', async (req, res) => {
 
 // GET /preview/:id — stream MP3 preview (proxies Drive/Supabase through backend
 // so the <audio> tag gets a real audio/mpeg stream with proper CORS)
+// GET /beat/:id — public share landing page with Open Graph meta tags.
+// Shared links from the app land here so WhatsApp/IG/iMessage/Twitter render rich previews with cover art.
+app.get('/beat/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const beats = await fetchBeatsFromDB();
+    const b = beats.find(x => x.id === id);
+    if (!b) {
+      res.status(404).set('Content-Type', 'text/html').send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Beat not found</title></head><body style="background:#06060a;color:#fff;font-family:sans-serif;padding:40px;text-align:center"><h1>Beat not found</h1><p><a href="/" style="color:#d4af37">Browse all beats</a></p></body></html>`);
+      return;
+    }
+    const esc = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+    const title = esc(b.title || 'Untitled Beat');
+    const genre = esc(b.genre || '');
+    const bpm = b.bpm ? `${b.bpm} BPM` : '';
+    const mood = esc(b.mood || '');
+    const cover = b.artwork_url || b.cover_url || `${req.protocol}://${req.get('host')}/icon.png`;
+    const desc = `${genre}${bpm ? ' · ' + bpm : ''}${mood ? ' · ' + mood : ''} — Stream, license & download on O'Neil Beats.`;
+    const pageUrl = `${req.protocol}://${req.get('host')}/beat/${id}`;
+    const lease = b.lease_price || b.mp3_price || 30;
+
+    res.set('Content-Type', 'text/html').send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title} — Prod. by O'Neil</title>
+<meta name="description" content="${esc(desc)}">
+
+<!-- Open Graph (Facebook, WhatsApp, iMessage, LinkedIn, Discord) -->
+<meta property="og:type" content="music.song">
+<meta property="og:title" content="${title} — Prod. by O'Neil">
+<meta property="og:description" content="${esc(desc)}">
+<meta property="og:image" content="${esc(cover)}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="1200">
+<meta property="og:url" content="${esc(pageUrl)}">
+<meta property="og:site_name" content="O'Neil Beats">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${title} — Prod. by O'Neil">
+<meta name="twitter:description" content="${esc(desc)}">
+<meta name="twitter:image" content="${esc(cover)}">
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #06060a; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; min-height: 100vh; }
+  .wrap { max-width: 600px; margin: 0 auto; padding: 32px 20px 80px; }
+  .brand { color: #d4af37; font-size: 14px; letter-spacing: 6px; font-weight: 800; text-align: center; margin-bottom: 24px; }
+  .cover { width: 100%; aspect-ratio: 1; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 60px rgba(212,175,55,.25); background: linear-gradient(135deg,#2a1a40,#6b1a3a); }
+  .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .title { font-size: 32px; font-weight: 900; margin-top: 24px; line-height: 1.1; }
+  .meta { color: #c8c8d0; font-size: 16px; margin-top: 10px; }
+  .price-row { display: flex; align-items: center; justify-content: space-between; margin-top: 28px; padding: 18px 22px; background: linear-gradient(135deg, rgba(212,175,55,.12) 0%, rgba(230,57,70,.12) 100%); border: 1px solid rgba(212,175,55,.4); border-radius: 16px; }
+  .price-row .label { color: #d4af37; font-size: 13px; letter-spacing: 2px; font-weight: 700; }
+  .price-row .price { font-size: 28px; font-weight: 900; }
+  .cta { display: block; margin-top: 28px; padding: 18px; background: linear-gradient(135deg, #d4af37 0%, #e63946 100%); color: #000; text-align: center; font-weight: 900; font-size: 17px; letter-spacing: 1px; border-radius: 14px; text-decoration: none; }
+  .cta:hover { opacity: .9; }
+  .secondary { display: block; margin-top: 12px; padding: 14px; background: rgba(255,255,255,.05); color: #fff; text-align: center; font-weight: 600; border-radius: 14px; text-decoration: none; border: 1px solid rgba(255,255,255,.12); }
+  .footer { text-align: center; margin-top: 40px; color: #888; font-size: 12px; }
+  .footer a { color: #d4af37; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">O'NEIL BEATS</div>
+  <div class="cover"><img src="${esc(cover)}" alt="${title}"></div>
+  <div class="title">${title}</div>
+  <div class="meta">${esc(genre)}${bpm ? ' &middot; ' + bpm : ''}${mood ? ' &middot; ' + mood : ''}</div>
+  <div class="price-row">
+    <div><div class="label">FROM</div><div class="price">$${lease}</div></div>
+    <div><div class="label">LEASE</div><div class="price" style="font-size:16px;color:#c8c8d0">MP3 · WAV · Stems · Exclusive</div></div>
+  </div>
+  <a class="cta" href="/">Browse on O'Neil Beats</a>
+  <a class="secondary" href="oneilbeats://beat/${id}">Open in app</a>
+  <div class="footer">Prod. by O'Neil &middot; <a href="/">oneilbeats.store</a></div>
+</div>
+</body>
+</html>`);
+  } catch (err) {
+    console.error('Beat share page error:', err);
+    res.status(500).send('Error rendering beat page');
+  }
+});
+
 app.get('/preview/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1940,6 +2026,48 @@ app.get('/admin/subscribers', requireAdminKey, async (req, res) => {
     const active = (data || []).filter(s => !s.unsubscribed_at);
     res.json({ success: true, total: data?.length || 0, active: active.length, subscribers: data || [] });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /account/delete — Apple-compliant account deletion.
+// Requires the user's Supabase access_token (so the delete is authenticated by the user themselves).
+// Order records are PRESERVED for tax/accounting compliance (per Privacy Policy section 6).
+// Email subscriptions, push tokens, favorites, and the auth user itself are removed.
+app.post('/account/delete', async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+    if (!accessToken) return res.status(400).json({ error: 'accessToken required' });
+
+    const supabase = getSupabaseClient(); // service-role client
+    // Verify the token and get the user it belongs to.
+    const { data: userData, error: userErr } = await supabase.auth.getUser(accessToken);
+    if (userErr || !userData?.user) return res.status(401).json({ error: 'Invalid session' });
+    const user = userData.user;
+    const uid = user.id;
+    const email = (user.email || '').toLowerCase();
+
+    // Best-effort deletes — don't fail the whole request if one table is missing.
+    try { await supabase.from('push_tokens').delete().eq('user_id', uid); } catch (_) {}
+    try { await supabase.from('push_tokens').delete().eq('email', email); } catch (_) {}
+    try { await supabase.from('favorites').delete().eq('user_id', uid); } catch (_) {}
+    try { await supabase.from('customer_events').delete().eq('user_id', uid); } catch (_) {}
+    if (email) {
+      try {
+        await supabase.from('email_subscribers')
+          .update({ unsubscribed_at: new Date().toISOString() })
+          .eq('email', email);
+      } catch (_) {}
+    }
+    try { await supabase.from('customers').delete().eq('id', uid); } catch (_) {}
+
+    // Finally delete the auth user.
+    const { error: delErr } = await supabase.auth.admin.deleteUser(uid);
+    if (delErr) return res.status(500).json({ error: 'Account deletion failed: ' + delErr.message });
+
+    res.json({ success: true, message: 'Account deleted. Order records retained for tax compliance.' });
+  } catch (err) {
+    console.error('Account delete error:', err);
     res.status(500).json({ error: err.message });
   }
 });

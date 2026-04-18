@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>O'Neil Beats — Store Assets</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #1a1a1a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif; color: #fff; }
+  body { padding: 40px 20px; }
+  .nav { position: fixed; top: 12px; left: 12px; background: rgba(0,0,0,.85); padding: 12px 16px; border-radius: 8px; font-size: 13px; z-index: 1000; border: 1px solid #d4af37; }
+  .nav a { color: #d4af37; text-decoration: none; display: block; padding: 4px 0; }
+  .nav a:hover { color: #fff; }
+  .label { color: #d4af37; font-size: 14px; margin: 32px auto 8px; max-width: 1290px; padding-left: 4px; }
+
+  /* iPhone 6.9" frame — actual App Store dimensions */
+  .frame-iphone {
+    width: 1290px; height: 2796px; margin: 0 auto;
+    background: #06060a;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid #333;
+  }
+  /* Android 9:16 frame for Play Store */
+  .frame-android {
+    width: 1080px; height: 1920px; margin: 0 auto;
+    background: #06060a;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid #333;
+  }
+  /* Play Store feature graphic */
+  .frame-feature {
+    width: 1024px; height: 500px; margin: 0 auto;
+    background: #06060a;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid #333;
+  }
+
+  /* Reusable design elements */
+  .glow {
+    position: absolute; border-radius: 50%; filter: blur(120px); opacity: .35;
+    pointer-events: none;
+  }
+  .glow-gold { background: #d4af37; }
+  .glow-red { background: #e63946; }
+
+  .headline {
+    font-weight: 900; line-height: 1; letter-spacing: -0.02em;
+    text-align: center;
+  }
+  .subhead { text-align: center; font-weight: 500; }
+  .gold { color: #d4af37; }
+  .red { color: #e63946; }
+
+  /* Frame 1: Hero */
+  .f1 .glow1 { width: 800px; height: 800px; top: -200px; right: -200px; }
+  .f1 .glow2 { width: 700px; height: 700px; bottom: -100px; left: -200px; }
+  .f1 .brand { position: absolute; top: 180px; left: 0; right: 0; text-align: center; font-size: 38px; letter-spacing: 14px; font-weight: 900; color: #fff; }
+  .f1 .head { position: absolute; top: 320px; left: 60px; right: 60px; font-size: 150px; }
+  .f1 .head .gold { display: block; }
+  .f1 .sub { position: absolute; top: 800px; left: 80px; right: 80px; font-size: 50px; color: #c8c8d0; line-height: 1.3; }
+  .f1 .grid { position: absolute; top: 1100px; left: 80px; right: 80px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; }
+  .f1 .tile { aspect-ratio: 1; background: linear-gradient(135deg, #2a1a40 0%, #6b1a3a 100%); border-radius: 28px; padding: 30px; display: flex; flex-direction: column; justify-content: flex-end; border: 2px solid rgba(212,175,55,.3); }
+  .f1 .tile:nth-child(1) { background: linear-gradient(135deg, #1a3a4a 0%, #d4af37 100%); }
+  .f1 .tile:nth-child(2) { background: linear-gradient(135deg, #4a1a3a 0%, #e63946 100%); }
+  .f1 .tile:nth-child(3) { background: linear-gradient(135deg, #2a1a40 0%, #6b1a3a 100%); }
+  .f1 .tile:nth-child(4) { background: linear-gradient(135deg, #1a1a3a 0%, #4a1a6a 100%); }
+  .f1 .tile-title { color: #fff; font-size: 38px; font-weight: 800; }
+  .f1 .tile-sub { color: rgba(255,255,255,.7); font-size: 24px; margin-top: 6px; }
+  .f1 .badge { position: absolute; bottom: 100px; left: 80px; right: 80px; text-align: center; color: #888; font-size: 32px; }
+
+  /* Frame 2: Free Beat */
+  .f2 .glow1 { width: 900px; height: 900px; top: 200px; left: 50%; transform: translateX(-50%); background: #d4af37; opacity: .4; }
+  .f2 .gift { position: absolute; top: 380px; left: 0; right: 0; text-align: center; font-size: 280px; }
+  .f2 .head { position: absolute; top: 800px; left: 60px; right: 60px; font-size: 160px; }
+  .f2 .head .red { display: block; }
+  .f2 .sub { position: absolute; top: 1280px; left: 80px; right: 80px; font-size: 52px; color: #c8c8d0; line-height: 1.3; text-align: center; }
+  .f2 .card { position: absolute; top: 1700px; left: 80px; right: 80px; background: linear-gradient(135deg, #2a1010 0%, #4a1a1a 100%); border: 3px solid #d4af37; border-radius: 36px; padding: 60px; }
+  .f2 .card-tag { color: #d4af37; font-size: 30px; font-weight: 800; letter-spacing: 4px; }
+  .f2 .card-title { color: #fff; font-size: 70px; font-weight: 900; margin-top: 16px; line-height: 1.05; }
+  .f2 .card-meta { color: #c8c8d0; font-size: 36px; margin-top: 24px; }
+  .f2 .card-price { position: absolute; top: 60px; right: 60px; background: #d4af37; color: #000; font-size: 48px; font-weight: 900; padding: 14px 32px; border-radius: 999px; }
+  .f2 .badge { position: absolute; bottom: 100px; left: 80px; right: 80px; text-align: center; color: #888; font-size: 32px; }
+
+  /* Frame 3: Licensing */
+  .f3 .glow1 { width: 700px; height: 700px; top: 0; right: -100px; }
+  .f3 .glow2 { width: 700px; height: 700px; bottom: 0; left: -100px; background: #e63946; }
+  .f3 .head { position: absolute; top: 220px; left: 60px; right: 60px; font-size: 140px; }
+  .f3 .head .gold { display: block; }
+  .f3 .tiers { position: absolute; top: 700px; left: 80px; right: 80px; display: flex; flex-direction: column; gap: 32px; }
+  .f3 .tier { background: rgba(255,255,255,.04); border: 2px solid rgba(255,255,255,.1); border-radius: 28px; padding: 44px 50px; display: flex; align-items: center; justify-content: space-between; }
+  .f3 .tier.featured { border-color: #d4af37; background: linear-gradient(135deg, rgba(212,175,55,.12) 0%, rgba(230,57,70,.12) 100%); }
+  .f3 .tier-name { font-size: 60px; font-weight: 800; color: #fff; }
+  .f3 .tier-files { font-size: 30px; color: #888; margin-top: 6px; }
+  .f3 .tier-price { font-size: 64px; font-weight: 900; color: #d4af37; }
+  .f3 .badge { position: absolute; bottom: 100px; left: 80px; right: 80px; text-align: center; color: #888; font-size: 32px; }
+
+  /* Frame 4: Instant */
+  .f4 .glow1 { width: 800px; height: 800px; top: -100px; left: 50%; transform: translateX(-50%); }
+  .f4 .head { position: absolute; top: 220px; left: 60px; right: 60px; font-size: 150px; }
+  .f4 .head .gold { display: block; }
+  .f4 .steps { position: absolute; top: 800px; left: 80px; right: 80px; display: flex; flex-direction: column; gap: 60px; }
+  .f4 .step { display: flex; align-items: center; gap: 50px; }
+  .f4 .step-num { width: 180px; height: 180px; border-radius: 50%; background: linear-gradient(135deg, #d4af37 0%, #e63946 100%); display: flex; align-items: center; justify-content: center; font-size: 100px; font-weight: 900; color: #000; flex-shrink: 0; }
+  .f4 .step-body { }
+  .f4 .step-title { font-size: 76px; font-weight: 800; color: #fff; line-height: 1; }
+  .f4 .step-sub { font-size: 36px; color: #c8c8d0; margin-top: 14px; }
+  .f4 .badge { position: absolute; bottom: 100px; left: 80px; right: 80px; text-align: center; color: #888; font-size: 32px; }
+
+  /* Frame 5: Producer */
+  .f5 .glow1 { width: 1000px; height: 1000px; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #d4af37; opacity: .25; }
+  .f5 .brand { position: absolute; top: 600px; left: 0; right: 0; text-align: center; font-size: 220px; font-weight: 900; color: #fff; line-height: 1; letter-spacing: -0.02em; }
+  .f5 .brand .gold { color: #d4af37; }
+  .f5 .tag { position: absolute; top: 1100px; left: 0; right: 0; text-align: center; font-size: 50px; color: #d4af37; letter-spacing: 12px; font-weight: 700; }
+  .f5 .stats { position: absolute; top: 1400px; left: 80px; right: 80px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
+  .f5 .stat { text-align: center; padding: 40px 20px; background: rgba(255,255,255,.03); border: 1px solid rgba(212,175,55,.3); border-radius: 28px; }
+  .f5 .stat-num { font-size: 90px; font-weight: 900; color: #d4af37; line-height: 1; }
+  .f5 .stat-label { font-size: 26px; color: #c8c8d0; margin-top: 12px; text-transform: uppercase; letter-spacing: 2px; }
+  .f5 .cta { position: absolute; bottom: 280px; left: 80px; right: 80px; text-align: center; }
+  .f5 .cta-text { font-size: 60px; font-weight: 800; color: #fff; line-height: 1.2; }
+
+  /* Feature graphic 1024x500 */
+  .fg .glow1 { width: 600px; height: 600px; top: -100px; right: -100px; }
+  .fg .glow2 { width: 500px; height: 500px; bottom: -100px; left: -100px; background: #e63946; }
+  .fg .left { position: absolute; left: 60px; top: 50%; transform: translateY(-50%); }
+  .fg .brand { font-size: 70px; font-weight: 900; color: #fff; line-height: 1; letter-spacing: -0.02em; }
+  .fg .brand .gold { color: #d4af37; }
+  .fg .tag { font-size: 22px; color: #d4af37; letter-spacing: 6px; margin-top: 14px; }
+  .fg .sub { font-size: 26px; color: #c8c8d0; margin-top: 18px; max-width: 520px; line-height: 1.3; }
+  .fg .right { position: absolute; right: 60px; top: 50%; transform: translateY(-50%); display: grid; grid-template-columns: repeat(2, 130px); gap: 14px; }
+  .fg .ftile { width: 130px; height: 130px; border-radius: 18px; }
+  .fg .ftile:nth-child(1) { background: linear-gradient(135deg, #1a3a4a 0%, #d4af37 100%); }
+  .fg .ftile:nth-child(2) { background: linear-gradient(135deg, #4a1a3a 0%, #e63946 100%); }
+  .fg .ftile:nth-child(3) { background: linear-gradient(135deg, #2a1a40 0%, #6b1a3a 100%); }
+  .fg .ftile:nth-child(4) { background: linear-gradient(135deg, #1a1a3a 0%, #4a1a6a 100%); border: 2px solid #d4af37; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <strong style="color:#d4af37">Store Assets</strong>
+  <a href="#s1">1. Hero</a>
+  <a href="#s2">2. Free Weekly</a>
+  <a href="#s3">3. Licensing</a>
+  <a href="#s4">4. Instant Delivery</a>
+  <a href="#s5">5. Producer Brand</a>
+  <a href="#fg">Feature Graphic</a>
+  <hr style="border-color:#333; margin:8px 0;">
+  <small style="color:#888">Press Ctrl+P to print, or use browser screenshot at 100% zoom.</small>
+</div>
+
+<!-- ============ Screenshot 1: Hero ============ -->
+<div class="label" id="s1">Screenshot 1 — Hero (1290 × 2796, iPhone 6.9")</div>
+<div class="frame-iphone f1">
+  <div class="glow glow-gold glow1"></div>
+  <div class="glow glow-red glow2"></div>
+  <div class="brand">O'NEIL</div>
+  <div class="headline head">PREMIUM<span class="gold">BEATS</span></div>
+  <div class="subhead sub">Reggaeton, Trap & Hip-Hop instrumentals built for serious artists.</div>
+  <div class="grid">
+    <div class="tile"><div class="tile-title">Latin Heat</div><div class="tile-sub">Reggaeton • 92 BPM</div></div>
+    <div class="tile"><div class="tile-title">Cartel</div><div class="tile-sub">Trap • 140 BPM</div></div>
+    <div class="tile"><div class="tile-title">Boulevard</div><div class="tile-sub">Hip-Hop • 88 BPM</div></div>
+    <div class="tile"><div class="tile-title">Midnight</div><div class="tile-sub">R&B • 76 BPM</div></div>
+  </div>
+  <div class="badge">Stream • Lease • Buy Exclusive</div>
+</div>
+
+<!-- ============ Screenshot 2: Free Beat of the Week ============ -->
+<div class="label" id="s2">Screenshot 2 — Free Beat of the Week (1290 × 2796)</div>
+<div class="frame-iphone f2">
+  <div class="glow glow1"></div>
+  <div class="gift">🎁</div>
+  <div class="headline head">FREE BEAT<span class="red">EVERY WEEK</span></div>
+  <div class="subhead sub">Sign up once. Get one premium beat free, every single week.</div>
+  <div class="card">
+    <div class="card-price">FREE</div>
+    <div class="card-tag">THIS WEEK'S DROP</div>
+    <div class="card-title">Skyline Cartel</div>
+    <div class="card-meta">Reggaeton • 95 BPM • MP3 + WAV</div>
+  </div>
+  <div class="badge">Unsubscribe anytime • No spam</div>
+</div>
+
+<!-- ============ Screenshot 3: Licensing ============ -->
+<div class="label" id="s3">Screenshot 3 — License Tiers (1290 × 2796)</div>
+<div class="frame-iphone f3">
+  <div class="glow glow-gold glow1"></div>
+  <div class="glow glow2"></div>
+  <div class="headline head">YOUR USE.<span class="gold">YOUR LICENSE.</span></div>
+  <div class="tiers">
+    <div class="tier"><div><div class="tier-name">Lease</div><div class="tier-files">MP3</div></div><div class="tier-price">$30</div></div>
+    <div class="tier featured"><div><div class="tier-name">Premium</div><div class="tier-files">MP3 + WAV</div></div><div class="tier-price">$50</div></div>
+    <div class="tier"><div><div class="tier-name">Stems</div><div class="tier-files">MP3 + WAV + Trackouts</div></div><div class="tier-price">$100</div></div>
+    <div class="tier"><div><div class="tier-name">Exclusive</div><div class="tier-files">All files + ownership</div></div><div class="tier-price">Offer</div></div>
+  </div>
+  <div class="badge">Instant license PDF emailed on purchase</div>
+</div>
+
+<!-- ============ Screenshot 4: Instant Delivery ============ -->
+<div class="label" id="s4">Screenshot 4 — Instant Delivery (1290 × 2796)</div>
+<div class="frame-iphone f4">
+  <div class="glow glow-gold glow1"></div>
+  <div class="headline head">BUY. GET.<span class="gold">RELEASE.</span></div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Tap Buy</div><div class="step-sub">Apple Pay, Google Pay, card</div></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Download</div><div class="step-sub">Files emailed in seconds</div></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Drop It</div><div class="step-sub">License PDF for distribution</div></div></div>
+  </div>
+  <div class="badge">Secure checkout via Stripe</div>
+</div>
+
+<!-- ============ Screenshot 5: Producer Brand ============ -->
+<div class="label" id="s5">Screenshot 5 — Producer Brand (1290 × 2796)</div>
+<div class="frame-iphone f5">
+  <div class="glow glow1"></div>
+  <div class="brand">O'NEIL<br><span class="gold">BEATS</span></div>
+  <div class="tag">PROD. BY O'NEIL</div>
+  <div class="stats">
+    <div class="stat"><div class="stat-num">100+</div><div class="stat-label">Beats</div></div>
+    <div class="stat"><div class="stat-num">4★</div><div class="stat-label">Quality</div></div>
+    <div class="stat"><div class="stat-num">24/7</div><div class="stat-label">Available</div></div>
+  </div>
+  <div class="cta"><div class="cta-text">Start your next hit today.</div></div>
+</div>
+
+<!-- ============ Play Store Feature Graphic ============ -->
+<div class="label" id="fg">Play Store Feature Graphic (1024 × 500)</div>
+<div class="frame-feature fg">
+  <div class="glow glow-gold glow1"></div>
+  <div class="glow glow2"></div>
+  <div class="left">
+    <div class="brand">O'NEIL <span class="gold">BEATS</span></div>
+    <div class="tag">REGGAETON • TRAP • HIP-HOP</div>
+    <div class="sub">Stream, license & download premium instrumentals. Free beat every week.</div>
+  </div>
+  <div class="right">
+    <div class="ftile"></div>
+    <div class="ftile"></div>
+    <div class="ftile"></div>
+    <div class="ftile"></div>
+  </div>
+</div>
+
+<div style="height: 80px;"></div>
+
+</body>
+</html>
