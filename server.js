@@ -2165,6 +2165,72 @@ app.post('/admin/featured-free', requireAdminKey, async (req, res) => {
   }
 });
 
+// POST /admin/send-free-beat — admin; emails the currently featured Free Beat to all active subscribers.
+// CRITICAL: Always uses beat.audio_url (the TAGGED preview MP3) — never audio_original_url (clean premium).
+// Free subscribers get the producer-tagged version so the clean audio stays paid-only.
+app.post('/admin/send-free-beat', requireAdminKey, async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    // 1. Find the currently featured free beat
+    const { data: featured } = await supabase.from('beats').select('*').eq('is_free_weekly', true).limit(1);
+    const beat = featured && featured[0];
+    if (!beat) return res.status(400).json({ error: 'No beat is currently set as Free Beat of the Week. Set one first.' });
+    // Tagged MP3 only — never the untagged original.
+    const taggedUrl = beat.audio_url;
+    if (!taggedUrl) return res.status(400).json({ error: 'Featured beat has no audio_url (tagged preview).' });
+
+    // 2. Get all active subscribers
+    const { data: subs } = await supabase.from('email_subscribers')
+      .select('email, token').is('unsubscribed_at', null);
+    const recipients = (subs || []).filter(s => s.email);
+    if (recipients.length === 0) return res.status(400).json({ error: 'No active subscribers.' });
+
+    // 3. Send each one an email (best-effort; collect failures)
+    const subject = `🎁 Your Free Beat: ${beat.title}`;
+    let sent = 0, failed = 0;
+    for (const sub of recipients) {
+      const unsubUrl = `${process.env.PUBLIC_BASE_URL || 'https://oneil-beats-backend.vercel.app'}/unsubscribe?email=${encodeURIComponent(sub.email)}&token=${sub.token}`;
+      const html = `
+        <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;background:#06060a;color:#e2e8f0;padding:32px;border-radius:12px">
+          <div style="text-align:center;margin-bottom:24px">
+            <div style="color:#fbbf24;font-size:11px;font-weight:900;letter-spacing:2px">FREE BEAT OF THE WEEK</div>
+            <h1 style="color:#fff;margin:8px 0 0;font-size:24px">${beat.title}</h1>
+            <p style="color:#888;font-size:13px;margin-top:6px">${beat.genre || ''}${beat.bpm ? ' · ' + beat.bpm + ' BPM' : ''}${beat.key ? ' · ' + beat.key : ''}</p>
+          </div>
+          ${beat.cover_art_url ? `<img src="${beat.cover_art_url}" alt="cover" style="width:100%;max-width:400px;border-radius:12px;display:block;margin:0 auto 24px">` : ''}
+          <div style="text-align:center;margin:24px 0">
+            <a href="${taggedUrl}" style="display:inline-block;background:#e63946;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:900;font-size:14px;letter-spacing:0.5px">⬇ DOWNLOAD FREE BEAT</a>
+          </div>
+          <p style="color:#888;font-size:12px;text-align:center;line-height:1.6">
+            This is the producer-tagged preview, free for non-commercial use.<br>
+            Want the clean untagged version? <a href="https://oneilbeats.store" style="color:#e63946">Buy a license at oneilbeats.store</a>
+          </p>
+          <hr style="border:none;border-top:1px solid #222;margin:24px 0">
+          <p style="color:#555;font-size:11px;text-align:center">
+            You're receiving this because you signed up for Free Beat of the Week.<br>
+            <a href="${unsubUrl}" style="color:#888">Unsubscribe</a>
+          </p>
+        </div>`;
+      try {
+        await mailer.sendMail({
+          from: `"O'Neil Beats" <${process.env.EMAIL_FROM}>`,
+          to: sub.email,
+          subject,
+          html,
+        });
+        sent++;
+      } catch (e) {
+        console.warn('send-free-beat to', sub.email, 'failed:', e.message);
+        failed++;
+      }
+    }
+    res.json({ success: true, sent, failed, total: recipients.length, beat: { id: beat.id, title: beat.title } });
+  } catch (err) {
+    console.error('send-free-beat error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /admin/subscribers — admin; subscriber stats
 app.get('/admin/subscribers', requireAdminKey, async (req, res) => {
   try {
