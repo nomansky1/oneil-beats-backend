@@ -591,6 +591,7 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
     <a href="#" onclick="event.preventDefault();setGenreFilter('Trap');closeMobileNav()">Trap</a>
     <a href="#" onclick="event.preventDefault();setGenreFilter('Hip-Hop');closeMobileNav()">Hip-Hop</a>
     <a href="#" onclick="event.preventDefault();setGenreFilter('Drill');closeMobileNav()">Drill</a>
+    <a href="#about" onclick="closeMobileNav()">About</a>
     <a href="#faq" onclick="closeMobileNav()">FAQ</a>
     <a href="#orders" onclick="closeMobileNav()">My Orders</a>
   </nav>
@@ -902,6 +903,42 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
   </div>
 </section>
 
+<!-- About -->
+<section id="about" aria-labelledby="about-title" style="max-width:1200px;margin:40px auto;padding:0 24px">
+  <div style="background:linear-gradient(135deg,rgba(230,57,70,.08),rgba(245,158,11,.06));border:1px solid var(--border);border-radius:20px;padding:36px 28px">
+    <div style="font-size:11px;font-weight:900;letter-spacing:2px;color:var(--accent);margin-bottom:10px">★ ABOUT THE PRODUCER</div>
+    <h2 id="about-title" style="margin:0 0 14px;font-size:28px;font-weight:900;color:var(--text);letter-spacing:-.5px">O'Neil Beats — Independent. Built for Artists.</h2>
+    <p style="color:var(--dim);font-size:15px;line-height:1.7;max-width:780px;margin:0 0 14px">
+      O'Neil Beats is a one-producer label specializing in <strong style="color:var(--text)">reggaeton, trap, drill, hip-hop, and Latin instrumentals</strong>. Every beat on this site is original, mixed in-house, and ready to record over the moment you check out — no middlemen, no marketplace fees padded onto your license.
+    </p>
+    <p style="color:var(--dim);font-size:15px;line-height:1.7;max-width:780px;margin:0 0 18px">
+      Built as an independent alternative to BeatStars, Airbit, and Traktrain. Cleaner licensing. Instant Stripe checkout. Direct contact with the producer — not a support queue.
+    </p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:22px">
+      <div style="background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+        <div style="font-size:22px;font-weight:900;color:var(--accent)">100%</div>
+        <div style="font-size:12px;color:var(--dim);line-height:1.4;margin-top:2px">Original production — no samples sold without clearance</div>
+      </div>
+      <div style="background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+        <div style="font-size:22px;font-weight:900;color:var(--accent)">Instant</div>
+        <div style="font-size:12px;color:var(--dim);line-height:1.4;margin-top:2px">MP3 / WAV delivered to your inbox seconds after Stripe checkout</div>
+      </div>
+      <div style="background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+        <div style="font-size:22px;font-weight:900;color:var(--accent)">3 Apps</div>
+        <div style="font-size:12px;color:var(--dim);line-height:1.4;margin-top:2px">Web, Android, and iOS — same catalog, same account, anywhere</div>
+      </div>
+      <div style="background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+        <div style="font-size:22px;font-weight:900;color:var(--accent)">Direct</div>
+        <div style="font-size:12px;color:var(--dim);line-height:1.4;margin-top:2px">Email the producer — no support tickets, real replies</div>
+      </div>
+    </div>
+    <div style="margin-top:22px;display:flex;gap:10px;flex-wrap:wrap">
+      <a href="#catalog" style="display:inline-block;background:var(--accent);color:#fff;padding:11px 20px;border-radius:10px;font-weight:800;font-size:13px;text-decoration:none">Browse Beats</a>
+      <a href="mailto:produceroneil@gmail.com?subject=Hello%20O'Neil" style="display:inline-block;background:transparent;color:var(--text);padding:11px 20px;border-radius:10px;font-weight:800;font-size:13px;text-decoration:none;border:1px solid var(--border)">Contact O'Neil</a>
+    </div>
+  </div>
+</section>
+
 <!-- FAQ -->
 <section class="faq-section" id="faq" aria-labelledby="faq-title">
   <h2 id="faq-title">Frequently Asked Questions</h2>
@@ -977,6 +1014,7 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
       </div>
       <div class="footer-col">
         <h4>Info</h4>
+        <a href="#about">About</a>
         <a href="#faq">FAQ</a>
         <a href="#orders">My Orders</a>
         <a href="mailto:produceroneil@gmail.com">Contact</a>
@@ -1099,7 +1137,7 @@ function injectProductSchema() {
       "@type":"AggregateOffer",
       "priceCurrency":"USD",
       "lowPrice": Number(b.lease_price||29.99),
-      "highPrice": Number(b.exclusive_price || b.stems_price || b.premium_price || 199.99),
+      "highPrice": Number(b.stems_price || b.premium_price || 199.99),
       "offerCount": 4,
       "availability":"https://schema.org/InStock"
     }
@@ -1425,8 +1463,9 @@ function openDetail(id) {
     {id:'lease',cls:'lic-lease',name:'Lease',price:b.lease_price||29.99,feats:['MP3 file included','Up to 100K streams','Up to 10K downloads','Non-exclusive rights','Credit: Prod. by O\'Neil']},
     {id:'premium',cls:'lic-premium',name:'Premium Lease',price:b.premium_price||99.99,feats:['MP3 + WAV files','Unlimited streams','Radio distribution','Non-exclusive rights','Credit required']},
     ...(b.stems_price?[{id:'stems',cls:'lic-stems',name:'Stems / Track Out',price:b.stems_price,feats:['All stems separated','Full DAW control','Unlimited streams','Non-exclusive rights','Credit required']}]:[]),
-    ...(b.exclusive_price?[{id:'exclusive',cls:'lic-excl exclusive-card',name:'Exclusive',price:b.exclusive_price,feats:['All files included','Full ownership','Beat removed from store','No credit required','100% royalty control']}]:[]),
   ];
+  const exclusiveSubject = encodeURIComponent('Exclusive inquiry — ' + b.title);
+  const exclusiveBody = encodeURIComponent('Hi,\n\nI\'m interested in exclusive rights for "' + b.title + '" (' + (b.genre||'') + ' · ' + (b.bpm||'') + ' BPM' + (b.key?' · '+b.key:'') + ').\n\nLet\'s talk.\n\n— Sent from oneilbeats.store');
   const tags = b.tags ? (typeof b.tags==='string' ? b.tags.split(',').map(t=>t.trim()).filter(Boolean) : b.tags) : [];
   document.getElementById('detail-body').innerHTML = `
     <div class="license-section-title">Choose Your License</div>
@@ -1438,18 +1477,30 @@ function openDetail(id) {
         <ul class="lic-features">${l.feats.map(f=>`<li>${f}</li>`).join('')}</ul>
         <button class="lic-add-btn">${inCart?'✓ Added to Cart':'Add to Cart'}</button>
       </div>`}).join('')}
+      <a class="lic-card lic-excl exclusive-card" href="mailto:produceroneil@gmail.com?subject=${exclusiveSubject}&body=${exclusiveBody}" style="text-decoration:none;color:inherit;display:block">
+        <div class="lic-name">Exclusive</div>
+        <div class="lic-price" style="font-size:18px">Contact for pricing</div>
+        <ul class="lic-features">
+          <li>All files included (MP3, WAV, Stems)</li>
+          <li>Full ownership — beat removed from store</li>
+          <li>No credit required</li>
+          <li>100% royalty control</li>
+          <li>Negotiated 1-on-1 with the producer</li>
+        </ul>
+        <button class="lic-add-btn" style="background:var(--gold);color:#000">Email Producer</button>
+      </a>
     </div>
     <div class="lic-compare">
       <div class="lic-compare-title">License Comparison</div>
       <table>
-        <thead><tr><th>Feature</th><th>Lease</th><th>Premium</th>${b.stems_price?'<th>Stems</th>':''}${b.exclusive_price?'<th>Exclusive</th>':''}</tr></thead>
+        <thead><tr><th>Feature</th><th>Lease</th><th>Premium</th>${b.stems_price?'<th>Stems</th>':''}<th style="color:var(--gold)">Exclusive</th></tr></thead>
         <tbody>
-          <tr><td>MP3</td><td class="y">✓</td><td class="y">✓</td>${b.stems_price?'<td class="y">✓</td>':''}${b.exclusive_price?'<td class="y">✓</td>':''}</tr>
-          <tr><td>WAV</td><td class="n">—</td><td class="y">✓</td>${b.stems_price?'<td class="y">✓</td>':''}${b.exclusive_price?'<td class="y">✓</td>':''}</tr>
-          <tr><td>Stems</td><td class="n">—</td><td class="n">—</td>${b.stems_price?'<td class="y">✓</td>':''}${b.exclusive_price?'<td class="y">✓</td>':''}</tr>
-          <tr><td>Streams</td><td>100K</td><td>Unlimited</td>${b.stems_price?'<td>Unlimited</td>':''}${b.exclusive_price?'<td>Unlimited</td>':''}</tr>
-          <tr><td>Credit req.</td><td class="y">Yes</td><td class="y">Yes</td>${b.stems_price?'<td class="y">Yes</td>':''}${b.exclusive_price?'<td class="n">No</td>':''}</tr>
-          <tr><td>Full ownership</td><td class="n">—</td><td class="n">—</td>${b.stems_price?'<td class="n">—</td>':''}${b.exclusive_price?'<td class="y">✓</td>':''}</tr>
+          <tr><td>MP3</td><td class="y">✓</td><td class="y">✓</td>${b.stems_price?'<td class="y">✓</td>':''}<td class="y">✓</td></tr>
+          <tr><td>WAV</td><td class="n">—</td><td class="y">✓</td>${b.stems_price?'<td class="y">✓</td>':''}<td class="y">✓</td></tr>
+          <tr><td>Stems</td><td class="n">—</td><td class="n">—</td>${b.stems_price?'<td class="y">✓</td>':''}<td class="y">✓</td></tr>
+          <tr><td>Streams</td><td>100K</td><td>Unlimited</td>${b.stems_price?'<td>Unlimited</td>':''}<td>Unlimited</td></tr>
+          <tr><td>Credit req.</td><td class="y">Yes</td><td class="y">Yes</td>${b.stems_price?'<td class="y">Yes</td>':''}<td class="n">No</td></tr>
+          <tr><td>Full ownership</td><td class="n">—</td><td class="n">—</td>${b.stems_price?'<td class="n">—</td>':''}<td class="y">✓</td></tr>
         </tbody>
       </table>
     </div>
