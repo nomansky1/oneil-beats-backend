@@ -44,6 +44,7 @@ async function addBeatToDB(beatData) {
     stem_price: parseFloat(beatData.stems_price) || 199.99,
     exclusive_price: beatData.exclusive_price ? parseFloat(beatData.exclusive_price) : null,
     tags: Array.isArray(beatData.tags) ? beatData.tags.join(',') : (beatData.tags || ''),
+    description: beatData.description || '',
     audio_url: beatData.audio_url || '',
     audio_original_url: beatData.audio_original_url || '',
     cover_url: beatData.cover_url || '',
@@ -67,7 +68,7 @@ async function updateBeatInDB(beatId, updates) {
   const allowedDbColumns = new Set([
     'title', 'genre', 'subgenre', 'bpm', 'key', 'mood', 'price',
     'lease_price', 'premium_price', 'stem_price', 'exclusive_price',
-    'tags', 'audio_url', 'audio_original_url', 'cover_url', 'wav_url', 'stem_url', 'active',
+    'tags', 'description', 'audio_url', 'audio_original_url', 'cover_url', 'wav_url', 'stem_url', 'active',
   ]);
   const filtered = {};
   for (const [k, v] of Object.entries(updates)) {
