@@ -9,6 +9,20 @@ const multer = require('multer');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { v4: uuidv4 } = require('uuid');
 const nodemailer = require('nodemailer');
+const path = require('path');
+const sharp = require('sharp');
+const Anthropic = require('@anthropic-ai/sdk');
+
+// Anthropic client — lazy, so server still boots if key is missing
+let _anthropic = null;
+function getAnthropic() {
+  if (_anthropic) return _anthropic;
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  return _anthropic;
+}
+
+const ANTON_FONT_PATH = path.join(__dirname, 'assets', 'fonts', 'Anton-Regular.ttf');
 
 const {
   fetchBeatsFromDB,
@@ -126,7 +140,6 @@ async function sendPushNotification(expoPushTokens, title, body, data = {}) {
 }
 
 // ── Express Setup ────────────────────────────────────────────────────────────
-const path = require('path');
 const app = express();
 app.use(cors({
   origin: ['https://oneilbeats.store', 'https://www.oneilbeats.store', /localhost/, /\.vercel\.app$/],
@@ -1506,21 +1519,142 @@ app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
 // AI COVER ART GENERATION
 // ──────────────────────────────────────────────────────────────────────────────
 
+// Composite a branded title strip onto a cover image.
+// meta: { title, genre, bpm, key, accentHex? }
+// Returns a PNG buffer. Never throws — falls back to the raw buffer on error.
+async function compositeTitleOnCover(imageBuffer, meta = {}) {
+  try {
+    const { title = '', genre = '', bpm = '', key = '', accentHex = '#fbbf24' } = meta;
+    const SIZE = 1024;
+    const STRIP = 260;
+    const PAD_X = 56;
+
+    const titleText = String(title || '').toUpperCase().trim();
+    const metaParts = [];
+    if (genre) metaParts.push(String(genre).toUpperCase());
+    if (bpm) metaParts.push(`${bpm} BPM`);
+    if (key) metaParts.push(String(key).toUpperCase());
+    const metaText = metaParts.join('  ·  ');
+
+    // Normalize input to 1024x1024
+    const base = await sharp(imageBuffer)
+      .resize(SIZE, SIZE, { fit: 'cover', position: 'centre' })
+      .toBuffer();
+
+    const layers = [];
+
+    // Bottom gradient strip as SVG
+    const gradientSvg = Buffer.from(`
+<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${STRIP}">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="30%" stop-color="#000" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.95"/>
+    </linearGradient>
+  </defs>
+  <rect width="${SIZE}" height="${STRIP}" fill="url(#g)"/>
+</svg>`.trim());
+    layers.push({ input: gradientSvg, top: SIZE - STRIP, left: 0 });
+
+    // Title — Anton, white, large, two-line auto-wrap
+    if (titleText) {
+      const titleBuf = await sharp({
+        text: {
+          text: `<span foreground="white">${escapeXmlMinimal(titleText)}</span>`,
+          fontfile: ANTON_FONT_PATH,
+          font: 'Anton 96',
+          rgba: true,
+          width: SIZE - PAD_X * 2,
+          height: 180,
+          align: 'low',
+          wrap: 'word',
+        },
+      }).png().toBuffer();
+      const titleMeta = await sharp(titleBuf).metadata();
+      const titleH = titleMeta.height || 100;
+      layers.push({ input: titleBuf, top: SIZE - PAD_X - titleH - 46, left: PAD_X });
+    }
+
+    // Meta line — Anton, accent color, smaller, single line
+    if (metaText) {
+      const metaBuf = await sharp({
+        text: {
+          text: `<span foreground="${accentHex}" letter_spacing="2000">${escapeXmlMinimal(metaText)}</span>`,
+          fontfile: ANTON_FONT_PATH,
+          font: 'Anton 36',
+          rgba: true,
+          width: SIZE - PAD_X * 2,
+          height: 44,
+          align: 'low',
+        },
+      }).png().toBuffer();
+      layers.push({ input: metaBuf, top: SIZE - PAD_X - 44, left: PAD_X });
+    }
+
+    return await sharp(base).composite(layers).png({ quality: 92 }).toBuffer();
+  } catch (err) {
+    console.warn('compositeTitleOnCover failed, returning raw buffer:', err.message);
+    return imageBuffer;
+  }
+}
+
+function escapeXmlMinimal(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+// Build a creative cover prompt via Claude Haiku. Falls back to a templated prompt if Claude is unavailable.
+async function buildCoverPromptSmart({ genre, mood, bpm, key: beatKey, title, tags }) {
+  const anthropic = getAnthropic();
+  const safeGenre = genre || 'hip hop';
+  const safeMood = mood || 'Dark';
+
+  // Fallback template (used if no ANTHROPIC_API_KEY or if call fails)
+  const fallback = () => {
+    const theme = COVER_THEMES[safeMood] || COVER_THEMES['Dark'];
+    const p = theme.prompts[Math.floor(Math.random() * theme.prompts.length)];
+    const toneContext = beatKey && String(beatKey).toLowerCase().includes('minor') ? ', moody dark tones' : beatKey ? ', bright warm tones' : '';
+    const tagContext = tags ? `, ${tags} aesthetic` : '';
+    return `${p}, ${safeGenre} music album cover${tagContext}${toneContext}, square format, cinematic, high quality, no text no words no letters`;
+  };
+
+  if (!anthropic) return fallback();
+
+  try {
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 200,
+      messages: [{
+        role: 'user',
+        content: `Write ONE vivid image-generation prompt (max 40 words) for an album cover for a ${safeGenre} beat titled "${title || 'untitled'}" with a ${safeMood} mood${beatKey ? `, in ${beatKey}` : ''}${bpm ? `, ${bpm} BPM` : ''}. Focus on cinematic mood, lighting, and a specific visual scene. Avoid people's faces. End with: "square format, no text no words no letters". Output ONLY the prompt, no preamble, no quotes.`,
+      }],
+    });
+    const text = (msg.content?.[0]?.text || '').trim();
+    if (text && text.length > 20 && text.length < 600) return text;
+    return fallback();
+  } catch (err) {
+    console.warn('Claude cover-prompt failed, using template:', err.message);
+    return fallback();
+  }
+}
+
 // POST /upload/generate-cover — generate AI cover art via Pollinations.ai
 app.post('/upload/generate-cover', requireAdminKey, async (req, res) => {
   try {
-    const { mood, title, genre, tags, key: beatKey, seed: clientSeed, prompt: clientPrompt } = req.body;
+    const { mood, title, genre, tags, key: beatKey, bpm, seed: clientSeed, prompt: clientPrompt, skipComposite } = req.body;
     if (!mood) return res.status(400).json({ error: 'mood required' });
 
+    // Use client-supplied prompt if given (picked from /generate-covers-smart); otherwise build one.
     let fullPrompt;
     if (clientPrompt && typeof clientPrompt === 'string' && clientPrompt.length < 1000) {
       fullPrompt = clientPrompt;
     } else {
-      const theme = COVER_THEMES[mood] || COVER_THEMES['Dark'];
-      const prompt = theme.prompts[Math.floor(Math.random() * theme.prompts.length)];
-      const tagContext = tags ? `, ${tags} aesthetic` : '';
-      const toneContext = beatKey && beatKey.includes('Minor') ? ', moody dark tones' : beatKey ? ', bright warm tones' : '';
-      fullPrompt = `${prompt}, ${genre || 'hip hop'} music album cover${tagContext}${toneContext}, square format, cinematic, high quality, no text no words no letters`;
+      fullPrompt = await buildCoverPromptSmart({ genre, mood, bpm, key: beatKey, title, tags });
     }
 
     const seed = clientSeed || Date.now();
@@ -1529,16 +1663,20 @@ app.post('/upload/generate-cover', requireAdminKey, async (req, res) => {
     try {
       const imgRes = await fetch(pollinationsUrl, { signal: AbortSignal.timeout(60000) });
       if (!imgRes.ok) throw new Error(`Pollinations returned ${imgRes.status}`);
-      const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
-      const coverUrl = await uploadCoverToStorage(
-        imgBuffer,
-        `ai_cover_${seed}.png`,
-        'image/png'
-      );
+      const rawBuffer = Buffer.from(await imgRes.arrayBuffer());
+
+      // Composite title + meta strip unless caller opted out (e.g. custom-uploaded cover)
+      const finalBuffer = skipComposite
+        ? rawBuffer
+        : await compositeTitleOnCover(rawBuffer, { title, genre, bpm, key: beatKey });
+
+      const filename = `ai_cover_${seed}${skipComposite ? '_raw' : '_branded'}.png`;
+      const coverUrl = await uploadCoverToStorage(finalBuffer, filename, 'image/png');
       res.json({
         success: true,
         image_url: coverUrl,
         source: 'pollinations',
+        branded: !skipComposite,
         mood,
         prompt: fullPrompt,
         seed,
@@ -1549,6 +1687,7 @@ app.post('/upload/generate-cover', requireAdminKey, async (req, res) => {
         success: true,
         image_url: pollinationsUrl,
         source: 'pollinations-direct',
+        branded: false,
         mood,
         prompt: fullPrompt,
         seed,
@@ -1560,31 +1699,51 @@ app.post('/upload/generate-cover', requireAdminKey, async (req, res) => {
   }
 });
 
-// POST /upload/generate-covers — return N (default 10) Pollinations preview URLs
-// Body: { mood, title?, genre?, tags?, key?, count? }
-// Previews are NOT persisted — user picks one and re-calls /upload/generate-cover
-// with the chosen seed + prompt to store the final image in Supabase.
+// POST /upload/compose-cover — composite a branded strip onto an existing image URL.
+// Use this to "brand" a custom-uploaded cover without regenerating.
+// Body: { image_url, title, genre?, bpm?, key? }
+app.post('/upload/compose-cover', requireAdminKey, async (req, res) => {
+  try {
+    const { image_url, title, genre, bpm, key: beatKey } = req.body || {};
+    if (!image_url) return res.status(400).json({ error: 'image_url required' });
+    if (!title) return res.status(400).json({ error: 'title required' });
+    const imgRes = await fetch(image_url, { signal: AbortSignal.timeout(30000) });
+    if (!imgRes.ok) throw new Error(`Source image returned ${imgRes.status}`);
+    const raw = Buffer.from(await imgRes.arrayBuffer());
+    const composed = await compositeTitleOnCover(raw, { title, genre, bpm, key: beatKey });
+    const filename = `branded_${Date.now()}.png`;
+    const coverUrl = await uploadCoverToStorage(composed, filename, 'image/png');
+    res.json({ success: true, image_url: coverUrl, branded: true });
+  } catch (err) {
+    console.error('compose-cover error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /upload/generate-covers — return N varied previews (default 4).
+// Body: { mood, title?, genre?, bpm?, tags?, key?, count? }
+// Uses Claude Haiku to write a rich creative prompt, then generates N seeded Pollinations URLs.
+// Previews are raw (un-branded) to save bandwidth; caller picks one and calls /upload/generate-cover
+// with the chosen { prompt, seed, title, genre, bpm, key } to produce the branded final image.
 app.post('/upload/generate-covers', requireAdminKey, async (req, res) => {
   try {
-    const { mood, title, genre, tags, key: beatKey, count } = req.body || {};
+    const { mood, title, genre, bpm, tags, key: beatKey, count } = req.body || {};
     if (!mood) return res.status(400).json({ error: 'mood required' });
 
-    const theme = COVER_THEMES[mood] || COVER_THEMES['Dark'];
-    const prompts = theme.prompts;
-    const tagContext = tags ? `, ${tags} aesthetic` : '';
-    const toneContext = beatKey && beatKey.includes('Minor') ? ', moody dark tones' : beatKey ? ', bright warm tones' : '';
-    const total = Math.min(Math.max(parseInt(count) || 10, 1), 10);
+    const total = Math.min(Math.max(parseInt(count) || 4, 1), 10);
+    // Build one rich prompt via Claude, reuse across variants (seed drives variation)
+    const fullPrompt = await buildCoverPromptSmart({ genre, mood, bpm, key: beatKey, title, tags });
 
+    const baseTime = Date.now();
     const previews = [];
     for (let i = 0; i < total; i++) {
-      const prompt = prompts[i % prompts.length];
-      const fullPrompt = `${prompt}, ${genre || 'hip hop'} music album cover${tagContext}${toneContext}, square format, cinematic, high quality, no text no words no letters`;
-      const seed = Date.now() + i * 1013 + Math.floor(Math.random() * 997);
+      // Seeds spaced wide + salted so Pollinations returns genuinely different images
+      const seed = baseTime + i * 104729 + Math.floor(Math.random() * 99991);
       const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=1024&height=1024&seed=${seed}&nologo=true`;
       previews.push({ id: `preview_${seed}`, url, seed, prompt: fullPrompt });
     }
 
-    res.json({ success: true, previews, mood, count: total });
+    res.json({ success: true, previews, mood, count: total, prompt_source: getAnthropic() ? 'claude' : 'template' });
   } catch (err) {
     console.error('Covers generation error:', err);
     res.status(500).json({ error: err.message });
@@ -1614,6 +1773,80 @@ app.get('/upload/cover-library', requireAdminKey, async (req, res) => {
 });
 
 // (duplicate /upload/analyze-audio endpoint removed — see definition above)
+
+// ──────────────────────────────────────────────────────────────────────────────
+// AI TEXT — TITLE SUGGESTIONS + DESCRIPTION (Claude Haiku)
+// ──────────────────────────────────────────────────────────────────────────────
+
+// POST /upload/suggest-title — return 3 title suggestions for a beat.
+// Body: { genre?, mood?, bpm?, key? }
+// Requires ANTHROPIC_API_KEY env var. Falls back to generic suggestions if missing.
+app.post('/upload/suggest-title', requireAdminKey, async (req, res) => {
+  const { genre = '', mood = '', bpm = '', key: beatKey = '' } = req.body || {};
+  const fallback = ['Untitled', 'Midnight Run', 'Golden Hour'];
+  const anthropic = getAnthropic();
+  if (!anthropic) return res.json({ success: true, source: 'fallback', titles: fallback });
+  try {
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 200,
+      messages: [{
+        role: 'user',
+        content: `Give me 3 short (1-3 word) evocative titles for a ${genre || 'hip hop'} beat with a ${mood || 'moody'} vibe${beatKey ? ` in ${beatKey}` : ''}${bpm ? ` at ${bpm} BPM` : ''}. Producer brand: O'Neil Beats — urban, cinematic, Latin/hip-hop crossover. Output ONLY 3 titles, one per line, no numbering, no quotes, no explanation.`,
+      }],
+    });
+    const text = (msg.content?.[0]?.text || '').trim();
+    const titles = text
+      .split(/\r?\n/)
+      .map(s => s.replace(/^\s*[-*\d.]+\s*/, '').replace(/^"|"$/g, '').trim())
+      .filter(s => s.length > 0 && s.length < 50)
+      .slice(0, 3);
+    res.json({ success: true, source: 'claude', titles: titles.length ? titles : fallback });
+  } catch (err) {
+    console.warn('suggest-title failed:', err.message);
+    res.json({ success: true, source: 'fallback', titles: fallback, error: err.message });
+  }
+});
+
+// POST /upload/generate-description — return a 2-sentence marketing description.
+// Body: { title?, genre?, mood?, bpm?, key?, subgenre? }
+app.post('/upload/generate-description', requireAdminKey, async (req, res) => {
+  const { title = '', genre = '', mood = '', bpm = '', key: beatKey = '', subgenre = '' } = req.body || {};
+  const templateFallback = () => {
+    const pieces = [];
+    if (genre) pieces.push(`A ${mood ? mood.toLowerCase() + ' ' : ''}${genre.toLowerCase()} beat`);
+    else pieces.push('A versatile beat');
+    if (bpm) pieces.push(`locked at ${bpm} BPM`);
+    if (beatKey) pieces.push(`in ${beatKey}`);
+    return `${pieces.join(' ')}. Perfect for artists looking to ride a memorable groove with character.`;
+  };
+  const anthropic = getAnthropic();
+  if (!anthropic) return res.json({ success: true, source: 'fallback', description: templateFallback() });
+  try {
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 220,
+      messages: [{
+        role: 'user',
+        content: `Write exactly 2 short sentences (max 30 words total) selling a beat:
+- Title: ${title || 'untitled'}
+- Genre: ${genre || 'hip hop'}${subgenre ? ` / ${subgenre}` : ''}
+- Mood: ${mood || 'versatile'}
+- BPM: ${bpm || 'unknown'}
+- Key: ${beatKey || 'unknown'}
+Tone: confident, evocative, concrete imagery. Avoid clichés ("fire", "hard-hitting"). Output ONLY the description — no preamble, no quotes.`,
+      }],
+    });
+    const text = (msg.content?.[0]?.text || '').trim().replace(/^"|"$/g, '');
+    if (text && text.length > 20 && text.length < 400) {
+      return res.json({ success: true, source: 'claude', description: text });
+    }
+    res.json({ success: true, source: 'fallback', description: templateFallback() });
+  } catch (err) {
+    console.warn('generate-description failed:', err.message);
+    res.json({ success: true, source: 'fallback', description: templateFallback(), error: err.message });
+  }
+});
 
 // ──────────────────────────────────────────────────────────────────────────────
 // STRIPE CHECKOUT
