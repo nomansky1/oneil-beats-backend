@@ -440,6 +440,32 @@ app.get('/analytics/trending', async (req, res) => {
 // POST /customer/track — customer behavior event logging
 // Body: { userId?, action, data? }
 // Always returns 200 so analytics failures never break the customer app flow.
+// POST /beats/:id/download — track free tagged-MP3 downloads
+// Body (optional): { userId }
+// Logs a 'download' action to customer_events so analytics + dashboards
+// can surface which beats are being pulled via the free-tagged download flow.
+app.post('/beats/:id/download', async (req, res) => {
+  try {
+    const beatId = req.params.id;
+    const { userId } = req.body || {};
+    if (!beatId) return res.json({ success: true, skipped: 'no beatId' });
+    try {
+      const supabase = getSupabaseClient();
+      await supabase.from('customer_events').insert([{
+        user_id: userId || null,
+        action: 'download',
+        event_data: { beatId, tagged: true },
+        created_at: new Date().toISOString(),
+      }]);
+    } catch (dbErr) {
+      console.warn('download tracking insert skipped:', dbErr.message);
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: true, error: err.message });
+  }
+});
+
 app.post('/customer/track', async (req, res) => {
   try {
     const { userId, action, data } = req.body || {};
