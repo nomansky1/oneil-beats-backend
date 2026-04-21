@@ -46,6 +46,15 @@ const {
 } = require('./supabaseApi');
 const { generateLicensePDF, generateSplitSheetPDF, LICENSE_TERMS } = require('./licenseGenerator');
 
+// Auto-upload pipeline (YouTube first; IG/TikTok gated by env flags).
+// Non-fatal on load — a misconfig here must NOT block the core backend boot.
+let autoUpload = null;
+try {
+  autoUpload = require('./auto-upload');
+} catch (e) {
+  console.warn('[auto-upload] module failed to load:', e.message);
+}
+
 // ── AI Cover Art — mood-to-prompt mapping ─────────────────────────────────────
 const COVER_THEMES = {
   'Aggressive': {
@@ -1513,6 +1522,23 @@ app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
       cover_url: cover_url || '',
     });
 
+    // Enqueue auto-upload (YouTube/IG/TikTok). Non-blocking — if this throws
+    // we still want the beat itself to be "live" for the customer app, so
+    // failures here log-and-move-on. The cron worker retries pending jobs.
+    if (autoUpload && audio_url) {
+      autoUpload.enqueueBeat({
+        id: beatId,
+        title,
+        slug: (title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80),
+        genre: genre || 'Hip Hop',
+        bpm: bpm || null,
+        key: key || null,
+        mood: mood || null,
+        audioUrl: audio_url,
+        coverUrl: cover_url || null,
+      }).catch(err => console.warn('[auto-upload] enqueue failed:', err.message));
+    }
+
     // Push broadcast on new beat — opt-in. Uploader sends announce:false to skip
     // (e.g. reuploads / test uploads). Custom title/body optional.
     if (announce !== false) {
@@ -2749,6 +2775,13 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 // ──────────────────────────────────────────────────────────────────────────────
 // START SERVER
 // ──────────────────────────────────────────────────────────────────────────────
+
+// Mount auto-upload admin routes (POST /admin/auto-upload/tick, /enqueue)
+// once the rest of the app is assembled. Safe if autoUpload failed to load.
+if (autoUpload && typeof autoUpload.registerRoutes === 'function') {
+  try { autoUpload.registerRoutes(app); }
+  catch (e) { console.warn('[auto-upload] registerRoutes failed:', e.message); }
+}
 
 const PORT = process.env.PORT || 3000;
 if (!process.env.VERCEL) {

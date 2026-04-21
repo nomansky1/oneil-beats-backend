@@ -1,0 +1,62 @@
+name: auto-upload tick
+
+# Runs the auto-upload queue worker on a schedule. Each run claims at most one
+# job per platform (YouTube → Instagram → TikTok) and exits. Designed for free
+# GitHub Actions minutes: ~4-6 min per run × 48 runs/day ≈ 1440 min/month,
+# inside the 2000-min free budget for private repos.
+
+on:
+  # Every 30 minutes. GitHub may delay scheduled runs under load — don't tune
+  # tighter than 15 min. Tighten to '*/15' later if the queue backs up.
+  schedule:
+    - cron: '*/30 * * * *'
+  # Manual "Run workflow" button for smoke tests and catch-up ticks.
+  workflow_dispatch:
+
+# If a previous tick is still running, skip the new one instead of stacking.
+# Same guarantee as the in-process `running` flag in cron.js, but across runs.
+concurrency:
+  group: auto-upload-tick
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run one tick
+        env:
+          # Supabase (queue storage)
+          SUPABASE_URL:                 ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY:         ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+          # Google / YouTube
+          GOOGLE_OAUTH_CLIENT_ID:       ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET:   ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          GOOGLE_OAUTH_REFRESH_TOKEN:   ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
+
+          # Store link used in YouTube descriptions (optional — copy.js falls
+          # back to a default if unset).
+          STORE_URL:                    ${{ secrets.STORE_URL }}
+
+          # Feature flags — YouTube only for now. Flip via repo secrets later
+          # without editing this file.
+          ENABLE_YOUTUBE:               ${{ secrets.ENABLE_YOUTUBE || 'true' }}
+          ENABLE_INSTAGRAM:             ${{ secrets.ENABLE_INSTAGRAM || 'false' }}
+          ENABLE_TIKTOK:                ${{ secrets.ENABLE_TIKTOK || 'false' }}
+
+        run: node auto-upload/tick-once.js
