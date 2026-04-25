@@ -410,6 +410,35 @@ header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-fi
 .lic-add-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:10px;transition:opacity .15s}
 .lic-add-btn:hover{opacity:.85}
 .lic-card.in-cart .lic-add-btn{background:var(--green)}
+/* ── Exclusive offer slider (inline, replaces mailto card) ── */
+.lic-card.lic-excl-slider{grid-column:1/-1;background:linear-gradient(135deg,rgba(245,158,11,.06),rgba(230,57,70,.04));border-color:rgba(245,158,11,.35);padding:18px;cursor:default}
+.lic-card.lic-excl-slider:hover{background:linear-gradient(135deg,rgba(245,158,11,.10),rgba(230,57,70,.06));border-color:var(--gold)}
+.excl-slider-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px}
+.excl-slider-title{font-size:14px;font-weight:900;color:var(--gold);letter-spacing:.3px}
+.excl-slider-sub{font-size:11px;color:var(--dim);font-weight:600}
+.excl-offer-display{display:flex;align-items:baseline;justify-content:center;gap:8px;margin:14px 0 8px;padding:14px 0;background:rgba(0,0,0,.25);border-radius:var(--radius-sm)}
+.excl-offer-label{font-size:10px;font-weight:800;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase}
+.excl-offer-value{font-size:32px;font-weight:900;color:var(--gold);letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.excl-range{-webkit-appearance:none;appearance:none;width:100%;height:6px;background:linear-gradient(90deg,var(--gold),var(--accent));border-radius:3px;outline:none;margin:8px 0;cursor:pointer}
+.excl-range::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:var(--gold);border:3px solid var(--bg);box-shadow:0 4px 12px rgba(245,158,11,.45);cursor:pointer;transition:transform .15s}
+.excl-range::-webkit-slider-thumb:hover{transform:scale(1.15)}
+.excl-range::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--gold);border:3px solid var(--bg);box-shadow:0 4px 12px rgba(245,158,11,.45);cursor:pointer}
+.excl-range-marks{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);font-weight:700;margin-top:-2px}
+.excl-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.excl-form-full{grid-column:1/-1}
+.excl-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:9px 11px;color:var(--text);font-size:13px;outline:none;font-family:inherit;transition:border-color .15s;min-height:38px}
+.excl-input:focus{border-color:var(--gold)}
+.excl-textarea{min-height:60px;resize:vertical;font-family:inherit}
+.excl-submit{width:100%;background:linear-gradient(135deg,var(--gold),#ff8a3d);color:#000;border:none;border-radius:var(--radius-sm);padding:13px;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:12px;min-height:46px;letter-spacing:.4px;transition:all .15s;text-transform:uppercase}
+.excl-submit:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(245,158,11,.4)}
+.excl-submit:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.excl-feats{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--dim);margin-top:6px}
+.excl-feats span::before{content:"✓ ";color:var(--green);font-weight:800}
+.excl-msg{font-size:12px;padding:9px 12px;border-radius:6px;margin-top:10px;display:none;font-weight:600}
+.excl-msg.show{display:block}
+.excl-msg.ok{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--green)}
+.excl-msg.err{background:rgba(230,57,70,.1);border:1px solid rgba(230,57,70,.3);color:var(--accent)}
+.excl-footer-note{font-size:10px;color:var(--dim);text-align:center;margin-top:8px;letter-spacing:.3px}
 .detail-tags{margin-top:4px}
 .detail-tags-label{font-size:11px;font-weight:700;color:var(--dim);margin-bottom:8px;letter-spacing:.5px}
 .tags-wrap{display:flex;gap:6px;flex-wrap:wrap}
@@ -811,7 +840,7 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
       <div class="side-license"><span class="side-license-name" style="color:var(--gold)">Lease</span><span class="side-license-price">$29.99</span></div>
       <div class="side-license"><span class="side-license-name" style="color:var(--purple)">Premium</span><span class="side-license-price">$99.99</span></div>
       <div class="side-license"><span class="side-license-name" style="color:var(--green)">Stems</span><span class="side-license-price">$199.99</span></div>
-      <div class="side-license"><span class="side-license-name" style="color:var(--gold)">Exclusive</span><span class="side-license-price" style="font-size:11px;color:var(--dim)">Contact</span></div>
+      <div class="side-license"><span class="side-license-name" style="color:var(--gold)">Exclusive</span><span class="side-license-price" style="font-size:11px;color:var(--dim)">Make Offer</span></div>
     </div>
 
     <div class="side-card">
@@ -1464,8 +1493,6 @@ function openDetail(id) {
     {id:'premium',cls:'lic-premium',name:'Premium Lease',price:b.premium_price||99.99,feats:['MP3 + WAV files','Unlimited streams','Radio distribution','Non-exclusive rights','Credit required']},
     ...(b.stems_price?[{id:'stems',cls:'lic-stems',name:'Stems / Track Out',price:b.stems_price,feats:['All stems separated','Full DAW control','Unlimited streams','Non-exclusive rights','Credit required']}]:[]),
   ];
-  const exclusiveSubject = encodeURIComponent('Exclusive inquiry — ' + b.title);
-  const exclusiveBody = encodeURIComponent('Hi,\n\nI\'m interested in exclusive rights for "' + b.title + '" (' + (b.genre||'') + ' · ' + (b.bpm||'') + ' BPM' + (b.key?' · '+b.key:'') + ').\n\nLet\'s talk.\n\n— Sent from oneilbeats.store');
   const tags = b.tags ? (typeof b.tags==='string' ? b.tags.split(',').map(t=>t.trim()).filter(Boolean) : b.tags) : [];
   document.getElementById('detail-body').innerHTML = `
     <div class="license-section-title">Choose Your License</div>
@@ -1477,18 +1504,43 @@ function openDetail(id) {
         <ul class="lic-features">${l.feats.map(f=>`<li>${f}</li>`).join('')}</ul>
         <button class="lic-add-btn">${inCart?'✓ Added to Cart':'Add to Cart'}</button>
       </div>`}).join('')}
-      <a class="lic-card lic-excl exclusive-card" href="mailto:produceroneil@gmail.com?subject=${exclusiveSubject}&body=${exclusiveBody}" style="text-decoration:none;color:inherit;display:block">
-        <div class="lic-name">Exclusive</div>
-        <div class="lic-price" style="font-size:18px">Contact for pricing</div>
-        <ul class="lic-features">
-          <li>All files included (MP3, WAV, Stems)</li>
-          <li>Full ownership — beat removed from store</li>
-          <li>No credit required</li>
-          <li>100% royalty control</li>
-          <li>Negotiated 1-on-1 with the producer</li>
-        </ul>
-        <button class="lic-add-btn" style="background:var(--gold);color:#000">Email Producer</button>
-      </a>
+      ${(() => {
+        const listed = parseFloat(b.exclusive_price) || 1000;
+        const sliderMin = Math.max(50, Math.round((listed * 0.5) / 10) * 10);
+        const sliderMax = Math.max(sliderMin + 100, Math.round((listed * 3) / 10) * 10);
+        const step = listed >= 500 ? 25 : 10;
+        const startVal = listed; // default to listed price
+        const prefillEmail = (currentUser && currentUser.email) ? esc(currentUser.email) : '';
+        const prefillName = (currentUser && currentUser.user_metadata && (currentUser.user_metadata.full_name || currentUser.user_metadata.name)) ? esc(currentUser.user_metadata.full_name || currentUser.user_metadata.name) : '';
+        return `
+      <div class="lic-card lic-excl-slider exclusive-card">
+        <div class="excl-slider-head">
+          <div class="excl-slider-title">🔥 Exclusive Rights — Make an Offer</div>
+          <div class="excl-slider-sub">Listed: $${fmt$(listed)} · Range $${sliderMin}–$${sliderMax}</div>
+        </div>
+        <div class="excl-feats">
+          <span>All files (MP3 + WAV${b.stems_price?' + Stems':''})</span>
+          <span>Full ownership</span>
+          <span>Beat removed from store</span>
+          <span>No credit required</span>
+        </div>
+        <div class="excl-offer-display">
+          <span class="excl-offer-label">Your Offer</span>
+          <span class="excl-offer-value" id="excl-offer-val">$${fmt$(startVal)}</span>
+        </div>
+        <input type="range" class="excl-range" id="excl-range" min="${sliderMin}" max="${sliderMax}" step="${step}" value="${startVal}"
+          oninput="document.getElementById('excl-offer-val').textContent='$'+Number(this.value).toLocaleString()">
+        <div class="excl-range-marks"><span>$${sliderMin.toLocaleString()}</span><span>$${sliderMax.toLocaleString()}</span></div>
+        <div class="excl-form">
+          <input class="excl-input" id="excl-name" type="text" placeholder="Your name" value="${prefillName}" autocomplete="name" maxlength="80">
+          <input class="excl-input" id="excl-email" type="email" placeholder="Email" value="${prefillEmail}" autocomplete="email" maxlength="120" required>
+          <textarea class="excl-input excl-textarea excl-form-full" id="excl-msg" placeholder="Optional message — release plans, timeline, anything else" maxlength="600"></textarea>
+        </div>
+        <button class="excl-submit" id="excl-submit-btn" onclick="submitOffer('${b.id}')">Submit Offer</button>
+        <div class="excl-msg" id="excl-status"></div>
+        <div class="excl-footer-note">No payment charged — offer review only. The producer responds via email.</div>
+      </div>`;
+      })()}
     </div>
     <div class="lic-compare">
       <div class="lic-compare-title">License Comparison</div>
@@ -1709,6 +1761,56 @@ function updateCartBadge() { const badge=document.getElementById('cart-badge'); 
 function openCart() { document.getElementById('cart-modal').classList.add('open'); renderCartBody(); }
 function closeCart() { document.getElementById('cart-modal').classList.remove('open'); }
 function closeCartOnBg(e) { if(e.target===document.getElementById('cart-modal'))closeCart(); }
+
+// ── Exclusive offer slider — POST to backend /offer endpoint ──
+async function submitOffer(beatId) {
+  const beat = allBeats.find(x => x.id === beatId);
+  const beatTitle = beat ? beat.title : 'Unknown beat';
+  const btn = document.getElementById('excl-submit-btn');
+  const status = document.getElementById('excl-status');
+  const offerEl = document.getElementById('excl-range');
+  const emailEl = document.getElementById('excl-email');
+  const nameEl = document.getElementById('excl-name');
+  const msgEl = document.getElementById('excl-msg');
+  if (!btn || !offerEl || !emailEl) return;
+  const email = (emailEl.value || '').trim();
+  const name = (nameEl?.value || '').trim();
+  const offerAmount = Number(offerEl.value);
+  const message = (msgEl?.value || '').trim();
+  status.className = 'excl-msg';
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    status.textContent = 'Please enter a valid email so the producer can reach you.';
+    status.classList.add('show','err');
+    emailEl.focus();
+    return;
+  }
+  if (!offerAmount || offerAmount < 50) {
+    status.textContent = 'Offer must be at least $50.';
+    status.classList.add('show','err');
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const r = await fetch(`${API}/offer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name, beatId, beatTitle, offerAmount, message })
+    });
+    const data = await r.json().catch(()=>({}));
+    if (!r.ok || data.error) throw new Error(data.error || `Server returned ${r.status}`);
+    status.textContent = `Offer sent! The producer will reply to ${email} shortly.`;
+    status.classList.add('show','ok');
+    btn.textContent = '✓ Offer Sent';
+    // Track conversion event (best-effort)
+    try { fetch(`${API}/customer/track`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'exclusive_offer',data:{beatId,offerAmount,source:'web'}})}); } catch(_){}
+  } catch (e) {
+    status.textContent = `Could not send offer: ${e.message}. Please email produceroneil@gmail.com directly.`;
+    status.classList.add('show','err');
+    btn.disabled = false;
+    btn.textContent = 'Submit Offer';
+  }
+}
 
 function renderCartBody() {
   const body=document.getElementById('cart-body'), footer=document.getElementById('cart-footer');
