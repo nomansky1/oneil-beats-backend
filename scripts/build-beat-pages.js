@@ -210,6 +210,433 @@ function renderBeatPage(template, beat, slug) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// BLOG POSTS — cornerstone content for topical authority
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Each post is an evergreen, query-targeted piece. Stored as HTML strings so
+// internal links and formatting stay precise. Generated at /blog/{slug} with
+// Article (or HowTo) schema, BreadcrumbList, full per-post SEO head.
+
+const BLOG_POSTS = [
+  {
+    slug: 'lease-vs-exclusive-beat-license-guide',
+    title: "Lease vs Exclusive vs Stems — What License Should an Artist Actually Buy in 2026?",
+    excerpt: "A no-fluff guide to the four beat-license tiers — lease, premium, stems, exclusive. What's actually different, what each costs, and which one you actually need based on what you're doing with the song.",
+    publishedDate: '2026-04-26',
+    type: 'Article',
+    bodyHtml: `
+<p class="lead">If you've ever stared at a beat store's "Lease — $29.99" / "Premium — $99" / "Stems — $199" / "Exclusive — Contact" page and wondered <em>what the actual difference is</em>, this is for you. I'm going to explain what every tier really gets you, when each one is worth the money, and the one mistake that costs artists the most.</p>
+
+<h2>The TL;DR</h2>
+<ul>
+  <li><strong>Lease</strong> ($29-50): MP3 only, capped streams, you can release on Spotify/YouTube but the same beat will be sold to other artists. Producer credit required ("Prod. by O'Neil"). Right answer for: most artists, most songs.</li>
+  <li><strong>Premium Lease</strong> ($80-120): MP3 <strong>+ WAV</strong> (uncompressed audio), unlimited streams, radio rights. Same non-exclusivity. Right answer for: a song you actually believe is going to push.</li>
+  <li><strong>Stems / Track Out</strong> ($150-300): All individual elements separated — drums, melody, bass, 808s, FX. You can mix it your way, change arrangement, swap sounds. Right answer for: real producers and engineers who want full control.</li>
+  <li><strong>Exclusive</strong> ($500-3000+): You own the beat outright. It's removed from the store. No one else can buy it ever. No producer credit required. Right answer for: a song you're confident in, with budget and a release plan.</li>
+</ul>
+
+<h2>What "non-exclusive" actually means</h2>
+<p>This is the part most artists miss. A lease (basic OR premium) is <strong>non-exclusive</strong>. That means after you buy "<a href="/beat/luna-5167">Luna</a>" for $29.99, the producer can — and will — sell that same beat to other artists. Five other rappers might release a song over the same beat as you. That's not bad-faith on the producer's part; it's the explicit deal.</p>
+<p>Non-exclusive licenses are how producers can offer beats at $29 instead of $500. The math only works because the same beat sells multiple times.</p>
+<p>The fix isn't necessarily "always buy exclusive." The fix is to <em>match the license to your goal</em>:</p>
+<ul>
+  <li>Releasing a SoundCloud single while you build a fan base? Lease is fine.</li>
+  <li>Putting a track on a major DSP (Spotify, Apple Music) and you expect 50K+ streams? Premium Lease at minimum, and start a conversation about exclusive if you're confident.</li>
+  <li>Pitching a label or a sync placement (TV/film/ads)? Exclusive. Labels and sync agencies will not touch a non-exclusive beat.</li>
+</ul>
+
+<h2>The exclusive trap most stores set</h2>
+<p>Watch how most beat stores handle exclusive. They list lease prices on every beat — and when you click "Exclusive", it says <strong>"Contact for pricing"</strong> with a mailto link. You email. Half the time you don't get a reply for days. By then you've lost momentum.</p>
+<p>That's why <a href="/">O'Neil Beats</a> shows the exclusive offer slider <strong>directly on every beat detail page</strong>. You see the suggested price range ($500–$3,000 for most beats), pick what you want to offer, type your email, and submit. The producer reviews and replies — usually within 24 hours.</p>
+<p>You can negotiate. If the listed price is $1,000 and you offer $700 with a real release plan, the producer might take it. That's what the slider is for.</p>
+
+<h2>Should you ever buy stems without exclusive?</h2>
+<p>Yes — if you're an actual producer or engineer. Stems give you the individual instruments (drums, 808s, melody, FX) as separate audio files. You can:</p>
+<ul>
+  <li>Re-mix the beat to fit your vocal recording</li>
+  <li>Drop the melody on a verse, bring it back on the hook</li>
+  <li>Swap the snare for one that hits harder</li>
+  <li>Add a custom intro or outro</li>
+  <li>Master the final mix yourself instead of accepting the producer's mixdown</li>
+</ul>
+<p>If none of that means anything to you, save the $100 and buy the Premium Lease instead.</p>
+
+<h2>Real numbers: what a beat costs you on a release</h2>
+<p>For a song that does 100,000 streams on Spotify (modest indie release):</p>
+<ul>
+  <li>Lease cost: $29.99 (one-time)</li>
+  <li>Spotify revenue at ~$0.003/stream: $300</li>
+  <li>Net to you (after lease): $270</li>
+</ul>
+<p>For a song that does 1,000,000 streams (a real hit):</p>
+<ul>
+  <li>Premium Lease cost: $99.99 (one-time)</li>
+  <li>Spotify revenue: $3,000</li>
+  <li>Net to you (after Premium): $2,900</li>
+</ul>
+<p>For exclusive at $1,500 — only worth it if you're confident the song will hit, OR if you need exclusivity for label/sync. The math tilts to exclusive once you're past about 5M expected streams or you're chasing a placement.</p>
+
+<h2>Quick decision tree</h2>
+<ol>
+  <li>Releasing on SoundCloud or social only → Lease ($29.99).</li>
+  <li>Spotify / Apple Music release, expecting under 500K streams → Premium Lease ($99.99).</li>
+  <li>You're a producer/engineer who wants to remix → Stems ($199.99).</li>
+  <li>Pitching to a label, sync agent, or you're confident the song is THE one → Exclusive ($500-$3,000+).</li>
+  <li>You don't know yet → Lease. You can always upgrade later by emailing the producer.</li>
+</ol>
+
+<h2>One last thing artists overlook</h2>
+<p>Read the actual license PDF that comes with your purchase. Every beat at <a href="/">oneilbeats.store</a> auto-generates a license document with your name, the beat title, the date, and the exact terms. Keep it. If you ever get a copyright strike or DSP question, that PDF is your proof.</p>
+
+<p class="cta-block"><a href="/" class="cta-link">Browse beats →</a> · <a href="/reggaeton-beats" class="cta-link">Reggaeton catalog</a> · <a href="/trap-beats" class="cta-link">Trap catalog</a></p>
+`,
+  },
+  {
+    slug: 'how-to-write-to-a-reggaeton-beat',
+    title: "How to Write to a Reggaeton Beat — Step-by-Step (Hooks, Verses, Drops)",
+    excerpt: "A producer's walkthrough on writing toplines, hooks, and verses over a reggaeton instrumental. Where to start, how to find the pocket, and the structure that makes modern reggaeton hits work.",
+    publishedDate: '2026-04-26',
+    type: 'HowTo',
+    estimatedTime: 'PT45M',
+    bodyHtml: `
+<p class="lead">You bought a reggaeton beat — or you're testing one of the free previews — and now you have to write something to it. If you're new to writing reggaeton, the genre can feel deceptively simple. The chords loop, the dembow groove repeats, and somehow Bad Bunny makes a hit out of it. Here's the actual process, broken down.</p>
+
+<h2>Step 1: Listen to the beat without trying to write</h2>
+<p>Play it back twice with no notepad open. Reggaeton is a <em>groove-first</em> genre. The dembow pattern (boom-ch-boom-chick) is the foundation; everything you write needs to lock into it. Don't try to overlay melodies or words on the first listen — feel the pocket first.</p>
+<p>Notice three things:</p>
+<ul>
+  <li><strong>The BPM</strong> (90–100 for classic perreo, 95-105 for modern). It tells you how slow or fast to deliver words.</li>
+  <li><strong>The key</strong> (most reggaeton sits in minor keys — C minor, A minor, F minor are common). It tells you what notes to sing.</li>
+  <li><strong>The drop spot</strong> (where the beat fully kicks in vs. when it's stripped down). This is where your hook lands.</li>
+</ul>
+
+<h2>Step 2: Hook first, always</h2>
+<p>Reggaeton is hook-driven. Every modern reggaeton hit can be summarized in one repeated phrase that people can sing along to within one listen. Bad Bunny's "Tití me preguntó." Karol G's "Bichota." Feid's "Normal." All hooks come first.</p>
+<p>To write a hook:</p>
+<ol>
+  <li>Pick a 4-bar section of the beat where the dembow groove is fully in.</li>
+  <li>Hum a melody over it. Just nonsense syllables. Record it on your phone.</li>
+  <li>Listen back. The catchy melody is your hook melody.</li>
+  <li>Now find words that fit that melody — usually a short phrase (5-9 syllables) that captures one emotion or one image.</li>
+</ol>
+<p>Example: a smooth modern reggaeton beat at 92 BPM in minor key — try a hook melody that descends down 3-4 notes, with a 5-7 syllable phrase like "Tú ere' lo que yo busqué" or "Bailamo' hasta que amanezca." Write the hook before anything else.</p>
+
+<h2>Step 3: Build the verse around the hook</h2>
+<p>Verses in reggaeton are conversational. They don't compete with the hook melodically — they set it up. Most artists rap-sing verses, alternating between melodic phrases and faster rhythmic delivery. Listen to "<a href="/beat/luna-5167">Luna</a>" — the melodic loop in the hook becomes a sung phrase, but the verse is more spoken-word.</p>
+<p>Verse template that works for most modern reggaeton:</p>
+<ul>
+  <li><strong>Lines 1-2:</strong> Set the scene (who, where, when). One image per line.</li>
+  <li><strong>Lines 3-4:</strong> Build tension or detail. Use specifics — a place name, a time, a detail that paints the scene.</li>
+  <li><strong>Lines 5-6:</strong> Pivot toward the emotion of the hook. Foreshadow the chorus.</li>
+  <li><strong>Lines 7-8:</strong> Land on a line that sets up the hook. The last word should rhyme with the first word of the hook OR sound like an opening for the hook to resolve.</li>
+</ul>
+
+<h2>Step 4: Find the pocket</h2>
+<p>The pocket is the rhythmic placement of your words against the dembow. There are three main pocket choices in reggaeton:</p>
+<ul>
+  <li><strong>On-beat</strong> — words land on the kicks. Powerful, simple. Good for anthems (Daddy Yankee, J Balvin).</li>
+  <li><strong>Behind-beat</strong> — words land slightly after the kicks. Smooth, conversational. Modern reggaeton (Bad Bunny, Feid).</li>
+  <li><strong>Cross-rhythm</strong> — words push against the dembow. Higher difficulty but more memorable (Rauw Alejandro at his best).</li>
+</ul>
+<p>For your first songs, behind-beat is the easiest pocket to nail. Speak your verse a quarter-beat after where the kick lands. Listen back and adjust until it feels effortless.</p>
+
+<h2>Step 5: Structure the full song</h2>
+<p>Modern reggaeton song structure (almost universal):</p>
+<ol>
+  <li>Intro (4-8 bars, often beat-only or beat with vocal echoes) — 8-15 seconds</li>
+  <li>Hook 1 (8 bars) — the chorus you wrote first</li>
+  <li>Verse 1 (8-16 bars)</li>
+  <li>Hook 2 (8 bars, same as Hook 1)</li>
+  <li>Verse 2 (8-16 bars, sometimes with a guest feature)</li>
+  <li>Hook 3 (often double — 16 bars total — to land the song)</li>
+  <li>Outro (4-8 bars, often the dembow stripped back)</li>
+</ol>
+<p>Total runtime should be 2:30–3:15. Anything shorter feels like you didn't develop the song; anything longer loses streaming attention. Cap at 3:15.</p>
+
+<h2>Step 6: Record and re-record the hook 5 times</h2>
+<p>The hook is what people remember. Record it 5 different ways — different inflections, different emphasis, slightly different melody variants. Pick the best take, then layer 2-3 vocal stacks on top to thicken it. Most modern reggaeton hits have 4-6 vocal layers on the hook.</p>
+
+<h2>Step 7: Mix loud, mix clean</h2>
+<p>If you don't have engineering skills yet, buy the <strong>Premium Lease</strong> for the WAV file (uncompressed audio holds up better when you mix), and ship the recorded vocals to an engineer who specializes in reggaeton. Or buy the <a href="/blog/lease-vs-exclusive-beat-license-guide">stems package</a> if you want to mix yourself.</p>
+
+<h2>What to write about</h2>
+<p>Reggaeton's classic themes: club nights, attraction, a specific person, a specific place, the highs and lows of love. Modern reggaeton has expanded into mental health, success, family, identity (Bad Bunny "<em>El Apagón</em>" being the obvious case study). Pick a topic you care about, write the hook around the most repeatable line, build out from there.</p>
+
+<p class="cta-block">Ready to write? <a href="/reggaeton-beats" class="cta-link">Browse reggaeton beats →</a> · <a href="/perreo-beats" class="cta-link">Perreo beats</a> · <a href="/modern-reggaeton-beats" class="cta-link">Modern reggaeton</a></p>
+`,
+    howToSteps: [
+      { name: 'Listen to the beat without trying to write', text: 'Play the beat back twice without writing. Feel the dembow groove and identify BPM, key, and where the drop lands.' },
+      { name: 'Hook first, always', text: 'Hum a 4-bar melody over the dropped section, then write a 5-9 syllable phrase to fit it. The hook comes before anything else.' },
+      { name: 'Build the verse around the hook', text: 'Write 8-line verse that sets the scene, builds detail, and lands on a line that sets up the hook.' },
+      { name: 'Find the pocket', text: 'Choose on-beat (anthem), behind-beat (smooth modern), or cross-rhythm. Behind-beat is easiest for new writers.' },
+      { name: 'Structure the full song', text: 'Intro → Hook → Verse 1 → Hook → Verse 2 → Hook (double) → Outro. Aim for 2:30–3:15 runtime.' },
+      { name: 'Record the hook 5 times', text: 'Multiple takes with different inflections. Pick the best, layer 2-3 stacks on top to thicken.' },
+      { name: 'Mix loud, mix clean', text: 'Buy the WAV file via Premium Lease for cleaner mix, or stems if mixing yourself.' },
+    ],
+  },
+  {
+    slug: 'free-beats-vs-paid-tagged-mp3-explained',
+    title: "Free Beats vs Paid: What Artists Get with the Tagged MP3 (and When to Upgrade)",
+    excerpt: "Every producer offers free beats. Most artists don't understand what those free downloads legally let them do. Here's the truth about tagged free MP3s, when they're enough, and the upgrade triggers that mean it's time to buy.",
+    publishedDate: '2026-04-26',
+    type: 'Article',
+    bodyHtml: `
+<p class="lead">"Free beat" is the most-searched query in the entire beat-store space. Every producer page has a free section. But almost no artist understands what they're actually allowed to do with a free tagged beat — and the misunderstanding is what gets songs taken down off Spotify.</p>
+
+<h2>What a tagged free beat actually is</h2>
+<p>When a producer offers a "free beat" download, you're getting an MP3 file that has a producer voice tag layered on top — usually a short audio clip like "Prod. by O'Neil" repeated every 30 seconds throughout the beat. That tag isn't a bug. It's the entire business model.</p>
+<p>The tag means:</p>
+<ul>
+  <li>You can listen to the full beat, see how it sounds with vocals, decide if you want to use it.</li>
+  <li>You can record a demo or a freestyle and post it on SoundCloud, YouTube (non-monetized), Instagram, TikTok — basically anywhere you're not making money.</li>
+  <li>You can share the beat to test reception with your audience.</li>
+</ul>
+<p>The tag does NOT mean:</p>
+<ul>
+  <li>You can put the song on Spotify, Apple Music, Tidal, or any monetized platform.</li>
+  <li>You can monetize the YouTube video (turn on ads).</li>
+  <li>You can sell the song.</li>
+  <li>You can license the song for sync (TV, film, ads).</li>
+  <li>You can release without producer credit.</li>
+</ul>
+
+<h2>Why the tag exists</h2>
+<p>The tag protects the producer's right to get paid. If you release a tagged beat to Spotify, the platform's audio fingerprinting (ContentID, Audible Magic, etc.) can flag it. The producer's distributor often catches the unauthorized use, files a takedown, and your song disappears — usually after it's already started building plays. Sometimes the producer files a copyright claim and gets retroactive royalties; either way you've lost the song.</p>
+<p>The fix is simple: when you decide a song is going to release, buy a license. The license gives you the <strong>untagged studio-clean version</strong> of the beat — same audio, no voice tag, plus a PDF license with your name on it. From that point forward, you can release legally on any platform.</p>
+
+<h2>What does the untagged version cost?</h2>
+<p>At <a href="/">oneilbeats.store</a>, the cheapest license is $29.99 (Lease) — that gets you the MP3 untagged + the right to release on streaming platforms with up to 100K streams. For most independent artists' first or second release, that's the right tier.</p>
+<p>If you expect to push past 100K streams (a real release with a marketing budget), step up to the Premium Lease at $99.99 — that includes the WAV file (better mix headroom), unlimited streams, and radio rights. We broke down the full license tiers in <a href="/blog/lease-vs-exclusive-beat-license-guide">this guide</a>.</p>
+
+<h2>When the free version is genuinely enough</h2>
+<p>Free tagged beats serve a real purpose. Use them for:</p>
+<ul>
+  <li><strong>Demos for sync agents or labels</strong> — you can attach a tagged demo to a pitch email; the agent knows you'll license once the placement is confirmed.</li>
+  <li><strong>SoundCloud freestyles</strong> — SoundCloud doesn't enforce takedowns aggressively for tagged beats, and the platform is built for freestyle culture.</li>
+  <li><strong>Live shows / cyphers</strong> — perform over a tagged beat, no streaming = no enforcement.</li>
+  <li><strong>YouTube freestyle videos (NON-monetized)</strong> — keep ads off, credit the producer in the description, link to the store.</li>
+  <li><strong>Testing audience reaction</strong> before committing to a license.</li>
+</ul>
+
+<h2>The upgrade triggers</h2>
+<p>You should buy a license the moment any of these is true:</p>
+<ol>
+  <li>You're uploading the song to Spotify, Apple Music, or any DSP.</li>
+  <li>You're turning on YouTube monetization on the song video.</li>
+  <li>A label, sync agent, or sponsor has asked about the song.</li>
+  <li>You're selling the song or merchandise tied to it.</li>
+  <li>You're using the song in a paid ad (your own or someone else's).</li>
+</ol>
+<p>The instant any of those becomes true, get the untagged version. It's $29.99 for a Lease. The risk of losing a song to a takedown is way bigger than the cost of clearing it properly.</p>
+
+<h2>How to buy without losing momentum</h2>
+<p>The whole reason this matters is that artists who use tagged beats often build buzz on TikTok or SoundCloud first, then try to release the song on Spotify and have it taken down right when it's about to break. That's the worst possible outcome.</p>
+<p>The fix is a 60-second checkout. At <a href="/">oneilbeats.store</a>:</p>
+<ol>
+  <li>Click the beat you've been testing.</li>
+  <li>Click "Add Lease to Cart" ($29.99).</li>
+  <li>Stripe checkout (Apple Pay or Google Pay if you're on phone).</li>
+  <li>Untagged MP3 + license PDF arrive by email within seconds.</li>
+</ol>
+<p>You're cleared. Replace the tagged version with the untagged version on every platform you've posted, and your release plan stays on track.</p>
+
+<h2>One more thing — credit the producer</h2>
+<p>Lease and Premium Lease licenses require you to include "Prod. by O'Neil" in your song title or description. This is non-negotiable and it's how producer ecosystems work. The credit is what builds the producer's brand, which is what funds new beats coming to the catalog. Honor it. Exclusive licenses are the only tier that doesn't require credit.</p>
+
+<p class="cta-block"><a href="/" class="cta-link">Browse all beats →</a> · <a href="/blog/lease-vs-exclusive-beat-license-guide" class="cta-link">License tier breakdown</a> · <a href="/reggaeton-beats" class="cta-link">Reggaeton catalog</a></p>
+`,
+  },
+];
+
+// Render a single blog post.
+function renderBlogPost(template, post) {
+  const url = `${SITE_URL}/blog/${post.slug}`;
+  const title = `${post.title} | O'Neil Beats Blog`;
+  const desc = post.excerpt.replace(/\s+/g, ' ').trim().slice(0, 280);
+
+  let html = template;
+  html = html.replace(/<title>[^<]*<\/title>/i, `<title>${esc(title)}</title>`);
+  html = html.replace(/<meta\s+name="description"\s+content="[^"]*">/i, `<meta name="description" content="${esc(desc)}">`);
+  html = html.replace(/<link\s+rel="canonical"\s+href="[^"]*">/i, `<link rel="canonical" href="${url}">`);
+  html = html.replace(/<meta\s+property="og:url"\s+content="[^"]*">/i, `<meta property="og:url" content="${url}">`);
+  html = html.replace(/<meta\s+property="og:title"\s+content="[^"]*">/i, `<meta property="og:title" content="${esc(title)}">`);
+  html = html.replace(/<meta\s+property="og:description"\s+content="[^"]*">/i, `<meta property="og:description" content="${esc(desc)}">`);
+  html = html.replace(/<meta\s+property="og:type"\s+content="website">/i, `<meta property="og:type" content="article">`);
+  html = html.replace(/<meta\s+name="twitter:title"\s+content="[^"]*">/i, `<meta name="twitter:title" content="${esc(title)}">`);
+  html = html.replace(/<meta\s+name="twitter:description"\s+content="[^"]*">/i, `<meta name="twitter:description" content="${esc(desc)}">`);
+
+  // Article (or HowTo) + BreadcrumbList schema
+  const baseSchema = {
+    '@context': 'https://schema.org',
+    '@type': post.type === 'HowTo' ? 'HowTo' : 'Article',
+    headline: post.title,
+    description: desc,
+    url,
+    author: { '@type': 'Person', name: "O'Neil", url: SITE_URL + '/#about' },
+    publisher: { '@type': 'Organization', name: "O'Neil Beats", url: SITE_URL, logo: { '@type': 'ImageObject', url: SITE_URL + '/icon.png' } },
+    image: SITE_URL + '/og-image.jpg',
+    datePublished: post.publishedDate,
+    dateModified: post.publishedDate,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+  };
+  if (post.type === 'HowTo' && post.howToSteps) {
+    baseSchema.totalTime = post.estimatedTime || 'PT30M';
+    baseSchema.step = post.howToSteps.map((s, i) => ({
+      '@type': 'HowToStep', position: i + 1, name: s.name, text: s.text, url: `${url}#step${i + 1}`,
+    }));
+  }
+  const breadcrumbs = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL + '/' },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: SITE_URL + '/blog' },
+      { '@type': 'ListItem', position: 3, name: post.title, item: url },
+    ],
+  };
+  const ldBlock = `<script type="application/ld+json" data-blog="${esc(post.slug)}">${JSON.stringify(baseSchema)}</script>` +
+    `<script type="application/ld+json" data-blog="${esc(post.slug)}">${JSON.stringify(breadcrumbs)}</script>`;
+  html = html.replace(/<\/head>/i, ldBlock + '</head>');
+
+  // Replace the SPA body with the actual blog article. The SPA stays mounted
+  // (header, footer, player) but the catalog/hero are hidden in favor of the
+  // article content. We do this by injecting a stylesheet override + the
+  // article HTML right after <body>, plus a small script that hides the
+  // homepage sections that don't belong on a blog post.
+  const articleHtml = `
+<style>
+  .blog-article{max-width:760px;margin:32px auto 60px;padding:0 24px;color:var(--text)}
+  .blog-bc{font-size:11px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;font-weight:700}
+  .blog-bc a{color:var(--dim);text-decoration:none}.blog-bc a:hover{color:var(--accent)}
+  .blog-article h1{font-size:34px;font-weight:900;line-height:1.18;letter-spacing:-.5px;margin:0 0 12px}
+  .blog-article .blog-meta{font-size:13px;color:var(--dim);margin-bottom:28px}
+  .blog-article p{font-size:16px;line-height:1.75;margin:0 0 18px;color:var(--text)}
+  .blog-article p.lead{font-size:18px;color:var(--dim)}
+  .blog-article h2{font-size:24px;font-weight:800;letter-spacing:-.3px;margin:34px 0 14px;color:var(--text)}
+  .blog-article ul,.blog-article ol{margin:0 0 20px;padding-left:24px;color:var(--text);font-size:16px;line-height:1.75}
+  .blog-article li{margin-bottom:8px}
+  .blog-article a{color:var(--accent);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+  .blog-article a:hover{color:var(--gold)}
+  .blog-article p.cta-block{margin-top:32px;padding:18px;background:linear-gradient(135deg,rgba(230,57,70,.08),rgba(245,158,11,.06));border:1px solid var(--border);border-radius:12px;text-align:center;font-size:15px}
+  .blog-article p.cta-block .cta-link{margin:0 8px;font-weight:800}
+  .blog-related{max-width:760px;margin:0 auto 60px;padding:0 24px}
+  .blog-related h3{font-size:14px;font-weight:800;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;margin-bottom:14px}
+  .blog-related-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+  .blog-related-card{display:block;padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;text-decoration:none;color:var(--text);transition:all .2s}
+  .blog-related-card:hover{border-color:var(--accent);background:rgba(230,57,70,.06)}
+  .blog-related-card-title{font-size:14px;font-weight:800;margin-bottom:4px}
+  .blog-related-card-desc{font-size:12px;color:var(--dim);line-height:1.5}
+</style>
+<article class="blog-article" itemscope itemtype="https://schema.org/${post.type === 'HowTo' ? 'HowTo' : 'Article'}">
+  <nav class="blog-bc" aria-label="Breadcrumb"><a href="/">Home</a> · <a href="/blog">Blog</a> · ${esc(post.title)}</nav>
+  <h1 itemprop="headline">${esc(post.title)}</h1>
+  <div class="blog-meta">By <a href="/#about">O'Neil</a> · Published ${esc(post.publishedDate)} · <a href="/">O'Neil Beats</a></div>
+  ${post.bodyHtml}
+</article>
+<aside class="blog-related" aria-label="Related reading">
+  <h3>More from the blog</h3>
+  <div class="blog-related-grid">
+    ${BLOG_POSTS.filter(p => p.slug !== post.slug).map(p => `
+      <a class="blog-related-card" href="/blog/${p.slug}">
+        <div class="blog-related-card-title">${esc(p.title)}</div>
+        <div class="blog-related-card-desc">${esc(p.excerpt.slice(0, 120))}…</div>
+      </a>`).join('')}
+  </div>
+</aside>
+<script>
+// Hide the homepage's hero/catalog/license/faq sections — they belong on /, not on a blog post.
+(function(){
+  function hideHomepageSections(){
+    var ids = ['hero-banner-wrap','catalog','licenses','faq','about','orders','free-signup','free-beat-banner'];
+    ids.forEach(function(id){ var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    // Also hide hero banner + the .layout (catalog grid wrapper)
+    document.querySelectorAll('.hero-banner, .layout, [class*="catalog"], [aria-labelledby="catalog-heading"]').forEach(function(el){ el.style.display = 'none'; });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hideHomepageSections);
+  else hideHomepageSections();
+})();
+</script>`;
+  // Inject after </header> so the article renders below the nav, not above it.
+  // Falls back to <body> position if no </header> present.
+  if (/<\/header>/i.test(html)) {
+    html = html.replace(/<\/header>/i, '</header>' + articleHtml);
+  } else {
+    html = html.replace(/<body([^>]*)>/i, `<body$1>${articleHtml}`);
+  }
+
+  return html;
+}
+
+// Render the blog index page listing all posts.
+function renderBlogIndex(template) {
+  const url = `${SITE_URL}/blog`;
+  const title = "Blog — Beat Buying Guides, License Explainers & Songwriting | O'Neil Beats";
+  const desc = "Articles for artists buying beats: license tier explainers, songwriting walkthroughs, and free-beat guides. Written by O'Neil — independent producer of reggaeton, trap, and hip-hop instrumentals.";
+
+  let html = template;
+  html = html.replace(/<title>[^<]*<\/title>/i, `<title>${esc(title)}</title>`);
+  html = html.replace(/<meta\s+name="description"\s+content="[^"]*">/i, `<meta name="description" content="${esc(desc)}">`);
+  html = html.replace(/<link\s+rel="canonical"\s+href="[^"]*">/i, `<link rel="canonical" href="${url}">`);
+  html = html.replace(/<meta\s+property="og:url"\s+content="[^"]*">/i, `<meta property="og:url" content="${url}">`);
+  html = html.replace(/<meta\s+property="og:title"\s+content="[^"]*">/i, `<meta property="og:title" content="${esc(title)}">`);
+  html = html.replace(/<meta\s+property="og:description"\s+content="[^"]*">/i, `<meta property="og:description" content="${esc(desc)}">`);
+
+  const blogSchema = {
+    '@context': 'https://schema.org', '@type': 'Blog',
+    name: "O'Neil Beats Blog", url, description: desc,
+    publisher: { '@type': 'Organization', name: "O'Neil Beats", url: SITE_URL },
+    blogPost: BLOG_POSTS.map(p => ({
+      '@type': p.type === 'HowTo' ? 'HowTo' : 'BlogPosting',
+      headline: p.title, url: `${SITE_URL}/blog/${p.slug}`, datePublished: p.publishedDate,
+      author: { '@type': 'Person', name: "O'Neil" }, description: p.excerpt,
+    })),
+  };
+  html = html.replace(/<\/head>/i, `<script type="application/ld+json" data-blog-index="true">${JSON.stringify(blogSchema)}</script></head>`);
+
+  const indexHtml = `
+<style>
+  .blog-index{max-width:980px;margin:32px auto 60px;padding:0 24px;color:var(--text)}
+  .blog-index-bc{font-size:11px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;font-weight:700}
+  .blog-index-bc a{color:var(--dim);text-decoration:none}.blog-index-bc a:hover{color:var(--accent)}
+  .blog-index h1{font-size:34px;font-weight:900;letter-spacing:-.5px;margin:0 0 8px}
+  .blog-index-sub{font-size:15px;color:var(--dim);margin-bottom:32px;max-width:640px;line-height:1.6}
+  .blog-index-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+  .blog-index-card{display:block;padding:22px;background:var(--surface);border:1px solid var(--border);border-radius:14px;text-decoration:none;color:var(--text);transition:all .2s}
+  .blog-index-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 12px 32px rgba(230,57,70,.12)}
+  .blog-index-card-tag{display:inline-block;font-size:10px;font-weight:800;color:var(--gold);letter-spacing:1.5px;margin-bottom:10px;text-transform:uppercase}
+  .blog-index-card-title{font-size:18px;font-weight:800;line-height:1.3;margin-bottom:10px;letter-spacing:-.2px}
+  .blog-index-card-excerpt{font-size:13px;color:var(--dim);line-height:1.6;margin-bottom:14px}
+  .blog-index-card-meta{font-size:11px;color:var(--dim);font-weight:600}
+</style>
+<section class="blog-index">
+  <nav class="blog-index-bc" aria-label="Breadcrumb"><a href="/">Home</a> · Blog</nav>
+  <h1>O'Neil Beats Blog</h1>
+  <p class="blog-index-sub">${esc(desc)}</p>
+  <div class="blog-index-grid">
+    ${BLOG_POSTS.map(p => `
+      <a class="blog-index-card" href="/blog/${p.slug}">
+        <div class="blog-index-card-tag">${p.type === 'HowTo' ? '📋 How-To' : '📖 Guide'}</div>
+        <div class="blog-index-card-title">${esc(p.title)}</div>
+        <div class="blog-index-card-excerpt">${esc(p.excerpt)}</div>
+        <div class="blog-index-card-meta">By O'Neil · ${esc(p.publishedDate)}</div>
+      </a>`).join('')}
+  </div>
+</section>
+<script>
+(function(){
+  function hide(){ var ids=['hero-banner-wrap','catalog','licenses','faq','about','orders','free-signup','free-beat-banner']; ids.forEach(function(id){var el=document.getElementById(id); if(el)el.style.display='none';}); document.querySelectorAll('.hero-banner, .layout, [class*="catalog"]').forEach(function(el){ el.style.display='none'; }); }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hide); else hide();
+})();
+</script>`;
+  if (/<\/header>/i.test(html)) {
+    html = html.replace(/<\/header>/i, '</header>' + indexHtml);
+  } else {
+    html = html.replace(/<body([^>]*)>/i, `<body$1>${indexHtml}`);
+  }
+  return html;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // LANDING PAGES — type-beat + genre/subgenre/mood
 // ─────────────────────────────────────────────────────────────────────────────
 //
@@ -555,10 +982,21 @@ async function main() {
   }
   fs.writeFileSync(MARKER, JSON.stringify({ slugs: landingPages.map(p => p.slug), generatedAt: new Date().toISOString() }, null, 2));
   console.log(`[build-beat-pages] wrote ${landingsWritten} landing pages → ${path.relative(ROOT, PUBLIC_DIR)}`);
+
+  // ── Blog (cornerstone content) ──
+  const BLOG_DIR = path.join(PUBLIC_DIR, 'blog');
+  if (!fs.existsSync(BLOG_DIR)) fs.mkdirSync(BLOG_DIR, { recursive: true });
+  fs.writeFileSync(path.join(BLOG_DIR, 'index.html'), renderBlogIndex(template), 'utf8');
+  let blogWritten = 1;
+  for (const post of BLOG_POSTS) {
+    fs.writeFileSync(path.join(BLOG_DIR, post.slug + '.html'), renderBlogPost(template, post), 'utf8');
+    blogWritten++;
+  }
+  console.log(`[build-beat-pages] wrote ${blogWritten} blog files → ${path.relative(ROOT, BLOG_DIR)}`);
 }
 
 if (require.main === module) {
   main().catch(e => { console.error('[build-beat-pages] FATAL', e); process.exit(0); /* don't fail build */ });
 }
 
-module.exports = { slugify, shortId, beatSlug, renderBeatPage, beatJsonLd, renderLandingPage, getAllLandingPages, TYPE_BEAT_ARTISTS };
+module.exports = { slugify, shortId, beatSlug, renderBeatPage, beatJsonLd, renderLandingPage, getAllLandingPages, TYPE_BEAT_ARTISTS, BLOG_POSTS, renderBlogPost, renderBlogIndex };

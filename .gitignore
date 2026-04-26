@@ -15,3 +15,6 @@ public/.landing-pages.json
 # delete-account, store-assets) are listed explicitly above this section.
 public/*-type-beat.html
 public/*-beats.html
+# Blog pages — also generated on every Vercel deploy from BLOG_POSTS in
+# scripts/build-beat-pages.js. Posts live as authoritative source there.
+public/blog/
