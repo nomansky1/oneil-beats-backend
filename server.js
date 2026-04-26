@@ -191,7 +191,9 @@ app.get('/sitemap.xml', async (req, res) => {
   }
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+// `extensions: ['html']` makes /bad-bunny-type-beat resolve to public/bad-bunny-type-beat.html
+// (without this, all the SEO landing pages 404 — they live as bare slugs without trailing .html).
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
 // ── /beat/:slug fallback — fires only when no static public/beat/{slug}.html
 // file matched (i.e., a beat uploaded after the last build). Builds the page
