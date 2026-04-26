@@ -2,3 +2,7 @@
 .env
 oneil-beats-*.json
 .vercel
+# Per-beat SEO pages — regenerated on every Vercel deploy via the
+# `vercel-build` npm script (see scripts/build-beat-pages.js). Don't
+# commit them — would bloat history and go stale fast.
+public/beat/

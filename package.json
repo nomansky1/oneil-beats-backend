@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "build:beats": "node scripts/build-beat-pages.js",
+    "vercel-build": "node scripts/build-beat-pages.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",

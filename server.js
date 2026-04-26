@@ -154,7 +154,68 @@ app.use(cors({
   origin: ['https://oneilbeats.store', 'https://www.oneilbeats.store', /localhost/, /\.vercel\.app$/],
   credentials: true,
 }));
+// ── Dynamic /sitemap.xml — must be registered BEFORE express.static so it
+// overrides any stale public/sitemap.xml file. Lists every active beat as a
+// per-URL <url> entry, plus the homepage and primary section anchors.
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const { beatSlug } = require('./scripts/build-beat-pages');
+    const beats = await fetchBeatsFromDB().catch(() => []);
+    const SITE = 'https://oneilbeats.store';
+    const today = new Date().toISOString().slice(0, 10);
+    const urls = [
+      `<url><loc>${SITE}/</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>${today}</lastmod></url>`,
+      `<url><loc>${SITE}/#catalog</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`,
+      `<url><loc>${SITE}/#licenses</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>`,
+      `<url><loc>${SITE}/#faq</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>`,
+      ...(beats || []).filter(b => b && b.id && b.title).map(b => {
+        const slug = beatSlug(b);
+        const lastmod = (b.createdAt || b.created_at || today).slice(0, 10);
+        return `<url><loc>${SITE}/beat/${slug}</loc><changefreq>weekly</changefreq><priority>0.8</priority><lastmod>${lastmod}</lastmod></url>`;
+      }),
+    ].join('\n  ');
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  ${urls}\n</urlset>\n`;
+    res.set('Content-Type', 'application/xml; charset=utf-8');
+    res.set('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+    res.send(xml);
+  } catch (e) {
+    console.error('sitemap error:', e.message);
+    res.status(500).send('<?xml version="1.0"?><urlset/>');
+  }
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ── /beat/:slug fallback — fires only when no static public/beat/{slug}.html
+// file matched (i.e., a beat uploaded after the last build). Builds the page
+// on the fly using the same template + renderBeatPage helper from the build
+// script, then serves it with a short cache so the next request is fast.
+app.get('/beat/:slug', async (req, res, next) => {
+  const slug = req.params.slug;
+  if (!slug || /[^a-z0-9-]/i.test(slug)) return next();
+  try {
+    const fs = require('fs');
+    const { beatSlug, renderBeatPage } = require('./scripts/build-beat-pages');
+    // Static file on disk?
+    const diskPath = path.join(__dirname, 'public', 'beat', slug + '.html');
+    if (fs.existsSync(diskPath)) {
+      res.set('Cache-Control', 'public, max-age=300, s-maxage=86400');
+      return res.sendFile(diskPath);
+    }
+    // Live-build fallback
+    const beats = await fetchBeatsFromDB().catch(() => []);
+    const beat = (beats || []).find(b => b && b.title && beatSlug(b) === slug);
+    if (!beat) return res.status(404).redirect('/');
+    const template = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    const html = renderBeatPage(template, beat, slug);
+    res.set('Cache-Control', 'public, max-age=120, s-maxage=600, stale-while-revalidate=86400');
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    return res.send(html);
+  } catch (e) {
+    console.error('/beat/:slug error:', e.message);
+    return res.status(302).redirect('/');
+  }
+});
 // Skip JSON body parsing for raw-body routes (webhook + chunked upload)
 app.use((req, res, next) => {
   if (req.path === '/webhook' || req.path === '/upload/drive-proxy-chunk') return next();
