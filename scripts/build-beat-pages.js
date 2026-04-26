@@ -471,6 +471,78 @@ const BLOG_POSTS = [
 <p class="cta-block"><a href="/" class="cta-link">Browse all beats →</a> · <a href="/blog/lease-vs-exclusive-beat-license-guide" class="cta-link">License tier breakdown</a> · <a href="/reggaeton-beats" class="cta-link">Reggaeton catalog</a></p>
 `,
   },
+  {
+    slug: 'how-to-find-free-beats-2026-and-why-demos-matter',
+    title: "How to Find Free Beats in 2026 (and Why Recording a Demo First Will Make You a Better Artist)",
+    excerpt: "Where to find legit free beats in 2026 — the real sources, the scams to avoid, and why recording a demo over a free tagged beat before you buy a license is the single best habit independent artists can build. Written by an active producer.",
+    publishedDate: '2026-04-26',
+    type: 'Article',
+    bodyHtml: `
+<p class="lead">Every aspiring rapper, singer, and reggaetonero starts the same way: hunting for free beats. In 2026 there are more free beats online than ever — and more scams, dead links, and DMCA traps than ever. This guide is the shortcut: where active producers actually drop free beats this year, how to tell a real free beat from a stolen one, and the unglamorous habit that separates artists who blow up from artists who stay stuck — recording a demo before you ever spend a dollar.</p>
+
+<h2>Where to find legit free beats in 2026</h2>
+<p>"Free beats" is one of the highest-volume music queries on Google and YouTube — which means the SERP is also the most flooded with garbage. Here are the sources that are still real in 2026, ranked by signal-to-noise:</p>
+<ol>
+  <li><strong>Producer stores with a "free" tab.</strong> The cleanest source. An active producer site like <a href="/">oneilbeats.store</a> will have a free section where the producer themselves uploads tagged MP3s every week. The beats are current, the tag is honest, and there's a clear path to license if you want to release. Look for the words "tagged MP3" and a file size around 4–8 MB.</li>
+  <li><strong>YouTube — but only producer channels you can verify.</strong> Search "[artist] type beat free" and filter to last week. Skip channels that look like beat aggregators (10,000+ uploads, no face, no socials). Stick to producers who post their own face, comment back, and link to a real store. Download via the producer's link in the description, not from sketchy MP3 rippers — those strip the tag and create a legal landmine you'll inherit.</li>
+  <li><strong>Free Beat Friday email lists.</strong> Most serious producers run a weekly drop to email subscribers. We do this — sign up at the bottom of <a href="/">oneilbeats.store</a> and you get a fresh tagged beat every Friday. It's the highest-quality free source on the internet because the producer is using it as marketing for their paid catalog, so the bar is high.</li>
+  <li><strong>BeatStars / Airbit free filters.</strong> Both marketplaces let you filter to "free download." Quality is mixed — you'll find gold and you'll find loop-pack soup. Use the BPM, key, and genre filters aggressively or you'll waste an hour scrolling.</li>
+  <li><strong>SoundCloud "free dl" links.</strong> Still alive in 2026, mostly for boom bap, lo-fi, drill, and underground genres. Search "[genre] free dl" and sort by recent. The link in the description is the real download.</li>
+  <li><strong>Reddit r/makinghiphop weekly free-beat threads.</strong> Producers drop links every week looking for feedback and exposure. Quality is unfiltered but the freshest stuff lives here.</li>
+</ol>
+
+<h2>What to avoid — the 2026 scam list</h2>
+<p>The free-beat space has a permanent infestation of scrapers and AI slop. If you see any of these, close the tab:</p>
+<ul>
+  <li><strong>"Free download" sites that ask for your email twice or want a card to "verify."</strong> Nobody charges you to verify a free MP3.</li>
+  <li><strong>YouTube channels with thousands of uploads and no human in any video.</strong> They're scraping other producers' beats, stripping tags, and reuploading. Using one of those gets your song claimed by the original producer's distributor the day you release it.</li>
+  <li><strong>Stems.zip / multitrack downloads on file-share sites.</strong> Real producers do not give away stems for free, ever. If it says "free stems," it's stolen.</li>
+  <li><strong>AI-generated beats marketed as "free producer beats."</strong> They're free because they cost the uploader nothing. The structure is usually flat, the mix is brittle, and there's no human to license from when you want to actually release. You can hear it within 30 seconds — the drops don't breathe.</li>
+  <li><strong>Type-beat channels with no link to a store.</strong> No store = no license path. Even if you write your best song over that beat, you'll never be able to release it legally.</li>
+</ul>
+
+<h2>Why recording a demo first is the move</h2>
+<p>This is the part most artists skip, and it's the part that actually matters. Before you buy a license — before you book a studio, before you book a mix engineer, before you even commit to a release date — record a demo over the free tagged version. Not a polished take. A rough one. Phone mic is fine. Laptop mic is fine. The demo isn't for the world; it's for you.</p>
+<p>Here's what a demo does that nothing else can:</p>
+
+<h2>1. The beat tells you if the song exists</h2>
+<p>Beats lie in the headphones. A beat can sound like the hardest thing you've ever heard while you're scrolling YouTube, then collapse the moment you try to put a vocal on it. The pocket isn't where you thought. The hook section is too short for the melody you're hearing. The energy peaks in the wrong bar. You only learn this by tracking a vocal. A 5-minute demo will save you a $99 license fee on a beat that was never going to work for your voice.</p>
+
+<h2>2. You stop falling in love with beats and start falling in love with songs</h2>
+<p>Most independent artists hoard beats. They have 200 in a folder and they've written to maybe four. The bottleneck is not access — it's commitment. A demo is a tiny act of commitment. Every time you record one, you're learning to choose. After 20 demos you can pick a beat in 30 seconds because you know what your voice does over what kind of pocket. That skill is worth more than any plug-in.</p>
+
+<h2>3. Your topline gets better in front of a microphone, not in your notes app</h2>
+<p>Lyrics written silently and lyrics written out loud are different writing. Cadence only reveals itself when you say it. Vowel choices that look fine on paper choke when you sing them. The artists who level up fastest are the ones who write into the mic, with the beat playing, take after take. The free tagged beat is the perfect playground because there's no pressure — you didn't pay for it, you're not on a session clock.</p>
+
+<h2>4. You can A/B beats against each other with the same hook</h2>
+<p>Once you've got a hook idea, throw it on three different free beats. The right beat is almost never the one you thought. This is a trick label A&Rs use constantly — they cut a hook, then audition production behind it. You can do the same in your bedroom in an hour with three free downloads.</p>
+
+<h2>5. The demo IS your pitch</h2>
+<p>If you want a placement, a feature, a manager, or a producer to take you seriously, the rough demo over a tagged beat is the asset you send. Nobody wants a Word doc of lyrics. They want to hear what you sound like. A 60-second voice memo over a free tagged beat will get a faster response from a manager than a 20-page bio.</p>
+
+<h2>The full free-beat-to-released-song workflow</h2>
+<p>Here's the loop that actually ships music:</p>
+<ol>
+  <li><strong>Pull 5 free beats this week</strong> from the sources above. Pick beats from at least two genres — your range is wider than you think.</li>
+  <li><strong>Demo all 5</strong> in one sitting. Phone, laptop, voice memo, anything. Don't write — improvise melodies and gibberish syllables to find the cadence first.</li>
+  <li><strong>Pick the one that wrote itself.</strong> There's always one. The song that came out almost without thinking is the song.</li>
+  <li><strong>Write the real lyric</strong> the next day, fresh ears.</li>
+  <li><strong>Re-demo it properly</strong> — still rough, but with the real lyric.</li>
+  <li><strong>Now buy the license.</strong> Once you have a demo you believe in, the $29.99 lease is the easiest decision you'll make all month. Get the untagged WAV/MP3 + license PDF, take it to mix.</li>
+  <li><strong>Release</strong> with the producer credit honored ("Prod. by O'Neil" or whoever made the beat).</li>
+</ol>
+<p>That loop is the difference between an artist with 200 beats and zero songs and an artist with one released song this month. We've broken down the legal side of the free-to-paid jump in <a href="/blog/free-beats-vs-paid-tagged-mp3-explained">Free Beats vs Paid: What Artists Get with the Tagged MP3</a> — read that next if you're unclear what the tag actually allows.</p>
+
+<h2>Where O'Neil Beats fits in</h2>
+<p>The free section at <a href="/">oneilbeats.store</a> exists for exactly this loop. We push tagged MP3s of new reggaeton, trap, and hip-hop instrumentals every week, with a Free Beat Friday email going out to subscribers. The whole point is so artists can demo in private, find the song, and then license cleanly when they're ready. Browse the genre catalogs — <a href="/reggaeton-beats">reggaeton</a>, <a href="/trap-beats">trap</a>, <a href="/perreo-beats">perreo</a>, <a href="/dark-trap-beats">dark trap</a> — every beat has a tagged preview you can grab to demo.</p>
+
+<h2>Bottom line</h2>
+<p>Free beats are not a substitute for paid beats. They're a substitute for a blank canvas. Use them to write, to test, to pitch, to find your voice. The artists who treat free beats as practice tools and paid beats as release tools are the ones who actually finish songs. The ones who download 500 beats and never record a demo are the ones still calling themselves "artists" with no released music in 2027.</p>
+<p>Pick a beat. Open the voice memo app. Press record.</p>
+
+<p class="cta-block"><a href="/#free-signup" class="cta-link">Get a Free Beat Every Friday →</a> · <a href="/" class="cta-link">Browse all beats</a> · <a href="/blog/free-beats-vs-paid-tagged-mp3-explained" class="cta-link">Tagged MP3 explained</a></p>
+`,
+  },
 ];
 
 // Render a single blog post.
@@ -678,13 +750,37 @@ function renderBlogIndex(template) {
 const TYPE_BEAT_ARTISTS = [
   // ── Reggaeton (matches the catalog skew) ──
   { artist: 'Bad Bunny',       slug: 'bad-bunny-type-beat',      intro: 'Bad Bunny redefined modern reggaeton with melodic hooks, half-sung verses, and global crossover production. These instrumentals match that lane — modern reggaeton with smooth, polished flow.',
-    filter: (b) => b.genre === 'Reggaeton' && (b.subgenre === 'Modern Reggaeton' || /smooth|melodic/i.test(b.mood || '')) },
+    filter: (b) => b.genre === 'Reggaeton' && (b.subgenre === 'Modern Reggaeton' || /smooth|melodic/i.test(b.mood || '')),
+    body: `<h2>What makes a Bad Bunny type beat</h2>
+<p>A true Bad Bunny type beat lives in the modern reggaeton lane: dembow pattern at 90–100 BPM, melodic minor-key chord work, smooth Latin percussion, and just enough space in the arrangement for half-sung half-rapped vocals to breathe. The signature is the contrast — heavy 808-backed lows under airy, slightly nostalgic synth pads. Drops are subtle, not explosive; the energy comes from melody and pocket, not aggression.</p>
+<h2>How to write to a Bad Bunny instrumental</h2>
+<p>Bad Bunny rarely uses a traditional verse–chorus structure. He layers conversational verses with a melodic refrain that returns three or four times. When you write to one of these instrumentals, lean melodic — try humming the topline first, then write the lyric to the cadence. Stay in your real vocal range; the auto-tune is a polish, not a crutch. Spanish, English, or Spanglish all work — Bad Bunny crossed over precisely by refusing to choose.</p>
+<h2>BPM, key, and mix notes</h2>
+<p>Most beats in this lane sit between 88 BPM and 100 BPM, in minor keys (A minor, F minor, and C# minor are common). When you license one of these instrumentals, ask for the WAV (Premium Lease or above) — the modern reggaeton mix sits or falls on the low-end weight, and an MP3 loses some of that headroom. If you're singing more than rapping, the stems package gives you control over how loud the melodic synths sit behind your vocal.</p>
+<h2>License and use</h2>
+<p>All Bad Bunny type beats here are non-exclusive leases unless you grab the Exclusive tier. Lease ($29.99) is fine for a SoundCloud single; Premium Lease ($99.99) covers unlimited streams on Spotify, Apple Music, and YouTube; Exclusive removes the beat from the store entirely. <a href="/blog/lease-vs-exclusive-beat-license-guide">See the full license breakdown</a>. New Bad Bunny–style reggaeton drops weekly — sign up for the <a href="/#free-signup">Free Beat Friday email</a> to grab tagged previews before they hit the store.</p>` },
   { artist: 'Feid',            slug: 'feid-type-beat',           intro: 'Feid (FERXXO) made melodic perreo and modern reggaeton with airy synths and conversational flows the global standard. These beats fit that smooth, vibe-heavy sound.',
-    filter: (b) => b.genre === 'Reggaeton' && (b.subgenre === 'Modern Reggaeton' || b.subgenre === 'Perreo' || /smooth|chill|romantic/i.test(b.mood || '')) },
+    filter: (b) => b.genre === 'Reggaeton' && (b.subgenre === 'Modern Reggaeton' || b.subgenre === 'Perreo' || /smooth|chill|romantic/i.test(b.mood || '')),
+    body: `<h2>The Feid (FERXXO) sound, broken down</h2>
+<p>Feid built his global wave on a very specific palette: airy reverb-soaked synth pads, conversational mid-tempo dembow, soft 808s, and chord progressions that feel a little melancholic even when the song is celebratory. The vocal sits very forward in the mix — that's a production choice you can copy by asking your engineer to keep your lead vocal dry-ish and centered. Tempo is usually 90–95 BPM. Keys lean minor.</p>
+<h2>Writing in the FERXXO lane</h2>
+<p>Feid's lyrics are conversational, slightly understated, and almost never punch you in the face with bravado. Try writing the way you'd actually talk to someone — observation, small detail, a hook that sounds like a half-thought rather than a slogan. The melodic pocket sits just behind the dembow snare; if you find the snare and write to a hair behind it, you'll naturally land in the FERXXO cadence. Verde es el color — green Auto-Tune polish helps but it's not the trick.</p>
+<h2>Best license tier for a Feid-style release</h2>
+<p>Because the genre depends on the mix breathing, push for the Premium Lease ($99.99) — you get the WAV, which preserves the soft top-end of the synth pads. If you're recording yourself and mixing in your bedroom, the stems package ($199.99) lets you ride the perreo backbone separately from the melodic layer, which is where most amateur Feid-style mixes lose the magic. <a href="/blog/lease-vs-exclusive-beat-license-guide">License tier breakdown</a>.</p>
+<h2>Related sounds and pages</h2>
+<p>If the Feid lane fits your voice, also explore <a href="/perreo-beats">perreo beats</a>, <a href="/modern-reggaeton-beats">modern reggaeton</a>, <a href="/smooth-reggaeton-beats">smooth reggaeton</a>, and the <a href="/rauw-alejandro-type-beat">Rauw Alejandro type beat</a> page — same melodic family, slightly different palettes.</p>` },
   { artist: 'Rauw Alejandro',  slug: 'rauw-alejandro-type-beat', intro: 'Rauw Alejandro fuses modern reggaeton, R&B, and electronic textures into hits that work on radio and the club. Pick beats with melodic chord work and smooth percussion.',
     filter: (b) => b.genre === 'Reggaeton' && (b.subgenre === 'Modern Reggaeton' || b.subgenre === 'Reggaeton Pop' || /smooth|romantic|sensual/i.test(b.mood || '')) },
   { artist: 'Karol G',         slug: 'karol-g-type-beat',        intro: 'Karol G brought powerful vocals, perreo energy, and reggaeton-pop crossover to global stages. Match her energy with high-impact reggaeton and reggaeton-pop instrumentals.',
-    filter: (b) => b.genre === 'Reggaeton' && (b.subgenre === 'Reggaeton Pop' || b.subgenre === 'Modern Reggaeton' || /energetic|powerful|bouncy/i.test(b.mood || '')) },
+    filter: (b) => b.genre === 'Reggaeton' && (b.subgenre === 'Reggaeton Pop' || b.subgenre === 'Modern Reggaeton' || /energetic|powerful|bouncy/i.test(b.mood || '')),
+    body: `<h2>What a Karol G type beat actually sounds like</h2>
+<p>Karol G's catalog spans hard perreo, pop-leaning reggaeton, bachata-influenced ballads, and full crossover anthems. The constant is the vocal — she sits on top of a beat with full chest voice, so the production has to leave a clear lane in the mid-range for her. Most of her hit instrumentals run 92–98 BPM, sit in minor keys, and combine bouncy classic dembow energy with cleaner, more pop-polished mixing than older reggaeton.</p>
+<h2>Writing for big vocals</h2>
+<p>If you're a vocalist with real range, this is your lane. The trick is to commit. Karol G doesn't whisper through hooks — she sells them. When you write to a Karol G type instrumental, draft your hook melody first and make sure it's something you can hit at full volume. Verses can be more melodic and conversational, but the chorus is where the song lives. Also: write a pre-chorus. Most Karol G songs use a 4-bar lift before the drop, and that lift is where amateur songwriters give up.</p>
+<h2>Mix and license</h2>
+<p>Karol G's mixes are loud, present, and pop-radio competitive. To get there from one of these instrumentals, you need the WAV (Premium Lease, $99.99) at minimum, and ideally an engineer who has mixed Latin pop before. The stems package ($199.99) is worth it if you want to push the reggaeton-pop crossover even harder — you can boost the percussion bus or pull back the synth pads depending on what your vocal needs.</p>
+<h2>Related</h2>
+<p>Pair this page with <a href="/reggaeton-pop-beats">reggaeton-pop beats</a>, <a href="/energetic-reggaeton-beats">energetic reggaeton</a>, and <a href="/perreo-beats">perreo beats</a>. For Spanish queries, see <a href="/comprar-beats-de-reggaeton">Comprar beats de reggaeton</a>.</p>` },
   { artist: 'Myke Towers',     slug: 'myke-towers-type-beat',    intro: 'Myke Towers blends reggaeton, Latin trap, and conscious lyricism. These instrumentals fit his lane — modern reggaeton with strong low-end and smooth melodic loops.',
     filter: (b) => (b.genre === 'Reggaeton' && /smooth|chill|romantic/i.test(b.mood || '')) || b.subgenre === 'Latin Trap' },
   { artist: 'Anuel AA',        slug: 'anuel-type-beat',          intro: 'Anuel built his sound on harder old-school reggaeton and Latin trap with raw energy. Pick darker, harder reggaeton instrumentals or Latin trap beats.',
@@ -701,17 +797,41 @@ const TYPE_BEAT_ARTISTS = [
     filter: (b) => b.subgenre === 'Latin Trap' || (b.genre === 'Reggaeton' && /romantic|smooth/i.test(b.mood || '')) },
   // ── Trap / Hip-Hop ──
   { artist: 'Future',          slug: 'future-type-beat',         intro: 'Future popularized dark, atmospheric trap with auto-tuned melodies over hard 808s. Dark trap with moody, atmospheric production matches.',
-    filter: (b) => b.genre === 'Trap' && (b.subgenre === 'Dark Trap' || /dark|moody|atmospheric/i.test(b.mood || '')) },
+    filter: (b) => b.genre === 'Trap' && (b.subgenre === 'Dark Trap' || /dark|moody|atmospheric/i.test(b.mood || '')),
+    body: `<h2>The Future formula</h2>
+<p>Future's most influential records share a few production fingerprints: a dark minor-key melodic loop (often a single repeating motif), heavy 808s tuned to the root note, sparse hi-hat patterns that explode into rolls during transitions, and a vocal hook layered with auto-tune chest voice. Tempos sit between 130 BPM and 150 BPM (most of his catalog is half-time feel, so it sounds slower than the BPM suggests). Keys are almost always minor — F minor, A minor, and D minor dominate.</p>
+<h2>Writing in this lane</h2>
+<p>Future writes melodies in a narrow vocal range and lets the auto-tune do the harmonic work. If you're chasing the vibe, find your two or three most natural notes, write the hook around them, and let the auto-tune polish them into something more melodic than they really are. Don't over-write — Future hooks often repeat the same word or phrase three or four times. Repetition is the hook. The verses can be denser and more rhythmic.</p>
+<h2>Mix and license recommendation</h2>
+<p>Dark trap mixes live and die on the 808. Get the Premium Lease ($99.99) for the WAV — the 808 needs the headroom that MP3 compression strips. Stems ($199.99) are the right call if you want to dial in the 808 saturation yourself or swap the kick. <a href="/blog/lease-vs-exclusive-beat-license-guide">License tier breakdown</a>.</p>
+<h2>Related lanes</h2>
+<p>If you're chasing this sound, also check <a href="/dark-trap-beats">dark trap beats</a>, <a href="/trap-beats">trap beats</a>, the <a href="/metro-boomin-type-beat">Metro Boomin type beat</a> page (he produced a huge chunk of Future's catalog), and <a href="/southside-type-beat">Southside</a>.</p>` },
   { artist: 'Lil Baby',        slug: 'lil-baby-type-beat',       intro: 'Lil Baby blends melodic trap delivery with street narratives. Melodic trap or smooth dark trap work for his sound.',
     filter: (b) => b.genre === 'Trap' || (b.subgenre || '').toLowerCase().includes('trap') },
   { artist: 'Metro Boomin',    slug: 'metro-boomin-type-beat',   intro: 'Metro Boomin defined modern trap production — cinematic 808s, melodic minor-key keys, dark atmosphere. Pick dark or atmospheric trap.',
-    filter: (b) => b.genre === 'Trap' && (b.subgenre === 'Dark Trap' || /dark|cinematic|atmospheric/i.test(b.mood || '')) },
+    filter: (b) => b.genre === 'Trap' && (b.subgenre === 'Dark Trap' || /dark|cinematic|atmospheric/i.test(b.mood || '')),
+    body: `<h2>Why Metro Boomin's sound is the modern trap blueprint</h2>
+<p>Metro Boomin took trap production from street-level grit to cinematic, almost orchestral darkness. The signatures: detuned minor-key melodic leads (often piano or pluck synths), wide sub-808s that ride the entire low-end, sparse hi-hat patterns with deliberate triplet rolls, dramatic risers and reverse cymbals into drops, and a near-constant sense of unresolved tension. Most beats sit at 130–145 BPM with half-time drum patterns, so the energy reads slower and heavier than the tempo suggests.</p>
+<h2>Writing on a Metro-style beat</h2>
+<p>The instrumentals in this lane are loud — they fight your vocal for space. To win, write hooks with strong consonants and tight melodic contour. Think Future, 21 Savage, The Weeknd — none of them try to out-sing the beat; they ride on top with confidence and let repetition do the work. Verses can be more rhythmic and dense; the hook needs to land hard with as few syllables as possible. Use silence as a tool — Metro builds drops by letting things drop out.</p>
+<h2>Mix tips and licensing</h2>
+<p>Cinematic trap mixes need WAV-quality audio for the sub-bass to translate to phones, cars, and AirPods alike. Get the Premium Lease ($99.99) at minimum. If you're a producer who wants to recreate the Metro sound from the ground up, the stems package gives you the raw 808, drums, and melodic layers separately so you can re-arrange or extend the beat for a longer release. <a href="/blog/lease-vs-exclusive-beat-license-guide">Full license guide</a>.</p>
+<h2>Related</h2>
+<p>Pair with <a href="/dark-trap-beats">dark trap</a>, <a href="/future-type-beat">Future type beats</a>, and <a href="/southside-type-beat">Southside type beats</a> — these three lanes overlap heavily.</p>` },
   { artist: 'Southside',       slug: 'southside-type-beat',      intro: 'Southside (808 Mafia) shaped the heavy 808-driven trap sound. Hard, dark trap with prominent low-end fits.',
     filter: (b) => b.genre === 'Trap' || (b.subgenre || '').toLowerCase().includes('dark trap') },
   { artist: 'J Cole',          slug: 'j-cole-type-beat',         intro: 'J Cole works in lyrical boom-bap and conscious hip-hop with jazzy chord progressions. Pick boom-bap or East Coast lyrical instrumentals.',
     filter: (b) => b.genre === 'Boom Bap' || b.subgenre === 'Lyrical' || b.subgenre === 'East Coast' || b.subgenre === 'Conscious' },
   { artist: 'Drake',           slug: 'drake-type-beat',          intro: 'Drake mixes melodic trap, R&B, and Caribbean-inflected dancehall. Modern Dancehall, Alternative R&B, or melodic trap all fit his range.',
-    filter: (b) => b.subgenre === 'Modern Dancehall' || b.subgenre === 'Alternative R&B' || (b.genre === 'Trap' && /smooth|melodic/i.test(b.mood || '')) },
+    filter: (b) => b.subgenre === 'Modern Dancehall' || b.subgenre === 'Alternative R&B' || (b.genre === 'Trap' && /smooth|melodic/i.test(b.mood || '')),
+    body: `<h2>Drake's three production lanes</h2>
+<p>Drake doesn't sit in one bag — he switches between melodic trap (Boi-1da, OZ, Vinylz), alternative R&B (Noah "40" Shebib's signature warm low-pass sound), and Caribbean-inflected dancehall and afro-fusion. A "Drake type beat" can mean any of those, which is why this catalog page mixes Modern Dancehall, Alternative R&B, and smooth melodic trap. Tempos range wildly: 70 BPM half-time R&B, 95 BPM dancehall, 140 BPM melodic trap.</p>
+<h2>Pick the right sub-lane for your voice</h2>
+<p>Before you pick an instrumental, decide which Drake you're trying to be. If you sing more than rap, the alternative R&B beats (slow tempos, lush pads, sparse drums) will work; write a hook around a single sustained note and let the chord progression do the harmonic lifting. If you rap more than sing, the melodic trap beats (130–140 BPM half-time) give you a 16-bar pocket to ride. If you want a global crossover summer record, the dancehall lane (90–95 BPM) is the move — write a chant-style hook and let the off-beat snare guide your cadence.</p>
+<h2>Mix and license</h2>
+<p>Drake's records are famously meticulous in the mix. WAV (Premium Lease, $99.99) is the floor; if you're recording with a real engineer, the stems package opens up the option to push the low-end on dancehall records or pull back the pads on R&B records. <a href="/blog/lease-vs-exclusive-beat-license-guide">License tier breakdown</a>.</p>
+<h2>Related lanes worth checking</h2>
+<p>Explore <a href="/trap-beats">trap beats</a>, <a href="/reggaeton-beats">reggaeton beats</a> (Drake has worked extensively with Latin artists), and the <a href="/future-type-beat">Future</a> + <a href="/lil-baby-type-beat">Lil Baby</a> pages for the harder melodic-trap end of his catalog.</p>` },
 ];
 
 // Genre/subgenre/mood landing pages — auto-derived from catalog data.
@@ -792,6 +912,7 @@ function getAllLandingPages(beats) {
     name: `${t.artist} Type Beat`,
     h1: `${t.artist} Type Beats — Buy Instrumentals Like ${t.artist}`,
     intro: t.intro,
+    body: t.body,
     filter: t.filter,
     artist: t.artist,
   }));
@@ -1042,6 +1163,7 @@ function renderLandingPage(template, page, beats) {
   <p>${esc(page.intro)}</p>
   <h2>Available ${esc(page.name)}</h2>
   ${beatListHtml}
+  ${page.body || ''}
   <p>Looking for a different sound? <a href="${SITE_URL}/">Browse all beats</a> or filter by genre: <a href="${SITE_URL}/reggaeton-beats">Reggaeton</a> · <a href="${SITE_URL}/trap-beats">Trap</a> · <a href="${SITE_URL}/perreo-beats">Perreo</a>.</p>
   <p>All beats from O'Neil come tagged with the producer voice tag. Buy any license to receive the untagged studio-clean version. Lease from $29.99, exclusive offers via the slider on each beat page.</p>
 </div>`;
