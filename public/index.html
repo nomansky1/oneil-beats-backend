@@ -55,6 +55,9 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"MobileApplication","name":"OB - Reggaeton Instrumentals & Rap Beats","operatingSystem":"iOS, Android","applicationCategory":"MusicApplication","description":"Stream and buy premium reggaeton, trap, hip-hop, drill and Latin rap instrumentals from O'Neil Beats. Instant MP3/WAV delivery, multiple license tiers, secure checkout.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Person","name":"O'Neil"}}</script>
 <!-- Structured Data: FAQ -->
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Where can I buy reggaeton beats online?","acceptedAnswer":{"@type":"Answer","text":"You can buy reggaeton beats directly at oneilbeats.store. We offer modern reggaeton, perreo, dembow, and old school reggaeton instrumentals with instant MP3/WAV delivery. Leases start at $29.99."}},{"@type":"Question","name":"Where can I buy trap beats online?","acceptedAnswer":{"@type":"Answer","text":"Trap beats, drill beats, and Latin trap instrumentals are available at oneilbeats.store. Every trap beat includes a Lease, Premium Lease, Stems, and Exclusive license option."}},{"@type":"Question","name":"What types of beats do you sell?","acceptedAnswer":{"@type":"Answer","text":"We sell Reggaeton, Trap, Drill, Latin Trap, Boom Bap, Lo-Fi, R&B, Afrobeats, Dembow, and Perreo beats. All are available in multiple license tiers."}},{"@type":"Question","name":"What is included with a Lease license?","acceptedAnswer":{"@type":"Answer","text":"A Lease license includes an MP3 file, non-exclusive rights, up to 100,000 streams and 10,000 downloads. Producer credit required: Prod. by O'Neil."}},{"@type":"Question","name":"What is a Premium Lease?","acceptedAnswer":{"@type":"Answer","text":"A Premium Lease includes MP3 + WAV high-quality audio files, non-exclusive rights, unlimited streams, and radio distribution rights."}},{"@type":"Question","name":"What does Stems / Track Out include?","acceptedAnswer":{"@type":"Answer","text":"Stems (Track Out) includes all individual track stems separated — drums, melody, bass, 808s — giving you full production control in your DAW."}},{"@type":"Question","name":"What is an Exclusive license?","acceptedAnswer":{"@type":"Answer","text":"An Exclusive license gives you full ownership of the beat. It is removed from the store so no one else can buy it. No producer credit required."}},{"@type":"Question","name":"How do I receive my beats after purchase?","acceptedAnswer":{"@type":"Answer","text":"All beats are delivered instantly to your email after payment. Download links arrive within seconds of checkout."}},{"@type":"Question","name":"Can I use these beats on YouTube, Spotify, and Apple Music?","acceptedAnswer":{"@type":"Answer","text":"Yes. Lease licenses cover up to 100K streams. Premium Lease and above cover unlimited streaming on YouTube, Spotify, Apple Music, Tidal, SoundCloud and all platforms."}},{"@type":"Question","name":"¿Dónde puedo comprar beats de reggaeton?","acceptedAnswer":{"@type":"Answer","text":"En oneilbeats.store puedes comprar beats de reggaeton, perreo, dembow y trap latino. Entrega inmediata por email. Licencias desde $29.99."}}]}</script>
+<!-- Preconnect to Supabase image + audio CDN — covers + previews load from this origin -->
+<link rel="preconnect" href="https://thmqqplnrjwimgqubkhp.supabase.co" crossorigin>
+<link rel="dns-prefetch" href="https://thmqqplnrjwimgqubkhp.supabase.co">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
@@ -934,40 +937,78 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
 </section>
 
 <!-- About -->
-<section id="about" aria-labelledby="about-title" style="max-width:1200px;margin:40px auto;padding:0 24px">
+<section id="about" aria-labelledby="about-title" style="max-width:1200px;margin:40px auto;padding:0 24px" itemscope itemtype="https://schema.org/Person">
   <div style="background:linear-gradient(135deg,rgba(230,57,70,.08),rgba(245,158,11,.06));border:1px solid var(--border);border-radius:20px;padding:36px 28px">
     <div style="font-size:11px;font-weight:900;letter-spacing:2px;color:var(--accent);margin-bottom:10px">★ ABOUT THE PRODUCER</div>
     <h2 id="about-title" style="margin:0 0 14px;font-size:28px;font-weight:900;color:var(--text);letter-spacing:-.5px">O'Neil Beats — Independent. Built for Artists.</h2>
-    <p style="color:var(--dim);font-size:15px;line-height:1.7;max-width:780px;margin:0 0 14px">
-      O'Neil Beats is a one-producer label specializing in <strong style="color:var(--text)">reggaeton, trap, drill, hip-hop, and Latin instrumentals</strong>. Every beat on this site is original, mixed in-house, and ready to record over the moment you check out — no middlemen, no marketplace fees padded onto your license.
+
+    <!-- Producer identity row: brand mark + name/role/byline -->
+    <div style="display:flex;align-items:center;gap:18px;margin:0 0 22px;flex-wrap:wrap">
+      <img src="/icon.png" alt="O'Neil Beats producer mark" itemprop="image" style="width:72px;height:72px;border-radius:14px;flex-shrink:0;background:var(--surface2);box-shadow:0 8px 24px rgba(230,57,70,.25)">
+      <div style="min-width:0">
+        <div style="font-size:18px;font-weight:900;color:var(--text);letter-spacing:-.3px" itemprop="name">O'Neil <span style="color:var(--dim);font-weight:600;font-size:14px">· Producer / Engineer</span></div>
+        <div style="font-size:13px;color:var(--dim);margin-top:2px">Reggaeton · Trap · Drill · Hip-Hop · Latin Instrumentals</div>
+        <meta itemprop="jobTitle" content="Music Producer">
+        <meta itemprop="url" content="https://oneilbeats.store">
+      </div>
+    </div>
+
+    <p itemprop="description" style="color:var(--dim);font-size:15px;line-height:1.7;max-width:780px;margin:0 0 14px">
+      O'Neil Beats is a one-producer label specializing in <strong style="color:var(--text)">reggaeton, trap, drill, hip-hop, and Latin instrumentals</strong>. Every beat on this site is original, mixed and mastered in-house, and ready to record over the moment you check out — no middlemen, no marketplace fees padded onto your license.
     </p>
     <p style="color:var(--dim);font-size:15px;line-height:1.7;max-width:780px;margin:0 0 18px">
-      Built as an independent alternative to BeatStars, Airbit, and Traktrain. Cleaner licensing. Instant Stripe checkout. Direct contact with the producer — not a support queue.
+      Built as an independent alternative to BeatStars, Airbit, and Traktrain. Cleaner licensing tiers. Instant Stripe checkout. Apple Pay + Google Pay. Direct line to the producer — not a support queue.
     </p>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:22px">
+
+    <!-- Live catalog stats — populated by JS once allBeats loads. Server-rendered fallbacks shown to crawlers. -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:18px">
       <div style="background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
-        <div style="font-size:22px;font-weight:900;color:var(--accent)">100%</div>
-        <div style="font-size:12px;color:var(--dim);line-height:1.4;margin-top:2px">Original production — no samples sold without clearance</div>
+        <div style="font-size:24px;font-weight:900;color:var(--accent)" id="stat-beats">27</div>
+        <div style="font-size:12px;color:var(--dim);line-height:1.4;margin-top:2px">Beats live in the catalog right now</div>
       </div>
       <div style="background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
-        <div style="font-size:22px;font-weight:900;color:var(--accent)">Instant</div>
-        <div style="font-size:12px;color:var(--dim);line-height:1.4;margin-top:2px">MP3 / WAV delivered to your inbox seconds after Stripe checkout</div>
+        <div style="font-size:24px;font-weight:900;color:var(--accent)" id="stat-genres">6</div>
+        <div style="font-size:12px;color:var(--dim);line-height:1.4;margin-top:2px">Genres covered — reggaeton, trap, hip-hop, drill, latin, R&B</div>
       </div>
       <div style="background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
-        <div style="font-size:22px;font-weight:900;color:var(--accent)">3 Apps</div>
-        <div style="font-size:12px;color:var(--dim);line-height:1.4;margin-top:2px">Web, Android, and iOS — same catalog, same account, anywhere</div>
+        <div style="font-size:24px;font-weight:900;color:var(--accent)">$29.99</div>
+        <div style="font-size:12px;color:var(--dim);line-height:1.4;margin-top:2px">Lease starting price — same beat, three license tiers + exclusive</div>
       </div>
       <div style="background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
-        <div style="font-size:22px;font-weight:900;color:var(--accent)">Direct</div>
-        <div style="font-size:12px;color:var(--dim);line-height:1.4;margin-top:2px">Email the producer — no support tickets, real replies</div>
+        <div style="font-size:24px;font-weight:900;color:var(--accent)">&lt; 24h</div>
+        <div style="font-size:12px;color:var(--dim);line-height:1.4;margin-top:2px">Producer reply time on direct email — every message goes to O'Neil</div>
       </div>
     </div>
-    <div style="margin-top:22px;display:flex;gap:10px;flex-wrap:wrap">
+
+    <!-- Why O'Neil — trust block aimed at artists comparing to BeatStars/Airbit -->
+    <div style="margin-top:24px;padding:18px;background:rgba(0,0,0,.18);border:1px solid var(--border);border-radius:14px">
+      <div style="font-size:13px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-bottom:10px">WHY O'NEIL OVER A MARKETPLACE</div>
+      <ul style="list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;color:var(--dim);font-size:13px;line-height:1.5">
+        <li>✓ <strong style="color:var(--text)">In-house mix + master</strong> — every beat sounds finished, not a rough loop.</li>
+        <li>✓ <strong style="color:var(--text)">Same producer answers your email</strong> — no support team, no upsells.</li>
+        <li>✓ <strong style="color:var(--text)">Untagged studio-clean delivery</strong> the moment Stripe confirms.</li>
+        <li>✓ <strong style="color:var(--text)">Negotiable exclusive offers</strong> — slider on every beat, not a "contact us" wall.</li>
+        <li>✓ <strong style="color:var(--text)">PDF license</strong> attached automatically with your name on it.</li>
+        <li>✓ <strong style="color:var(--text)">No marketplace fees</strong> stacked on your license price.</li>
+      </ul>
+    </div>
+
+    <!-- Direct contact card with sameAs hooks (user fills in real social URLs separately) -->
+    <div style="margin-top:22px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <a href="#catalog" style="display:inline-block;background:var(--accent);color:#fff;padding:11px 20px;border-radius:10px;font-weight:800;font-size:13px;text-decoration:none">Browse Beats</a>
-      <a href="mailto:produceroneil@gmail.com?subject=Hello%20O'Neil" style="display:inline-block;background:transparent;color:var(--text);padding:11px 20px;border-radius:10px;font-weight:800;font-size:13px;text-decoration:none;border:1px solid var(--border)">Contact O'Neil</a>
+      <a href="mailto:produceroneil@gmail.com?subject=Hello%20O'Neil" itemprop="email" content="produceroneil@gmail.com" style="display:inline-block;background:transparent;color:var(--text);padding:11px 20px;border-radius:10px;font-weight:800;font-size:13px;text-decoration:none;border:1px solid var(--border)">📧 Email O'Neil</a>
+      <span style="color:var(--dim);font-size:12px;margin-left:6px">Direct, not a ticket queue · replies within 24h</span>
     </div>
+    <meta itemprop="affiliation" content="O'Neil Beats">
   </div>
 </section>
+
+<!-- Person + linked Organization schema for E-E-A-T. The producer (Person) is
+     the founder of the MusicGroup/Organization (declared inline above as
+     itemscope/itemprop). Adding explicit JSON-LD here amplifies the signal. -->
+<script type="application/ld+json" id="ld-producer">
+{"@context":"https://schema.org","@type":"Person","name":"O'Neil","alternateName":"Prod. by O'Neil","jobTitle":"Music Producer","url":"https://oneilbeats.store","email":"produceroneil@gmail.com","image":"https://oneilbeats.store/icon.png","worksFor":{"@type":"Organization","name":"O'Neil Beats","url":"https://oneilbeats.store"},"knowsAbout":["Reggaeton production","Trap production","Drill production","Hip-Hop production","Latin music production","Beat licensing","Music mixing","Mastering"],"sameAs":[]}
+</script>
 
 <!-- FAQ -->
 <section class="faq-section" id="faq" aria-labelledby="faq-title">
@@ -1155,6 +1196,12 @@ async function loadBeats() {
     const d = await r.json();
     allBeats = (d.beats || []).filter(b => b.active !== false);
     document.getElementById('stat-beats').textContent = allBeats.length;
+    // Live genre count for the credibility block
+    var genreEl = document.getElementById('stat-genres');
+    if (genreEl) {
+      var uniqGenres = new Set(allBeats.map(b => (b.genre || '').trim()).filter(Boolean));
+      if (uniqGenres.size > 0) genreEl.textContent = uniqGenres.size + '+';
+    }
     buildHeroShowcase();
     buildFilterChips();
     injectProductSchema();
@@ -1211,7 +1258,7 @@ function buildHeroShowcase() {
   const covers = allBeats.filter(b => b.cover_url).map(b => b.cover_url);
   const m = document.getElementById('hero-marquee');
   if (m && covers.length) {
-    const html = covers.map(c => `<img src="${esc(c)}" alt="" loading="lazy">`).join('');
+    const html = covers.map(c => `<img src="${esc(c)}" alt="" loading="lazy" decoding="async">`).join('');
     m.innerHTML = html + html;
   }
 
@@ -1224,7 +1271,7 @@ function buildHeroShowcase() {
   track.innerHTML = carPool.map((b, i) => `
     <div class="feat-card" data-idx="${i}" onclick="carCardClick(${i})" role="button" aria-label="${esc(b.title)}">
       ${b.cover_url
-        ? `<img class="feat-cover" src="${esc(b.cover_url)}" alt="${esc(b.title)} beat cover" loading="lazy">`
+        ? `<img class="feat-cover" src="${esc(b.cover_url)}" alt="${esc(b.title)} beat cover" loading="lazy" decoding="async">`
         : `<div class="feat-cover-ph"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1" opacity=".25"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`}
       <button class="feat-play" onclick="event.stopPropagation();playBeat('${b.id}')" aria-label="Play ${esc(b.title)}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -1438,7 +1485,7 @@ function beatCard(b) {
   const cartIds = cart.map(c=>c.beatId+'_'+c.licenseType);
   const lInCart = cartIds.includes(b.id+'_lease'), pInCart = cartIds.includes(b.id+'_premium');
   const isPlaying2 = currentBeat?.id===b.id && isPlaying;
-  const cover = b.cover_url ? `<img class="beat-cover" src="${esc(b.cover_url)}" alt="${esc(b.title)} ${esc(b.genre||'rap')} beat cover" loading="lazy">` : `<div class="beat-cover-ph"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1" opacity=".15"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`;
+  const cover = b.cover_url ? `<img class="beat-cover" src="${esc(b.cover_url)}" alt="${esc(b.title)} ${esc(b.genre||'rap')} beat cover" loading="lazy" decoding="async">` : `<div class="beat-cover-ph"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1" opacity=".15"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`;
   const playIcon = isPlaying2 ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>` : `<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
   return `<article class="beat-card${currentBeat?.id===b.id?' playing':''}" id="card-${b.id}" role="listitem">
   <div class="beat-cover-wrap" onclick="playBeat('${b.id}')" role="button" tabindex="0" aria-label="Play ${esc(b.title)}">
@@ -1617,7 +1664,7 @@ function renderSimilarBeats(b) {
     <div class="similar-grid">
       ${scored.map(o => {
         const x = o.b;
-        const img = x.cover_url ? `<img src="${esc(x.cover_url)}" alt="${esc(x.title)}" loading="lazy">` : `<div class="similar-ph">🎧</div>`;
+        const img = x.cover_url ? `<img src="${esc(x.cover_url)}" alt="${esc(x.title)}" loading="lazy" decoding="async">` : `<div class="similar-ph">🎧</div>`;
         return `<div class="similar-item" onclick="openDetail('${x.id}')">${img}<div class="similar-info"><div class="similar-name">${esc(x.title)}</div><div class="similar-meta">${esc(x.genre||'')}${x.bpm?' · '+x.bpm+' BPM':''}</div></div></div>`;
       }).join('')}
     </div>

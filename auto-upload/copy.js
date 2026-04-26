@@ -3,152 +3,299 @@
 // YouTube's relevance signal for Music is strongest on TITLE + first 2 lines
 // of description + tags, in that order. We put the store link as the very
 // first description line so it's visible in the "Show more" collapsed view.
+//
+// This file is tuned hard for beat-sales SEO:
+//   - "type beat" phrase in title (highest-volume query in the space)
+//   - Genre + BPM + Key + Mood all surfaced in title AND first line of desc
+//   - 15 artist-compare tags per genre (e.g. "bad bunny type beat"), plus
+//     BPM-band variants, plus year tags, plus brand tags
+//   - 500-char YouTube tag budget used aggressively
+//   - Pinned-comment suggestion returned separately so the uploader can post
+//     it as the first comment (YouTube boosts engagement from pinned comments)
 
 const cfg = require('./config');
 
-// ── Mood banks per genre. Tags are the single biggest SEO lever we have,
-// so we curate a bank per genre and blend in mood+bpm-derived tags. ───────
+// Slug helper — must match scripts/build-beat-pages.js so YT descriptions
+// link to the same per-beat SEO URL the store generates statically.
+function _slugify(s) {
+  return String(s || '').toLowerCase()
+    .normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .replace(/['"`’]/g, '').replace(/&/g, '-and-')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'beat';
+}
+function _shortId(uuid) { return String(uuid || '').replace(/-/g, '').slice(0, 4) || 'na00'; }
+function beatStoreUrl(beat) {
+  const id = beat.beat_id || beat.id || '';
+  const title = beat.beat_title || beat.title || '';
+  if (!id || !title) return cfg.STORE_URL || 'https://oneilbeats.store';
+  return `${cfg.STORE_URL || 'https://oneilbeats.store'}/beat/${_slugify(title)}-${_shortId(id)}`;
+}
+
+// ── Mood banks per genre ──────────────────────────────────────────────────
+// Each bank: 18-22 tags mixing genre-core, artist-compare, sub-style, and
+// year. Dedup + brand appended at buildTags() time.
 const GENRE_TAGS = {
   'reggaeton': [
     'reggaeton beat', 'reggaeton instrumental', 'reggaeton type beat',
-    'perreo beat', 'latin trap beat', 'reggaeton 2026', 'bad bunny type beat',
-    'feid type beat', 'rauw alejandro type beat', 'myke towers type beat',
+    'perreo beat', 'latin trap beat', 'reggaeton 2026', 'reggaeton 2025',
+    'bad bunny type beat', 'feid type beat', 'rauw alejandro type beat',
+    'myke towers type beat', 'quevedo type beat', 'peso pluma type beat',
     'dembow', 'reggaeton romantico', 'sensual reggaeton', 'reggaeton party',
-    'reggaeton pista',
+    'reggaeton pista', 'free reggaeton beat', 'reggaeton 2026 type beat',
   ],
   'trap': [
     'trap beat', 'trap instrumental', 'trap type beat', 'dark trap beat',
-    'hard trap beat', 'trap 2026', 'travis scott type beat', 'future type beat',
-    'hip hop beat', '808 beat', 'trap rap beat', 'freestyle trap beat',
+    'hard trap beat', 'trap 2026', 'trap 2025', 'travis scott type beat',
+    'future type beat', 'lil baby type beat', '21 savage type beat',
+    'playboi carti type beat', 'hip hop beat', '808 beat',
+    'trap rap beat', 'freestyle trap beat', 'free trap beat', 'melodic trap',
   ],
   'hip hop': [
     'hip hop beat', 'hip hop instrumental', 'rap beat', 'rap instrumental',
     'boom bap beat', 'hip hop type beat', 'old school hip hop', 'chill hip hop',
     'lofi hip hop', 'hip hop 2026', 'drake type beat', 'j cole type beat',
+    'kendrick lamar type beat', 'kanye west type beat',
+    'free rap beat', 'storytelling beat', 'conscious hip hop', 'east coast beat',
   ],
   'drill': [
     'drill beat', 'drill instrumental', 'drill type beat', 'uk drill beat',
     'ny drill beat', 'dark drill', 'hard drill beat', 'pop smoke type beat',
-    'central cee type beat', 'drill 2026', 'sample drill',
+    'central cee type beat', 'headie one type beat', 'sheff g type beat',
+    'drill 2026', 'drill 2025', 'sample drill', 'sliding drill beat', 'free drill beat',
   ],
   'dancehall': [
     'dancehall beat', 'dancehall instrumental', 'dancehall riddim',
-    'dancehall type beat', 'vybz kartel type beat', 'afro dancehall',
-    'jamaican beat', 'dancehall 2026', 'dancehall party',
+    'dancehall type beat', 'vybz kartel type beat', 'skeng type beat',
+    'afro dancehall', 'jamaican beat', 'dancehall 2026', 'dancehall 2025',
+    'dancehall party', 'free dancehall beat', 'riddim 2026',
   ],
   'afrobeats': [
     'afrobeats instrumental', 'afrobeats type beat', 'afro beat',
-    'wizkid type beat', 'burna boy type beat', 'afroswing', 'amapiano beat',
-    'afrobeats 2026', 'rema type beat', 'african beat',
+    'wizkid type beat', 'burna boy type beat', 'davido type beat',
+    'rema type beat', 'asake type beat', 'afroswing', 'amapiano beat',
+    'afrobeats 2026', 'afrobeats 2025', 'african beat', 'free afrobeats',
   ],
   'latin': [
     'latin beat', 'latin instrumental', 'latin pop beat', 'bachata beat',
-    'salsa beat', 'cumbia beat', 'latin type beat', 'latin 2026',
+    'salsa beat', 'cumbia beat', 'latin type beat', 'latin 2026', 'latin 2025',
+    'urbano beat', 'free latin beat', 'bachata 2026',
   ],
 };
 
 // Always-on brand tags appended to every upload.
-const BRAND_TAGS = ['oneil beats', 'type beat', 'free beat', 'beats for sale', 'instrumental'];
+const BRAND_TAGS = [
+  'oneil beats', 'o neil beats', 'type beat', 'free beat', 'free type beat',
+  'beats for sale', 'instrumental', 'free for profit', 'free for non profit',
+];
 
-// Build exactly 15–20 tags from genre bank + mood + bpm + brand, deduped.
-function buildTags(beat) {
-  const g = String(beat.genre || '').toLowerCase();
-  const bank = GENRE_TAGS[g] || GENRE_TAGS['hip hop'];
-  const mood = beat.mood ? [String(beat.mood).toLowerCase() + ' beat', String(beat.mood).toLowerCase() + ' type beat'] : [];
-  const bpm  = beat.bpm  ? [`${beat.bpm} bpm beat`, `${beat.bpm}bpm ${g}`] : [];
-  const raw = [...bank, ...mood, ...bpm, ...BRAND_TAGS];
-  const seen = new Set();
-  const out = [];
-  for (const t of raw) {
-    const k = t.toLowerCase().trim();
-    if (!k || seen.has(k)) continue;
-    seen.add(k); out.push(k);
-    if (out.length >= 20) break;
-  }
-  // YouTube allows 500 chars total across tags. Trim if any single tag is huge.
-  return out.filter(t => t.length <= 30).slice(0, 20);
+// BPM-band vocabulary — groups common tempo ranges to the phrasing buyers search.
+function bpmBand(bpm) {
+  const n = Number(bpm) || 0;
+  if (!n) return [];
+  if (n <= 70)   return ['slow beat', 'chill beat'];
+  if (n <= 90)   return ['90 bpm beat', 'mid tempo beat'];
+  if (n <= 100)  return ['100 bpm beat', 'reggaeton tempo'];
+  if (n <= 110)  return ['110 bpm beat'];
+  if (n <= 130)  return ['120 bpm beat', 'hip hop tempo'];
+  if (n <= 150)  return ['140 bpm beat', 'trap tempo'];
+  if (n <= 170)  return ['drill tempo'];
+  return ['fast beat'];
 }
 
-// Hashtags for IG / TikTok — top 8 from tags reformatted as #hashtag.
-function buildHashtags(beat) {
-  return buildTags(beat).slice(0, 8)
+// Build up to 25 tags from genre bank + mood + bpm-band + brand, deduped.
+// YouTube hard-caps at 500 total characters across ALL tags — we budget
+// greedily instead of just slicing to 20.
+function buildTags(beat) {
+  const g = String(beat.genre || beat.beat_genre || '').toLowerCase();
+  const bank = GENRE_TAGS[g] || GENRE_TAGS['hip hop'];
+  const mood = (beat.mood || beat.beat_mood) ? [
+    String(beat.mood || beat.beat_mood).toLowerCase() + ' beat',
+    String(beat.mood || beat.beat_mood).toLowerCase() + ' type beat',
+    String(beat.mood || beat.beat_mood).toLowerCase() + ' ' + g + ' beat',
+  ] : [];
+  const bpm = (beat.bpm || beat.beat_bpm) ? [
+    `${beat.bpm || beat.beat_bpm} bpm beat`,
+    `${beat.bpm || beat.beat_bpm}bpm ${g}`,
+  ].concat(bpmBand(beat.bpm || beat.beat_bpm)) : [];
+  const key = (beat.key || beat.beat_key) ? [
+    `${String(beat.key || beat.beat_key).toLowerCase()} beat`,
+  ] : [];
+
+  const raw = [...bank, ...mood, ...bpm, ...key, ...BRAND_TAGS];
+  const seen = new Set();
+  const out = [];
+  let charsUsed = 0;
+  // YouTube counts tags as comma-separated; each tag + 1 comma.
+  const BUDGET = 495;
+  for (const t of raw) {
+    const k = String(t).toLowerCase().trim().replace(/\s+/g, ' ');
+    if (!k || k.length > 30 || seen.has(k)) continue;
+    const cost = k.length + 1;
+    if (charsUsed + cost > BUDGET) continue;
+    seen.add(k); out.push(k); charsUsed += cost;
+    if (out.length >= 25) break;
+  }
+  return out;
+}
+
+// Hashtags for IG / TikTok / YouTube description — top 10 from tags reformatted.
+function buildHashtags(beat, limit = 10) {
+  return buildTags(beat).slice(0, limit)
     .map(t => '#' + t.replace(/[^a-z0-9]+/g, ''))
     .filter(h => h.length > 1)
     .join(' ');
 }
 
-// ── Title — MUST include genre + BPM + key + mood ────────────────────────
-// Pattern is optimized for YouTube Music search ("{genre} type beat" is the
-// single highest-volume query in beat-sales SEO).
+// ── Title — MUST include genre + "Type Beat" + BPM + key ─────────────────
+// Pattern optimized for YouTube Music search. "Type beat" is the single
+// highest-volume query in beat-sales SEO, followed by artist-compare ("X
+// type beat").
+//
+// Shape: "[FREE] {mood} {Genre} Type Beat 2026 \"{title}\" | {bpm} BPM {key}"
+// Cap 100 chars. If the full line blows the budget, we drop [FREE], then
+// mood, then key, in that order — never the genre+"type beat" clause.
 function buildYouTubeTitle(beat) {
-  const genre = titleCase(beat.genre || 'Beat');
-  const mood  = titleCase(beat.mood  || '');
-  const bpm   = beat.bpm  ? `${beat.bpm} BPM` : '';
-  const key   = beat.key  ? beat.key : '';
-  const title = beat.title || 'Untitled';
+  const genre = titleCase(beat.genre || beat.beat_genre || 'Beat');
+  const mood  = titleCase(beat.mood  || beat.beat_mood  || '');
+  const bpm   = (beat.bpm || beat.beat_bpm) ? `${beat.bpm || beat.beat_bpm} BPM` : '';
+  const key   = (beat.key || beat.beat_key) || '';
+  const title = beat.title || beat.beat_title || 'Untitled';
 
-  // Example: "[FREE] Smooth Reggaeton Type Beat 2026 "Luna" | 97 BPM C# Minor"
-  const parts = [
-    '[FREE]',
-    mood ? mood : '',
-    `${genre} Type Beat 2026`,
-    `"${title}"`,
-    '|',
-    [bpm, key].filter(Boolean).join(' '),
-  ].filter(Boolean);
+  const full = ['[FREE]', mood, `${genre} Type Beat 2026`, `"${title}"`, '|', [bpm, key].filter(Boolean).join(' ')]
+    .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  if (full.length <= 100) return full;
 
-  // YouTube hard-caps at 100 chars. Trim title segment if needed.
-  let out = parts.join(' ').replace(/\s+/g, ' ').trim();
-  if (out.length > 100) out = out.slice(0, 97) + '...';
-  return out;
+  const noFree = [mood, `${genre} Type Beat 2026`, `"${title}"`, '|', [bpm, key].filter(Boolean).join(' ')]
+    .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  if (noFree.length <= 100) return noFree;
+
+  const noMood = [`${genre} Type Beat 2026`, `"${title}"`, '|', [bpm, key].filter(Boolean).join(' ')]
+    .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  if (noMood.length <= 100) return noMood;
+
+  const noKey = [`${genre} Type Beat 2026`, `"${title}"`, '|', bpm]
+    .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  return noKey.length <= 100 ? noKey : noKey.slice(0, 97) + '...';
+}
+
+// Short-form YouTube title (for Shorts). Shorts titles truncate hard in
+// the feed — front-load the keywords.
+function buildYouTubeShortTitle(beat) {
+  const genre = titleCase(beat.genre || beat.beat_genre || 'Beat');
+  const bpm   = (beat.bpm || beat.beat_bpm) ? `${beat.bpm || beat.beat_bpm} BPM` : '';
+  const title = beat.title || beat.beat_title || 'Untitled';
+  const base = `${genre} Type Beat "${title}" ${bpm} #Shorts`.replace(/\s+/g, ' ').trim();
+  return base.length <= 100 ? base : base.slice(0, 97) + '...';
 }
 
 // ── IG + TikTok caption ──────────────────────────────────────────────────
-// Shorter, hashtag-heavy. Line 1 is still the store link.
 function buildSocialCaption(beat) {
-  const line1 = `🔥 Download this beat: ${cfg.STORE_URL}/${beat.beat_slug || ''}`;
+  const beatId = beat.beat_id || beat.id || '';
+  const line1 = `🔥 Download this beat: ${beatStoreUrl(beat)}`;
   const line2 = `${titleCase(beat.beat_genre || beat.genre)} · ${beat.beat_bpm || beat.bpm || ''} BPM · ${beat.beat_key || beat.key || ''}`;
-  const line3 = buildHashtags({
-    genre: beat.beat_genre || beat.genre,
-    mood:  beat.beat_mood  || beat.mood,
-    bpm:   beat.beat_bpm   || beat.bpm,
-  });
-  return [line1, line2, line3].filter(Boolean).join('\n\n').slice(0, 2200); // IG cap
+  const line3 = buildHashtags(beat, 12);
+  return [line1, line2, line3].filter(Boolean).join('\n\n').slice(0, 2200);
 }
 
 // ── YouTube description ──────────────────────────────────────────────────
-// REQUIRED line 1: 🔥 Download this beat: oneilbeats.store/{slug}
-function buildYouTubeDescription(beat) {
-  const slug  = beat.beat_slug || '';
-  const genre = titleCase(beat.beat_genre || beat.genre);
+// Structure (in priority order for SEO):
+//   Line 1: store link (visible in collapsed "Show more")
+//   Line 2: blank
+//   Line 3: narrative hook (LLM-generated, or formulaic fallback)
+//   License summary block
+//   Producer contact
+//   Social links
+//   Tag block (hashtags for YouTube's own hashtag rails)
+//   Related searches block (pure keyword real estate)
+//   Legal / copyright notice
+//
+// Accepts optional `narrative` string — if present, used as the hook line
+// instead of the formulaic fallback. Pass an LLM-generated blurb for
+// maximum uniqueness.
+function buildYouTubeDescription(beat, narrative) {
+  const beatId = beat.beat_id || beat.id || '';
+  const genre = titleCase(beat.beat_genre || beat.genre || '');
   const bpm   = beat.beat_bpm  || beat.bpm || '';
   const key   = beat.beat_key  || beat.key || '';
   const mood  = titleCase(beat.beat_mood || beat.mood || '');
   const title = beat.beat_title || beat.title || 'Untitled';
 
+  const hook = narrative && String(narrative).trim()
+    ? String(narrative).trim()
+    : `"${title}" is a ${mood ? mood.toLowerCase() + ' ' : ''}${genre.toLowerCase()} type beat at ${bpm} BPM${key ? ' in ' + key : ''} — ready to record on and release.`;
+
+  // Artist-compare "related searches" block. This is mostly keyword real
+  // estate for YouTube's own recommendation algorithm.
+  const related = (GENRE_TAGS[String(beat.beat_genre || beat.genre || '').toLowerCase()] || [])
+    .filter(t => /type beat/i.test(t))
+    .slice(0, 6)
+    .map(t => '• ' + titleCase(t))
+    .join('\n');
+
+  const tagLine = buildTags(beat)
+    .map(t => '#' + t.replace(/[^a-z0-9]+/g, ''))
+    .join(' ');
+
   const lines = [
-    `🔥 Download this beat: ${cfg.STORE_URL}/${slug}`,  // MUST be line 1
+    `🔥 Download this beat: ${beatStoreUrl(beat)}`,
     ``,
-    `🎧 "${title}" — ${genre} · ${bpm} BPM · ${key}${mood ? ` · ${mood}` : ''}`,
+    hook,
     ``,
-    `💎 License instantly at ${cfg.STORE_URL}`,
-    `📧 Exclusive rights: produceroneil@gmail.com`,
+    `🎧 "${title}" — ${[genre, bpm ? bpm + ' BPM' : '', key, mood].filter(Boolean).join(' · ')}`,
+    ``,
+    `💎 LICENSING`,
+    `▸ Lease: instant download at ${cfg.STORE_URL}`,
+    `▸ Exclusive rights: produceroneil@gmail.com`,
+    `▸ Free to use tagged version for non-profit / profile / demo only.`,
     ``,
     `━━━━━━━━━━━━━━━━━━━━━━━`,
     `📲 Follow O'Neil Beats`,
-    `IG: @oneilbeats`,
-    `TikTok: @oneilbeats`,
+    `▸ Store: ${cfg.STORE_URL}`,
+    `▸ Instagram: @oneilbeats`,
+    `▸ TikTok: @oneilbeats`,
     `━━━━━━━━━━━━━━━━━━━━━━━`,
     ``,
+    related ? `🔎 Related searches:\n${related}\n` : '',
     `Tags:`,
-    buildTags(beat).map(t => '#' + t.replace(/[^a-z0-9]+/g, '')).join(' '),
+    tagLine,
     ``,
-    `(c) O'Neil Beats. This beat is FREE for non-profit use only. Any commercial`,
-    `release — streaming, sales, sync — requires a license purchased at`,
-    `${cfg.STORE_URL}. Unauthorized use may result in your release being taken`,
-    `down and monetization claimed.`,
-  ];
+    `© O'Neil Beats. Tagged MP3 is FREE for non-profit / demo use only. Any`,
+    `commercial release (streaming, sales, sync, paid shows) requires a`,
+    `license purchased at ${cfg.STORE_URL}. Unauthorized commercial use may`,
+    `result in takedown + monetization claim.`,
+  ].filter(l => l !== undefined && l !== null);
   return lines.join('\n');
+}
+
+// ── YouTube Shorts description ───────────────────────────────────────────
+// Shorts descriptions are truncated aggressively in the feed. Front-load
+// the store link and a hashtag set.
+function buildYouTubeShortDescription(beat, narrative) {
+  const beatId = beat.beat_id || beat.id || '';
+  const title = beat.beat_title || beat.title || 'Untitled';
+  const genre = titleCase(beat.beat_genre || beat.genre || '');
+  const hash  = buildHashtags(beat, 12) + ' #Shorts #TypeBeat #FreeBeats';
+
+  const hook = narrative && String(narrative).trim()
+    ? String(narrative).trim().split('.')[0]
+    : `${genre} type beat "${title}" — full version on the channel.`;
+
+  return [
+    `🔥 Full beat: ${beatStoreUrl(beat)}`,
+    ``,
+    hook,
+    ``,
+    hash,
+  ].join('\n');
+}
+
+// ── Pinned comment ───────────────────────────────────────────────────────
+// YouTube weighs channel engagement heavily. A pinned comment with the
+// store link + CTA drives click-through. The uploader posts this as the
+// first comment right after the video goes live.
+function buildPinnedComment(beat) {
+  const beatId = beat.beat_id || beat.id || '';
+  return `🔥 Download + license: ${beatStoreUrl(beat)}\n💎 Free for non-profit • Exclusive: produceroneil@gmail.com\n📩 Drop your track with this beat in the replies — I'll check them all.`;
 }
 
 function titleCase(s) {
@@ -159,6 +306,9 @@ module.exports = {
   buildTags,
   buildHashtags,
   buildYouTubeTitle,
+  buildYouTubeShortTitle,
   buildYouTubeDescription,
+  buildYouTubeShortDescription,
   buildSocialCaption,
+  buildPinnedComment,
 };
