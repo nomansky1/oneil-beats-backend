@@ -549,7 +549,7 @@ header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-fi
 /* ── Footer ── */
 footer{background:var(--surface);border-top:1px solid var(--border);padding:36px 24px 20px;margin-bottom:var(--player-h)}
 .footer-inner{max-width:1400px;margin:0 auto}
-.footer-grid{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:28px;margin-bottom:28px}
+.footer-grid{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr;gap:24px;margin-bottom:28px}
 .footer-col h4{font-size:11px;font-weight:800;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:12px}
 .footer-col a,.footer-col p{font-size:12px;color:var(--dim);text-decoration:none;display:block;margin-bottom:7px;line-height:1.6}
 .footer-col a:hover{color:var(--text)}
@@ -1028,19 +1028,32 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
       </div>
       <div class="footer-col">
         <h4>Reggaeton</h4>
-        <a href="#" onclick="event.preventDefault();setGenreFilter('Reggaeton')">Buy Reggaeton Beats</a>
-        <a href="#" onclick="event.preventDefault();setKeyword('perreo')">Perreo Beats</a>
-        <a href="#" onclick="event.preventDefault();setKeyword('dembow')">Dembow Instrumentals</a>
-        <a href="#" onclick="event.preventDefault();setKeyword('old school reggaeton')">Old School Reggaeton</a>
-        <a href="#" onclick="event.preventDefault();setKeyword('latin')">Latin Beats</a>
+        <a href="/reggaeton-beats">Buy Reggaeton Beats</a>
+        <a href="/modern-reggaeton-beats">Modern Reggaeton</a>
+        <a href="/perreo-beats">Perreo Beats</a>
+        <a href="/old-school-reggaeton-beats">Old School Reggaeton</a>
+        <a href="/smooth-reggaeton-beats">Smooth Reggaeton</a>
       </div>
       <div class="footer-col">
-        <h4>Trap & Drill</h4>
-        <a href="#" onclick="event.preventDefault();setGenreFilter('Trap')">Buy Trap Beats</a>
-        <a href="#" onclick="event.preventDefault();setGenreFilter('Drill')">Buy Drill Beats</a>
-        <a href="#" onclick="event.preventDefault();setKeyword('latin trap')">Latin Trap</a>
-        <a href="#" onclick="event.preventDefault();setGenreFilter('Boom Bap')">Boom Bap Beats</a>
-        <a href="#" onclick="event.preventDefault();setGenreFilter('Lo-Fi')">Lo-Fi Beats</a>
+        <h4>Trap & Hip-Hop</h4>
+        <a href="/trap-beats">Buy Trap Beats</a>
+        <a href="/dark-trap-beats">Dark Trap</a>
+        <a href="/boom-bap-beats">Boom Bap Beats</a>
+        <a href="/reggaeton-pop-beats">Reggaeton Pop</a>
+        <a href="/energetic-reggaeton-beats">Energetic Reggaeton</a>
+      </div>
+      <div class="footer-col">
+        <h4>Type Beats</h4>
+        <a href="/bad-bunny-type-beat">Bad Bunny Type Beat</a>
+        <a href="/feid-type-beat">Feid Type Beat</a>
+        <a href="/karol-g-type-beat">Karol G Type Beat</a>
+        <a href="/rauw-alejandro-type-beat">Rauw Alejandro Type Beat</a>
+        <a href="/anuel-type-beat">Anuel Type Beat</a>
+        <a href="/myke-towers-type-beat">Myke Towers Type Beat</a>
+        <a href="/j-balvin-type-beat">J Balvin Type Beat</a>
+        <a href="/peso-pluma-type-beat">Peso Pluma Type Beat</a>
+        <a href="/future-type-beat">Future Type Beat</a>
+        <a href="/metro-boomin-type-beat">Metro Boomin Type Beat</a>
       </div>
       <div class="footer-col">
         <h4>Info</h4>
@@ -1467,7 +1480,7 @@ function openDetail(id) {
   const b = allBeats.find(x=>x.id===id);
   if (!b) return;
   const cartIds = cart.map(c=>c.beatId+'_'+c.licenseType);
-  history.pushState(null,'',`?beat=${id}`);
+  history.pushState(null,'',beatPath(b));
   document.title = `${b.title} — Buy ${b.genre||'Rap'} Beat | O'Neil Beats`;
   const coverHTML = b.cover_url ? `<img class="detail-cover" src="${esc(b.cover_url)}" alt="${esc(b.title)} ${esc(b.genre||'rap')} instrumental">` : `<div class="detail-cover-ph"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1" opacity=".2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`;
   const isNowPlaying = currentBeat?.id===id;
@@ -1612,8 +1625,8 @@ function renderSimilarBeats(b) {
 }
 
 async function shareBeat(id, title) {
-  const url = `https://oneilbeats.store/?beat=${id}`;
   const beat = allBeats.find(x => x.id === id);
+  const url = `https://oneilbeats.store${beatPath(beat || { id, title })}`;
   const text = `🎧 ${title} — beat by O'Neil Beats`;
   const imgUrl = beat?.cover_url || 'https://oneilbeats.store/og-image.jpg';
 
@@ -1875,6 +1888,18 @@ function track(action, data) {
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function fmt$(n) { return Number(n).toFixed(2); }
+// Build canonical /beat/{slug} URL — must match the slug fn in scripts/build-beat-pages.js
+function beatPath(b) {
+  if (!b || !b.id) return '/';
+  var slug = String(b.title || 'beat').toLowerCase()
+    .normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .replace(/['"`’]/g, '')
+    .replace(/&/g, '-and-')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '').slice(0, 60) || 'beat';
+  var sid = String(b.id).replace(/-/g, '').slice(0, 4) || 'na00';
+  return '/beat/' + slug + '-' + sid;
+}
 let toastT;
 function showToast(msg,type) { const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'+(type?' '+type:''); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3000); }
 

@@ -6,3 +6,12 @@ oneil-beats-*.json
 # `vercel-build` npm script (see scripts/build-beat-pages.js). Don't
 # commit them — would bloat history and go stale fast.
 public/beat/
+# Landing-page generation marker (tracks which pages exist so the next
+# build can prune stale ones). Also a build artifact.
+public/.landing-pages.json
+# Landing pages themselves — all type-beat + genre/subgenre/mood pages
+# that the build script writes. Anything matching these patterns is
+# generated; the static pages we keep (index, privacy, terms,
+# delete-account, store-assets) are listed explicitly above this section.
+public/*-type-beat.html
+public/*-beats.html

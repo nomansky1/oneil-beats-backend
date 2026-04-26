@@ -159,15 +159,22 @@ app.use(cors({
 // per-URL <url> entry, plus the homepage and primary section anchors.
 app.get('/sitemap.xml', async (req, res) => {
   try {
-    const { beatSlug } = require('./scripts/build-beat-pages');
+    const { beatSlug, getAllLandingPages } = require('./scripts/build-beat-pages');
     const beats = await fetchBeatsFromDB().catch(() => []);
     const SITE = 'https://oneilbeats.store';
     const today = new Date().toISOString().slice(0, 10);
+    const landingPages = getAllLandingPages(beats || []);
     const urls = [
       `<url><loc>${SITE}/</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>${today}</lastmod></url>`,
       `<url><loc>${SITE}/#catalog</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`,
       `<url><loc>${SITE}/#licenses</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>`,
       `<url><loc>${SITE}/#faq</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>`,
+      // Landing pages — type-beat (highest commercial intent), then genre/subgenre/mood combos
+      ...landingPages.map(p => {
+        const priority = p.kind === 'type-beat' ? '0.85' : p.kind === 'genre' ? '0.8' : '0.7';
+        return `<url><loc>${SITE}/${p.slug}</loc><changefreq>weekly</changefreq><priority>${priority}</priority><lastmod>${today}</lastmod></url>`;
+      }),
+      // Per-beat pages
       ...(beats || []).filter(b => b && b.id && b.title).map(b => {
         const slug = beatSlug(b);
         const lastmod = (b.createdAt || b.created_at || today).slice(0, 10);
