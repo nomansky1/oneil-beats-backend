@@ -159,7 +159,7 @@ app.use(cors({
 // per-URL <url> entry, plus the homepage and primary section anchors.
 app.get('/sitemap.xml', async (req, res) => {
   try {
-    const { beatSlug, getAllLandingPages, BLOG_POSTS } = require('./scripts/build-beat-pages');
+    const { beatSlug, getAllLandingPages, BLOG_POSTS, SPANISH_LANDING_PAGES } = require('./scripts/build-beat-pages');
     const beats = await fetchBeatsFromDB().catch(() => []);
     const SITE = 'https://oneilbeats.store';
     const today = new Date().toISOString().slice(0, 10);
@@ -172,6 +172,11 @@ app.get('/sitemap.xml', async (req, res) => {
       // Blog index + per-post URLs
       `<url><loc>${SITE}/blog</loc><changefreq>weekly</changefreq><priority>0.7</priority><lastmod>${today}</lastmod></url>`,
       ...(BLOG_POSTS || []).map(p => `<url><loc>${SITE}/blog/${p.slug}</loc><changefreq>monthly</changefreq><priority>0.75</priority><lastmod>${p.publishedDate}</lastmod></url>`),
+      // Spanish landing pages — bilingual SEO with reciprocal hreflang
+      ...(SPANISH_LANDING_PAGES || []).map(p => {
+        const enUrl = `${SITE}${p.enAlt}`;
+        return `<url><loc>${SITE}/${p.slug}</loc><changefreq>weekly</changefreq><priority>0.8</priority><lastmod>${today}</lastmod><xhtml:link rel="alternate" hreflang="es" href="${SITE}/${p.slug}"/><xhtml:link rel="alternate" hreflang="en" href="${enUrl}"/></url>`;
+      }),
       // Landing pages — type-beat (highest commercial intent), then genre/subgenre/mood combos
       ...landingPages.map(p => {
         const priority = p.kind === 'type-beat' ? '0.85' : p.kind === 'genre' ? '0.8' : '0.7';
@@ -184,7 +189,7 @@ app.get('/sitemap.xml', async (req, res) => {
         return `<url><loc>${SITE}/beat/${slug}</loc><changefreq>weekly</changefreq><priority>0.8</priority><lastmod>${lastmod}</lastmod></url>`;
       }),
     ].join('\n  ');
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  ${urls}\n</urlset>\n`;
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n  ${urls}\n</urlset>\n`;
     res.set('Content-Type', 'application/xml; charset=utf-8');
     res.set('Cache-Control', 'public, max-age=3600, s-maxage=3600');
     res.send(xml);
@@ -477,6 +482,124 @@ app.get('/beats', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// REVIEWS — per-beat customer reviews. Powers AggregateRating + Review schema
+// in beat-page JSON-LD (⭐ stars in Google search results once ≥3 approved).
+// Migration: backend/migrations/reviews.sql must be run in Supabase first.
+// ──────────────────────────────────────────────────────────────────────────────
+
+// POST /reviews — submit a new review (status='pending', awaits owner approval)
+app.post('/reviews', async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { beatId, email, name, rating, title, body } = req.body || {};
+    if (!beatId || !email || !rating) return res.status(400).json({ error: 'beatId, email, rating required' });
+    const r = parseInt(rating, 10);
+    if (!Number.isFinite(r) || r < 1 || r > 5) return res.status(400).json({ error: 'rating must be 1-5' });
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'invalid email' });
+
+    // Check verified_purchase by looking up an order from this email for this beat
+    let verified = false;
+    try {
+      const { data: orders } = await supabase.from('orders')
+        .select('id')
+        .eq('customer_email', String(email).toLowerCase())
+        .ilike('beat_id', beatId)
+        .limit(1);
+      verified = (orders || []).length > 0;
+    } catch (_) { /* swallow — verified stays false */ }
+
+    const { data, error } = await supabase.from('reviews').insert({
+      beat_id: beatId,
+      customer_email: String(email).toLowerCase().trim(),
+      customer_name: name ? String(name).slice(0, 80) : null,
+      rating: r,
+      title: title ? String(title).slice(0, 120) : null,
+      body: body ? String(body).slice(0, 2000) : null,
+      status: 'pending',
+      verified_purchase: verified,
+    }).select().single();
+
+    if (error) {
+      // Unique violation = already submitted a review for this beat
+      if (error.code === '23505') return res.status(409).json({ error: 'You already submitted a review for this beat. Email O\'Neil to update it.' });
+      throw error;
+    }
+    res.json({ success: true, review: { id: data.id, status: data.status, message: 'Review submitted! It will appear after the producer approves it.' } });
+  } catch (err) {
+    console.error('POST /reviews error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /reviews?beatId=X — fetch approved reviews for a beat
+app.get('/reviews', async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const beatId = req.query.beatId;
+    if (!beatId) return res.status(400).json({ error: 'beatId query param required' });
+    const { data, error } = await supabase.from('reviews')
+      .select('id, customer_name, rating, title, body, verified_purchase, created_at')
+      .eq('beat_id', beatId)
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    const reviews = data || [];
+    const aggregate = reviews.length
+      ? { count: reviews.length, average: Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10 }
+      : { count: 0, average: null };
+    res.json({ success: true, reviews, aggregate });
+  } catch (err) {
+    console.error('GET /reviews error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /admin/reviews?status=pending — moderation queue (owner only)
+app.get('/admin/reviews', async (req, res) => {
+  try {
+    if (!checkAdminAuth(req)) return res.status(401).json({ error: 'unauthorized' });
+    const supabase = getSupabaseClient();
+    const status = req.query.status || 'pending';
+    const { data, error } = await supabase.from('reviews')
+      .select('id, beat_id, customer_email, customer_name, rating, title, body, status, verified_purchase, created_at, approved_at')
+      .eq('status', status)
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    res.json({ success: true, reviews: data || [] });
+  } catch (err) {
+    console.error('GET /admin/reviews error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/reviews/:id/:action  (action = approve | reject)
+app.post('/admin/reviews/:id/:action', async (req, res) => {
+  try {
+    if (!checkAdminAuth(req)) return res.status(401).json({ error: 'unauthorized' });
+    const supabase = getSupabaseClient();
+    const { id, action } = req.params;
+    if (!['approve', 'reject'].includes(action)) return res.status(400).json({ error: 'action must be approve or reject' });
+    const update = { status: action === 'approve' ? 'approved' : 'rejected' };
+    if (action === 'approve') update.approved_at = new Date().toISOString();
+    const { data, error } = await supabase.from('reviews').update(update).eq('id', id).select().single();
+    if (error) throw error;
+    res.json({ success: true, review: data });
+  } catch (err) {
+    console.error('POST /admin/reviews/:id/:action error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Helper: simple admin auth check. Reuses ADMIN_TOKEN if set, else header check.
+function checkAdminAuth(req) {
+  const token = req.headers['x-admin-token'] || req.query.admin_token;
+  const expected = process.env.ADMIN_TOKEN || process.env.ADMIN_PASSWORD;
+  return expected && token === expected;
+}
 
 // GET /analytics/trending?days=7&limit=10 — public trending beats by play count
 // Returns: { success, trending: [{ beatId, plays, favorites }] }

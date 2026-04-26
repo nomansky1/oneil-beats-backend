@@ -18,3 +18,9 @@ public/*-beats.html
 # Blog pages — also generated on every Vercel deploy from BLOG_POSTS in
 # scripts/build-beat-pages.js. Posts live as authoritative source there.
 public/blog/
+# Spanish landing pages — generated on every deploy from SPANISH_LANDING_PAGES
+# in scripts/build-beat-pages.js.
+public/comprar-*.html
+public/beats-de-*.html
+public/beats-tipo-*.html
+public/instrumentales-*.html

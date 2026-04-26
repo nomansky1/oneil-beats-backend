@@ -91,6 +91,29 @@ function beatJsonLd(beat, slug) {
   if (beat.stems_price)     offers.push({ '@type': 'Offer', name: 'Stems / Track Out', price: String(beat.stems_price), priceCurrency: 'USD', availability: 'https://schema.org/InStock', url });
   if (beat.exclusive_price) offers.push({ '@type': 'Offer', name: 'Exclusive Rights', price: String(beat.exclusive_price), priceCurrency: 'USD', availability: 'https://schema.org/InStock', url });
 
+  // Reviews — drives ⭐ stars in Google search results once ≥1 approved review.
+  // (Google requires AggregateRating + at least one Review to display stars.)
+  const approvedReviews = Array.isArray(beat.reviews) ? beat.reviews : [];
+  let aggregateRating;
+  let reviewSchema;
+  if (approvedReviews.length > 0) {
+    const avg = approvedReviews.reduce((s, r) => s + r.rating, 0) / approvedReviews.length;
+    aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: Math.round(avg * 10) / 10,
+      reviewCount: approvedReviews.length,
+      bestRating: 5,
+      worstRating: 1,
+    };
+    reviewSchema = approvedReviews.slice(0, 10).map(r => ({
+      '@type': 'Review',
+      reviewRating: { '@type': 'Rating', ratingValue: r.rating, bestRating: 5 },
+      author: { '@type': 'Person', name: r.customer_name || 'Verified Buyer' },
+      reviewBody: r.body || r.title || '',
+      datePublished: (r.created_at || '').slice(0, 10) || undefined,
+    }));
+  }
+
   const node = {
     '@context': 'https://schema.org',
     '@type': ['MusicRecording', 'Product'],
@@ -106,6 +129,8 @@ function beatJsonLd(beat, slug) {
     offers: offers.length ? offers : undefined,
     audio: (beat.audio_url) ? { '@type': 'AudioObject', contentUrl: beat.audio_url, encodingFormat: 'audio/mpeg' } : undefined,
     keywords: Array.isArray(beat.tags) ? beat.tags.join(', ') : (beat.tags || undefined),
+    aggregateRating,
+    review: reviewSchema,
   };
 
   // BreadcrumbList for this beat
@@ -773,6 +798,183 @@ function getAllLandingPages(beats) {
   return [...typeBeats, ...deriveLandingPages(beats)];
 }
 
+// ── Spanish landing pages — bilingual SEO ──
+// Each Spanish page targets a specific Spanish-language buying query and is
+// reciprocally hreflang-linked to its English counterpart. The catalog is the
+// same; only the meta + crawler-visible block + UI seed text change.
+const SPANISH_LANDING_PAGES = [
+  {
+    slug: 'comprar-beats-de-reggaeton',
+    name: 'Comprar Beats de Reggaeton',
+    h1: 'Comprar Beats de Reggaeton — Instrumentales con Entrega Inmediata',
+    metaTitle: 'Comprar Beats de Reggaeton | Instrumentales en MP3 y WAV',
+    metaDescription: 'Compra beats de reggaeton originales, mezclados profesionalmente. Reggaeton moderno, perreo, dembow y reggaeton old school. Licencias desde $29.99 USD. Entrega inmediata por correo.',
+    intro: 'Beats de reggaeton originales producidos por O\'Neil. Reggaeton moderno, perreo, dembow y old school — todos mezclados y masterizados en estudio, listos para grabar después del checkout. Licencias desde $29.99 con entrega inmediata por correo electrónico.',
+    enAlt: '/reggaeton-beats',
+    filter: (b) => b.genre === 'Reggaeton',
+    seedKeyword: 'Reggaeton',
+  },
+  {
+    slug: 'beats-de-perreo',
+    name: 'Beats de Perreo',
+    h1: 'Beats de Perreo — Instrumentales para Perrear',
+    metaTitle: 'Beats de Perreo | Instrumentales de Perreo Originales',
+    metaDescription: 'Beats de perreo originales, energía de discoteca, dembow tradicional y perreo intenso para tu próximo hit. Licencias desde $29.99. Entrega inmediata.',
+    intro: 'Perreo intenso, dembow clásico, y la energía que necesitas para reventar la pista. Estos beats están diseñados para que perrees y crees el próximo himno. Licencias desde $29.99 con entrega instantánea.',
+    enAlt: '/perreo-beats',
+    filter: (b) => b.subgenre === 'Perreo' || (b.genre === 'Reggaeton' && /energetic|bouncy/i.test(b.mood || '')),
+    seedKeyword: 'Perreo',
+  },
+  {
+    slug: 'beats-de-dembow',
+    name: 'Beats de Dembow',
+    h1: 'Beats de Dembow — Instrumentales Originales',
+    metaTitle: 'Beats de Dembow | Comprar Instrumentales de Dembow',
+    metaDescription: 'Beats de dembow originales con la cadencia tradicional del género. Listos para grabar tu próximo single. Licencias desde $29.99 con entrega inmediata.',
+    intro: 'El dembow es la base rítmica del reggaeton — y estos beats lo respetan. Producción original con la cadencia tradicional del género, lista para que grabes encima. Licencias desde $29.99.',
+    enAlt: '/perreo-beats',
+    filter: (b) => b.genre === 'Reggaeton' || /dembow|perreo/i.test((b.tags || []).join(' ').toLowerCase()),
+    seedKeyword: 'dembow',
+  },
+  {
+    slug: 'instrumentales-de-reggaeton',
+    name: 'Instrumentales de Reggaeton',
+    h1: 'Instrumentales de Reggaeton — Catálogo Completo',
+    metaTitle: 'Instrumentales de Reggaeton | Modernos y Old School',
+    metaDescription: 'Instrumentales de reggaeton originales: modernos al estilo Bad Bunny y Feid, y old school al estilo Daddy Yankee y Don Omar. MP3 y WAV. Licencias desde $29.99.',
+    intro: 'Instrumentales de reggaeton para todos los estilos: moderno con sonido al estilo Bad Bunny, Feid o Rauw Alejandro, o old school con la energía de Daddy Yankee y Don Omar. Mezcla y masterización en estudio. Licencias desde $29.99.',
+    enAlt: '/reggaeton-beats',
+    filter: (b) => b.genre === 'Reggaeton',
+    seedKeyword: 'Reggaeton',
+  },
+  {
+    slug: 'beats-tipo-bad-bunny',
+    name: 'Beats Tipo Bad Bunny',
+    h1: 'Beats Tipo Bad Bunny — Reggaeton Moderno con Vibe Melódica',
+    metaTitle: 'Beats Tipo Bad Bunny | Instrumentales de Reggaeton Moderno',
+    metaDescription: 'Beats tipo Bad Bunny: reggaeton moderno melódico, half-singing, producción global. Originales mezclados en estudio. Licencias desde $29.99 USD.',
+    intro: 'Bad Bunny redefinió el reggaeton moderno — melodías pegajosas, versos cantados, producción global. Estos instrumentales están en esa misma línea. Listos para que grabes tu próximo hit. Licencias desde $29.99.',
+    enAlt: '/bad-bunny-type-beat',
+    filter: (b) => b.genre === 'Reggaeton' && (b.subgenre === 'Modern Reggaeton' || /smooth|melodic/i.test(b.mood || '')),
+    seedKeyword: 'Modern Reggaeton',
+  },
+  {
+    slug: 'beats-tipo-feid',
+    name: 'Beats Tipo Feid',
+    h1: 'Beats Tipo Feid (FERXXO) — Perreo Melódico Moderno',
+    metaTitle: 'Beats Tipo Feid | Perreo Melódico al Estilo FERXXO',
+    metaDescription: 'Beats tipo Feid (FERXXO): perreo melódico, sintes aireados, vibe conversacional. Reggaeton moderno y perreo originales. Licencias desde $29.99.',
+    intro: 'Feid (FERXXO) hizo del perreo melódico y el reggaeton moderno con sintes aireados el sonido global. Estos beats encajan en ese estilo — vibes suaves y muy listenables. Licencias desde $29.99.',
+    enAlt: '/feid-type-beat',
+    filter: (b) => b.genre === 'Reggaeton' && (b.subgenre === 'Modern Reggaeton' || b.subgenre === 'Perreo' || /smooth|chill|romantic/i.test(b.mood || '')),
+    seedKeyword: 'Modern Reggaeton',
+  },
+  {
+    slug: 'comprar-beats-de-trap-latino',
+    name: 'Comprar Beats de Trap Latino',
+    h1: 'Comprar Beats de Trap Latino — Instrumentales Originales',
+    metaTitle: 'Comprar Beats de Trap Latino | Instrumentales Originales',
+    metaDescription: 'Beats de trap latino originales, mezclados profesionalmente. Trap latino oscuro, melódico, y con 808s pesados. Licencias desde $29.99 con entrega inmediata.',
+    intro: 'Trap latino con 808s pesados, melodías oscuras y la energía que necesitas. Producción original mezclada en estudio. Licencias desde $29.99 USD con entrega inmediata.',
+    enAlt: '/trap-beats',
+    filter: (b) => b.subgenre === 'Latin Trap' || b.genre === 'Trap' || (b.genre === 'Reggaeton' && /dark|hard/i.test(b.mood || '')),
+    seedKeyword: 'Latin Trap',
+  },
+];
+
+// Render a single Spanish landing page. Mirrors renderLandingPage but with
+// Spanish meta + reciprocal hreflang to the English counterpart.
+function renderSpanishLandingPage(template, page, beats) {
+  const matches = beats.filter(b => { try { return page.filter(b); } catch (e) { return false; } });
+  const url = `${SITE_URL}/${page.slug}`;
+  const enUrl = `${SITE_URL}${page.enAlt}`;
+  const titleTag = page.metaTitle;
+  const desc = page.metaDescription;
+  const ogImage = (matches[0] && (matches[0].cover_art_url || matches[0].cover_url)) || `${SITE_URL}/og-image.jpg`;
+
+  let html = template;
+  html = html.replace(/<title>[^<]*<\/title>/i, `<title>${esc(titleTag)}</title>`);
+  html = html.replace(/<meta\s+name="description"\s+content="[^"]*">/i, `<meta name="description" content="${esc(desc)}">`);
+  html = html.replace(/<link\s+rel="canonical"\s+href="[^"]*">/i, `<link rel="canonical" href="${url}">`);
+  html = html.replace(/<html\s+lang="en">/i, `<html lang="es">`);
+
+  // hreflang — declare both sides + x-default. Replace the entire existing
+  // hreflang block (the homepage template has 3 self-referential alternate
+  // links that aren't useful — overwrite them).
+  const hreflangBlock = `
+<link rel="alternate" hreflang="es" href="${url}">
+<link rel="alternate" hreflang="en" href="${enUrl}">
+<link rel="alternate" hreflang="x-default" href="${enUrl}">`;
+  html = html.replace(/<link\s+rel="alternate"\s+hreflang="[^"]*"\s+href="[^"]*">[\s\S]*?<link\s+rel="alternate"\s+hreflang="x-default"\s+href="[^"]*">/i, hreflangBlock.trim());
+
+  // OG / Twitter — Spanish locale primary
+  html = html.replace(/<meta\s+property="og:url"\s+content="[^"]*">/i, `<meta property="og:url" content="${url}">`);
+  html = html.replace(/<meta\s+property="og:title"\s+content="[^"]*">/i, `<meta property="og:title" content="${esc(titleTag)}">`);
+  html = html.replace(/<meta\s+property="og:description"\s+content="[^"]*">/i, `<meta property="og:description" content="${esc(desc)}">`);
+  html = html.replace(/<meta\s+property="og:image"\s+content="[^"]*">/i, `<meta property="og:image" content="${esc(ogImage)}">`);
+  html = html.replace(/<meta\s+property="og:locale"\s+content="en_US">/i, `<meta property="og:locale" content="es_ES">`);
+  html = html.replace(/<meta\s+name="twitter:title"\s+content="[^"]*">/i, `<meta name="twitter:title" content="${esc(titleTag)}">`);
+  html = html.replace(/<meta\s+name="twitter:description"\s+content="[^"]*">/i, `<meta name="twitter:description" content="${esc(desc)}">`);
+
+  // CollectionPage schema in Spanish
+  const collectionLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: page.name,
+    url,
+    inLanguage: 'es',
+    description: desc,
+    isPartOf: { '@type': 'WebSite', name: "O'Neil Beats", url: SITE_URL },
+    breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Inicio', item: SITE_URL + '/' },
+      { '@type': 'ListItem', position: 2, name: 'Beats', item: SITE_URL + '/#catalog' },
+      { '@type': 'ListItem', position: 3, name: page.name, item: url },
+    ] },
+    mainEntity: { '@type': 'ItemList', numberOfItems: matches.length, itemListElement: matches.slice(0, 25).map((b, i) => ({
+      '@type': 'ListItem', position: i + 1,
+      url: `${SITE_URL}/beat/${beatSlug(b)}`,
+      name: b.title,
+    })) },
+  };
+  html = html.replace(/<\/head>/i, `<script type="application/ld+json" data-landing-es="${esc(page.slug)}">${JSON.stringify(collectionLd)}</script></head>`);
+
+  // Crawler-visible Spanish content block
+  const beatListHtml = matches.length
+    ? `<ul>${matches.slice(0, 25).map(b => `<li><a href="${SITE_URL}/beat/${beatSlug(b)}">${esc(b.title)}</a> — ${esc(b.subgenre || b.genre || 'beat')}${b.bpm ? ', ' + esc(b.bpm) + ' BPM' : ''}${b.key ? ', ' + esc(b.key) : ''}</li>`).join('')}</ul>`
+    : `<p>No hay beats exactos disponibles ahora mismo. <a href="mailto:produceroneil@gmail.com?subject=${encodeURIComponent('Custom ' + page.name)}">Escribe a O'Neil</a> para encargar uno, o <a href="${SITE_URL}/">explora el catálogo completo</a>.</p>`;
+
+  const crawlerBlock = `
+<div class="sr-only" aria-hidden="false">
+  <h1>${esc(page.h1)}</h1>
+  <p>${esc(page.intro)}</p>
+  <h2>Beats Disponibles — ${esc(page.name)}</h2>
+  ${beatListHtml}
+  <p>¿Buscas otro estilo? <a href="${SITE_URL}/">Explora todos los beats</a> o filtra por género: <a href="${SITE_URL}/comprar-beats-de-reggaeton">Reggaeton</a> · <a href="${SITE_URL}/beats-de-perreo">Perreo</a> · <a href="${SITE_URL}/comprar-beats-de-trap-latino">Trap Latino</a>.</p>
+  <p>Todos los beats incluyen tag de productor en la versión gratuita. Compra cualquier licencia para recibir la versión sin tag, lista para distribución en plataformas. Licencias desde $29.99 USD. <a href="${enUrl}">English version</a>.</p>
+</div>`;
+  html = html.replace(/<body([^>]*)>/i, `<body$1>${crawlerBlock}`);
+
+  // Pre-filter SPA grid via existing search input
+  const seed = page.seedKeyword || '';
+  if (seed) {
+    const filterScript = `<script>
+(function(){
+  var seed=${JSON.stringify(seed)};
+  function tryFilter(){
+    var input=document.getElementById('search-input') || document.querySelector('input[type="search"]');
+    if (!input) return false;
+    input.value=seed;
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+    return true;
+  }
+  var tries=0; var iv=setInterval(function(){ if (tryFilter() || ++tries>40){ clearInterval(iv); } },150);
+})();
+</script>`;
+    html = html.replace(/<\/body>/i, filterScript + '</body>');
+  }
+  return html;
+}
+
 // Render a single landing page using the same index.html template as beat pages.
 // Same SEO override pattern: rewrite head, inject schema, add sr-only block,
 // add a small script that pre-filters the SPA's grid via the existing search/
@@ -924,11 +1126,31 @@ async function main() {
     console.error('[build-beat-pages] Supabase error:', error.message);
     return; // don't fail the build
   }
+
+  // Fetch approved reviews per beat. Falls back to empty if the reviews table
+  // doesn't exist yet (first deploy before migrations/reviews.sql is applied).
+  let reviewsByBeat = {};
+  try {
+    const { data: rows } = await supabase
+      .from('reviews')
+      .select('beat_id, rating, customer_name, title, body, verified_purchase, created_at')
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false });
+    for (const r of (rows || [])) {
+      (reviewsByBeat[r.beat_id] = reviewsByBeat[r.beat_id] || []).push(r);
+    }
+    const reviewedBeats = Object.keys(reviewsByBeat).length;
+    if (reviewedBeats > 0) console.log(`[build-beat-pages] loaded reviews for ${reviewedBeats} beats`);
+  } catch (e) {
+    console.log('[build-beat-pages] reviews table not present yet — schema injection skipped');
+  }
+
   const beats = (data || []).filter(b => b && b.id && b.title).map(b => ({
     ...b,
     // Alias DB columns to the names the rest of this script (and the SPA's data shape) expects.
     stems_price: b.stem_price,
     cover_art_url: b.cover_url, // SPA uses cover_url; cover_art_url is just a synonym
+    reviews: reviewsByBeat[b.id] || [],
   }));
   console.log(`[build-beat-pages] fetched ${beats.length} active beats`);
 
@@ -983,6 +1205,15 @@ async function main() {
   fs.writeFileSync(MARKER, JSON.stringify({ slugs: landingPages.map(p => p.slug), generatedAt: new Date().toISOString() }, null, 2));
   console.log(`[build-beat-pages] wrote ${landingsWritten} landing pages → ${path.relative(ROOT, PUBLIC_DIR)}`);
 
+  // ── Spanish landing pages ──
+  let esWritten = 0;
+  for (const page of SPANISH_LANDING_PAGES) {
+    const html = renderSpanishLandingPage(template, page, beats);
+    fs.writeFileSync(path.join(PUBLIC_DIR, page.slug + '.html'), html, 'utf8');
+    esWritten++;
+  }
+  console.log(`[build-beat-pages] wrote ${esWritten} Spanish landing pages`);
+
   // ── Blog (cornerstone content) ──
   const BLOG_DIR = path.join(PUBLIC_DIR, 'blog');
   if (!fs.existsSync(BLOG_DIR)) fs.mkdirSync(BLOG_DIR, { recursive: true });
@@ -999,4 +1230,4 @@ if (require.main === module) {
   main().catch(e => { console.error('[build-beat-pages] FATAL', e); process.exit(0); /* don't fail build */ });
 }
 
-module.exports = { slugify, shortId, beatSlug, renderBeatPage, beatJsonLd, renderLandingPage, getAllLandingPages, TYPE_BEAT_ARTISTS, BLOG_POSTS, renderBlogPost, renderBlogIndex };
+module.exports = { slugify, shortId, beatSlug, renderBeatPage, beatJsonLd, renderLandingPage, getAllLandingPages, TYPE_BEAT_ARTISTS, BLOG_POSTS, renderBlogPost, renderBlogIndex, SPANISH_LANDING_PAGES, renderSpanishLandingPage };
