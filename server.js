@@ -331,6 +331,74 @@ app.get('/health', async (req, res) => {
 });
 
 // GET /upload/status — OB Uploader uses this to authenticate admin sessions
+// ──────────────────────────────────────────────────────────────────────────────
+// CLOUD RENDER — fires the GitHub Actions render-video workflow.
+//
+// Why: long-audio renders OOM on the producer's local PC. GitHub's free Ubuntu
+// runners have 7GB RAM — plenty of headroom for full bg FX + showfreqs.
+//
+// Flow:
+//   1. Desktop app uploads audio.mp3, cover.jpg, settings.json (and optionally
+//      bg.jpg) to Supabase bucket `cloud-render` under prefix `inputs/{jobId}/`.
+//   2. Desktop calls POST /admin/cloud-render with { jobId, inputPrefix, outputKey }.
+//   3. We fire a repository_dispatch event to GitHub. The workflow downloads
+//      the inputs, runs ffmpeg, uploads result to `outputs/{jobId}.mp4`.
+//   4. Desktop polls Supabase HEAD on the output object and downloads when ready.
+//
+// Auth: requires GH_DISPATCH_PAT env var (a GitHub PAT with `repo` scope on
+//       this repo). Set in Vercel project env settings.
+// Rate: GitHub Actions repository_dispatch is unlimited; minute budget is the
+//       2000-min/month free tier on private repos (~30 hours total).
+app.post('/admin/cloud-render', requireAdminKey, async (req, res) => {
+  try {
+    const { jobId, inputPrefix, outputKey } = req.body || {};
+    if (!jobId || !inputPrefix || !outputKey) {
+      return res.status(400).json({ error: 'jobId, inputPrefix, outputKey all required' });
+    }
+    // Sanity: paths must stay inside the cloud-render bucket prefixes.
+    if (!/^inputs\/[a-zA-Z0-9\-_]+\/?$/.test(inputPrefix.replace(/\/$/, ''))) {
+      return res.status(400).json({ error: 'inputPrefix must match inputs/<jobId>' });
+    }
+    if (!/^outputs\/[a-zA-Z0-9\-_]+\.mp4$/.test(outputKey)) {
+      return res.status(400).json({ error: 'outputKey must match outputs/<jobId>.mp4' });
+    }
+    const pat = process.env.GH_DISPATCH_PAT;
+    if (!pat) return res.status(500).json({ error: 'GH_DISPATCH_PAT not configured on backend' });
+    const owner = process.env.GH_REPO_OWNER || 'nomansky1';
+    const repo  = process.env.GH_REPO_NAME  || 'oneil-beats-backend';
+
+    const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/dispatches`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${pat}`,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type': 'application/json',
+        'User-Agent': 'oneil-beats-backend',
+      },
+      body: JSON.stringify({
+        event_type: 'render-video',
+        client_payload: { jobId, inputPrefix: inputPrefix.replace(/\/$/, ''), outputKey },
+      }),
+    });
+    if (ghRes.status !== 204) {
+      const detail = await ghRes.text().catch(() => '(no body)');
+      return res.status(502).json({ error: `GitHub dispatch failed (${ghRes.status})`, detail: detail.slice(0, 400) });
+    }
+    res.json({
+      success: true,
+      jobId,
+      dispatched: true,
+      runsUrl: `https://github.com/${owner}/${repo}/actions/workflows/render-video.yml`,
+      outputUrl: `${process.env.SUPABASE_URL}/storage/v1/object/cloud-render/${outputKey}`,
+      errorUrl: `${process.env.SUPABASE_URL}/storage/v1/object/cloud-render/${outputKey.replace(/\.mp4$/, '.error.txt')}`,
+    });
+  } catch (e) {
+    console.error('POST /admin/cloud-render error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/upload/status', requireAdminKey, (req, res) => {
   res.json({ success: true, message: 'Authenticated', serverTime: new Date().toISOString() });
 });

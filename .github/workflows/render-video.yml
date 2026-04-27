@@ -1,0 +1,127 @@
+name: Cloud render video
+
+# Triggered by `repository_dispatch` from the desktop app's backend when a render
+# is requested. Renders the video on a 7GB-RAM Ubuntu runner — massive memory
+# headroom vs the producer's PC, so all bg FX + showfreqs visualizations run
+# without the OOM that plagues long-audio renders locally.
+#
+# Input/output contract:
+#   1) Desktop app uploads audio.mp3, cover.jpg, settings.json to Supabase
+#      bucket `cloud-render` under prefix `inputs/{jobId}/`.
+#   2) Desktop calls backend POST /admin/cloud-render which fires this workflow
+#      with payload { jobId, inputPrefix, outputKey }.
+#   3) Workflow downloads the inputs from Supabase, runs ffmpeg, uploads the
+#      result back to Supabase at `outputs/{jobId}.mp4`.
+#   4) Desktop polls Supabase HEAD on the output object until it returns 200,
+#      then downloads the rendered mp4 and resumes the publish flow.
+#
+# No backend callback needed — Supabase storage IS the rendezvous point.
+# Failures: workflow uploads `outputs/{jobId}.error.txt` with stderr tail so
+# the desktop client can surface the reason and fall back to local render.
+
+on:
+  repository_dispatch:
+    types: [render-video]
+  # Allow manual smoke tests via the Actions UI.
+  workflow_dispatch:
+    inputs:
+      jobId:
+        description: 'Job ID (uuid)'
+        required: true
+      inputPrefix:
+        description: 'Supabase prefix for inputs (e.g. inputs/abc123)'
+        required: true
+      outputKey:
+        description: 'Supabase key for output mp4 (e.g. outputs/abc123.mp4)'
+        required: true
+
+# At most one cloud render at a time per dispatch event_type. Concurrent renders
+# would OOM each other on the same runner if scheduled to the same instance.
+concurrency:
+  group: render-video-${{ github.event.client_payload.jobId || github.event.inputs.jobId }}
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      JOB_ID:        ${{ github.event.client_payload.jobId        || github.event.inputs.jobId }}
+      INPUT_PREFIX:  ${{ github.event.client_payload.inputPrefix  || github.event.inputs.inputPrefix }}
+      OUTPUT_KEY:    ${{ github.event.client_payload.outputKey    || github.event.inputs.outputKey }}
+      SUPABASE_URL:  ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY:  ${{ secrets.SUPABASE_SERVICE_KEY }}
+      BUCKET:        cloud-render
+
+    steps:
+      - name: Print job context
+        run: |
+          echo "::notice::Cloud render starting"
+          echo "jobId=$JOB_ID inputPrefix=$INPUT_PREFIX outputKey=$OUTPUT_KEY"
+          echo "Runner mem: $(free -h | head -2)"
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -yq ffmpeg
+          ffmpeg -version | head -1
+
+      - name: Download inputs from Supabase
+        run: |
+          set -euo pipefail
+          BASE="${SUPABASE_URL}/storage/v1/object/${BUCKET}"
+          AUTH="apikey: ${SUPABASE_KEY}"
+          AUTH2="Authorization: Bearer ${SUPABASE_KEY}"
+          mkdir -p work
+          curl -sSf -H "$AUTH" -H "$AUTH2" -o work/audio.mp3 "$BASE/${INPUT_PREFIX}/audio.mp3"
+          curl -sSf -H "$AUTH" -H "$AUTH2" -o work/cover.jpg "$BASE/${INPUT_PREFIX}/cover.jpg"
+          curl -sSf -H "$AUTH" -H "$AUTH2" -o work/settings.json "$BASE/${INPUT_PREFIX}/settings.json"
+          # Optional bg image — only fetch if it exists
+          curl -sf -H "$AUTH" -H "$AUTH2" -o work/bg.jpg "$BASE/${INPUT_PREFIX}/bg.jpg" || echo "no bg image (ok)"
+          ls -lh work/
+
+      - name: Render with ffmpeg
+        id: render
+        run: |
+          set -euo pipefail
+          node .github/workflows/render-runner.js work/settings.json work/audio.mp3 work/cover.jpg work/output.mp4 work/bg.jpg 2>work/stderr.log
+          ls -lh work/output.mp4
+          echo "size_bytes=$(stat -c%s work/output.mp4)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload output to Supabase
+        if: success()
+        run: |
+          set -euo pipefail
+          BASE="${SUPABASE_URL}/storage/v1/object/${BUCKET}"
+          AUTH="apikey: ${SUPABASE_KEY}"
+          AUTH2="Authorization: Bearer ${SUPABASE_KEY}"
+          # Use `x-upsert: true` so a re-run replaces an existing object cleanly.
+          curl -sSf -X POST \
+            -H "$AUTH" -H "$AUTH2" \
+            -H "Content-Type: video/mp4" \
+            -H "x-upsert: true" \
+            --data-binary @work/output.mp4 \
+            "$BASE/${OUTPUT_KEY}"
+          echo "::notice::Render uploaded to ${OUTPUT_KEY} (${{ steps.render.outputs.size_bytes }} bytes)"
+
+      - name: Upload error if render failed
+        if: failure()
+        run: |
+          set +e
+          BASE="${SUPABASE_URL}/storage/v1/object/${BUCKET}"
+          AUTH="apikey: ${SUPABASE_KEY}"
+          AUTH2="Authorization: Bearer ${SUPABASE_KEY}"
+          ERROR_KEY="${OUTPUT_KEY%.mp4}.error.txt"
+          {
+            echo "[$(date -Iseconds)] cloud render failed for jobId=$JOB_ID"
+            echo "--- stderr tail ---"
+            tail -c 4000 work/stderr.log 2>/dev/null || echo "(no stderr)"
+          } > work/error.txt
+          curl -sSf -X POST \
+            -H "$AUTH" -H "$AUTH2" \
+            -H "Content-Type: text/plain" \
+            -H "x-upsert: true" \
+            --data-binary @work/error.txt \
+            "$BASE/${ERROR_KEY}"
+          echo "::error::Cloud render failed — error written to ${ERROR_KEY}"
