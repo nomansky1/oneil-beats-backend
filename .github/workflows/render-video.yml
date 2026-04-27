@@ -61,6 +61,14 @@ jobs:
           echo "jobId=$JOB_ID inputPrefix=$INPUT_PREFIX outputKey=$OUTPUT_KEY"
           echo "Runner mem: $(free -h | head -2)"
 
+      # 2026-04-27: this step was missing — without it the runner had no repo
+      # files, so `node .github/workflows/render-runner.js` failed with
+      # "Cannot find module". That broke EVERY cloud render attempt and forced
+      # the desktop app to fall back to local chunked render. With checkout
+      # the script is on disk and can be invoked normally.
+      - name: Checkout repo (so render-runner.js is available)
+        uses: actions/checkout@v4
+
       - name: Install ffmpeg
         run: |
           sudo apt-get update -qq
