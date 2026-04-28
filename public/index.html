@@ -940,22 +940,42 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
 <section id="about" aria-labelledby="about-title" style="max-width:1200px;margin:40px auto;padding:0 24px" itemscope itemtype="https://schema.org/Person">
   <div style="background:linear-gradient(135deg,rgba(230,57,70,.08),rgba(245,158,11,.06));border:1px solid var(--border);border-radius:20px;padding:36px 28px">
     <div style="font-size:11px;font-weight:900;letter-spacing:2px;color:var(--accent);margin-bottom:10px">★ ABOUT THE PRODUCER</div>
-    <h2 id="about-title" style="margin:0 0 14px;font-size:28px;font-weight:900;color:var(--text);letter-spacing:-.5px">O'Neil Beats — Independent. Built for Artists.</h2>
+    <h2 id="about-title" style="margin:0 0 14px;font-size:28px;font-weight:900;color:var(--text);letter-spacing:-.5px">Nelson Rios — aka O'Neil Beats</h2>
 
-    <!-- Producer identity row: brand mark + name/role/byline -->
+    <!-- Producer identity row: real face from YouTube + name/role/byline -->
     <div style="display:flex;align-items:center;gap:18px;margin:0 0 22px;flex-wrap:wrap">
-      <img src="/icon.png" alt="O'Neil Beats producer mark" itemprop="image" style="width:72px;height:72px;border-radius:14px;flex-shrink:0;background:var(--surface2);box-shadow:0 8px 24px rgba(230,57,70,.25)">
+      <img src="/producer-avatar.jpg" alt="Nelson Rios — O'Neil Beats producer" itemprop="image" style="width:96px;height:96px;border-radius:50%;flex-shrink:0;background:var(--surface2);object-fit:cover;border:3px solid var(--accent);box-shadow:0 8px 24px rgba(230,57,70,.30)">
       <div style="min-width:0">
-        <div style="font-size:18px;font-weight:900;color:var(--text);letter-spacing:-.3px" itemprop="name">O'Neil <span style="color:var(--dim);font-weight:600;font-size:14px">· Producer / Engineer</span></div>
-        <div style="font-size:13px;color:var(--dim);margin-top:2px">Reggaeton · Trap · Drill · Hip-Hop · Latin Instrumentals</div>
+        <div style="font-size:18px;font-weight:900;color:var(--text);letter-spacing:-.3px" itemprop="name">Nelson Rios <span style="color:var(--dim);font-weight:600;font-size:14px">· Producer / Engineer</span></div>
+        <div style="font-size:13px;color:var(--dim);margin-top:2px">Reggaeton · Trap · Drill · Hip-Hop · Latin Instrumentals · R&B</div>
+        <div style="font-size:12px;color:var(--gold);margin-top:4px;font-weight:700;letter-spacing:.5px">HANDCRAFTED MUSIC · EST. 2008</div>
         <meta itemprop="jobTitle" content="Music Producer">
         <meta itemprop="url" content="https://oneilbeats.store">
+        <meta itemprop="birthPlace" content="Bayamón, Puerto Rico">
       </div>
     </div>
 
+    <!-- Bio — personal story, mirrors customer app About modal -->
     <p itemprop="description" style="color:var(--dim);font-size:15px;line-height:1.7;max-width:780px;margin:0 0 14px">
-      O'Neil Beats is a one-producer label specializing in <strong style="color:var(--text)">reggaeton, trap, drill, hip-hop, and Latin instrumentals</strong>. Every beat on this site is original, mixed and mastered in-house, and ready to record over the moment you check out — no middlemen, no marketplace fees padded onto your license.
+      Nelson Rios — born in <strong style="color:var(--text)">Bayamón, Puerto Rico</strong>. A producer blending Latin hip-hop, Reggaeton, and Afro-Caribbean music with Gospel undertones. Crafting beats since the early 2000s using FL Studio, with mix and master done in-house on every release.
     </p>
+    <p style="color:var(--dim);font-size:15px;line-height:1.7;max-width:780px;margin:0 0 14px">
+      <strong style="color:var(--text)">BeatStars member since 2008</strong> — became the most-played producer on the platform in 2015 with 3.8M+ unique plays. One of the first verified Latin Music Producers there. Today O'Neil Beats runs as an independent label so artists get cleaner licensing, in-house mixing, and a direct line to the person making the beat.
+    </p>
+
+    <!-- Handcrafted statement — explains the catalog without using "AI". This is
+         the positioning anchor: every beat is a re-creation of Nelson's own
+         older catalog, modernized for today's artists. Full commercial use. -->
+    <div style="background:rgba(0,0,0,.25);border-left:3px solid var(--accent);border-radius:8px 14px 14px 8px;padding:18px 20px;margin:0 0 18px;max-width:780px">
+      <div style="font-size:12px;font-weight:900;letter-spacing:1.5px;color:var(--gold);margin-bottom:8px">★ ABOUT THESE BEATS</div>
+      <p style="color:var(--text);font-size:14px;line-height:1.7;margin:0 0 10px;font-style:italic">
+        Every beat on this site is a re-creation, remix, or modernization of music I've already written and produced over the last <strong style="font-style:normal">17+ years</strong>. The DNA is mine — the melodies, chords, drum patterns, and arrangements all come from a personal catalog I've been building since 2008.
+      </p>
+      <p style="color:var(--dim);font-size:13px;line-height:1.7;margin:0">
+        Nothing on this store is licensed from a third party, sample pack, or external library. Because the source material is 100% my own work, you get <strong style="color:var(--text)">full commercial rights</strong> on every license tier — release on Spotify, Apple Music, YouTube, TikTok, sync to ads or film, monetize anywhere. No surprises in the small print.
+      </p>
+    </div>
+
     <p style="color:var(--dim);font-size:15px;line-height:1.7;max-width:780px;margin:0 0 18px">
       Built as an independent alternative to BeatStars, Airbit, and Traktrain. Cleaner licensing tiers. Instant Stripe checkout. Apple Pay + Google Pay. Direct line to the producer — not a support queue.
     </p>
@@ -1007,7 +1027,7 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
      the founder of the MusicGroup/Organization (declared inline above as
      itemscope/itemprop). Adding explicit JSON-LD here amplifies the signal. -->
 <script type="application/ld+json" id="ld-producer">
-{"@context":"https://schema.org","@type":"Person","name":"O'Neil","alternateName":"Prod. by O'Neil","jobTitle":"Music Producer","url":"https://oneilbeats.store","email":"produceroneil@gmail.com","image":"https://oneilbeats.store/icon.png","worksFor":{"@type":"Organization","name":"O'Neil Beats","url":"https://oneilbeats.store"},"knowsAbout":["Reggaeton production","Trap production","Drill production","Hip-Hop production","Latin music production","Beat licensing","Music mixing","Mastering"],"sameAs":[]}
+{"@context":"https://schema.org","@type":"Person","name":"Nelson Rios","alternateName":["O'Neil","Prod. by O'Neil","O'Neil Beats"],"jobTitle":"Music Producer","url":"https://oneilbeats.store","email":"produceroneil@gmail.com","image":"https://oneilbeats.store/producer-avatar.jpg","birthPlace":{"@type":"Place","name":"Bayamón, Puerto Rico"},"description":"Independent music producer specializing in Reggaeton, Trap, Drill, Hip-Hop and Latin instrumentals. Crafting beats since 2008. Most-played producer on BeatStars in 2015 with 3.8M+ unique plays.","worksFor":{"@type":"Organization","name":"O'Neil Beats","url":"https://oneilbeats.store"},"knowsAbout":["Reggaeton production","Trap production","Drill production","Hip-Hop production","Latin music production","Beat licensing","Music mixing","Mastering","FL Studio production"],"sameAs":["https://www.youtube.com/@obreggeatonbeats","https://www.beatstars.com/oneilbeats","https://www.facebook.com/333777486725867","https://www.instagram.com/oneilbeats"]}
 </script>
 
 <!-- FAQ -->
