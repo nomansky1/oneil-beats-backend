@@ -10,8 +10,11 @@
 // node-cron for standalone workers. `tickHandler()` is the same logic
 // exposed as an Express handler for Vercel Cron.
 
-const cron = require('node-cron');
+// node-cron is lazy-required inside startCron() so the desktop-app backend can
+// import runOnce()/tickHandler without bundling node-cron (only the standalone
+// worker calls startCron).
 const fs = require('fs');
+const path = require('path');
 const cfg = require('./config');
 const q = require('./queue');
 const media = require('./media');
@@ -46,10 +49,32 @@ async function tickPlatform(platform) {
   notify.log(`claimed ${platform} job ${job.id} (beat "${job.beat_title}")`);
 
   try {
-    // Synthesize the video if it doesn't exist yet (typical path — worker
-    // builds a 16:9 static-cover MP4 from audio_url the first time it
-    // claims this job). Cached on disk between retries.
-    if (!job.video_path || !fs.existsSync(job.video_path)) {
+    // Resolve video_path to a local file. Three cases:
+    //  a) URL  → download to WORK_DIR cache, keep DB value as the URL.
+    //  b) local existing path → use as-is.
+    //  c) missing → synthesize from audio_url (legacy fallback).
+    const isUrl = (s) => typeof s === 'string' && /^https?:\/\//i.test(s);
+    if (job.video_path && isUrl(job.video_path)) {
+      notify.log(`downloading pre-rendered video for beat ${job.beat_id}`);
+      const localPath = await media.downloadToCache(
+        job.video_path,
+        `src-${job.beat_id}.mp4`
+      );
+      // Download cover too if it's a URL, so media.prependHook/makeThumbnail
+      // don't have to fetch separately. album_cover_path stays the URL in DB.
+      if (job.album_cover_path && isUrl(job.album_cover_path)) {
+        try {
+          const coverLocal = await media.downloadToCache(
+            job.album_cover_path,
+            `cover-${job.beat_id}${path.extname(job.album_cover_path).split('?')[0] || '.jpg'}`
+          );
+          job.album_cover_path = coverLocal;
+        } catch (e) {
+          notify.log(`cover download failed (non-fatal): ${e.message}`);
+        }
+      }
+      job.video_path = localPath;
+    } else if (!job.video_path || !fs.existsSync(job.video_path)) {
       if (!job.audio_url) {
         throw new Error('job has no video_path and no audio_url — cannot proceed');
       }
@@ -134,6 +159,9 @@ async function tickPlatform(platform) {
 }
 
 function startCron() {
+  // Lazy-require so importers that only need runOnce()/tickHandler don't have
+  // to install node-cron (e.g. the electron desktop-app backend).
+  const cron = require('node-cron');
   // Every 15 minutes.
   const task = cron.schedule('*/15 * * * *', () => { runOnce().catch(() => {}); });
   notify.log('[auto-upload] cron started — ticking every 15 minutes');

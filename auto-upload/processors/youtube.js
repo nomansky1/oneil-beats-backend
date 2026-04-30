@@ -18,11 +18,21 @@ function ytClient() {
 
 async function uploadToYouTube(job) {
   const yt = ytClient();
-  const title = copy.buildYouTubeTitle({
-    title: job.beat_title, genre: job.beat_genre, bpm: job.beat_bpm,
-    key: job.beat_key, mood: job.beat_mood,
-  });
-  const description = copy.buildYouTubeDescription(job);
+  const isShort = job.is_short === true;
+  const title = isShort
+    ? copy.buildYouTubeShortTitle({
+        title: job.beat_title, genre: job.beat_genre, bpm: job.beat_bpm,
+        key: job.beat_key, mood: job.beat_mood,
+      })
+    : copy.buildYouTubeTitle({
+        title: job.beat_title, genre: job.beat_genre, bpm: job.beat_bpm,
+        key: job.beat_key, mood: job.beat_mood,
+      });
+  // Use operator-supplied narrative (e.g. Hermes blurb from the desktop app)
+  // as the opening hook of the description. Falls back to the generic builder.
+  const description = isShort
+    ? copy.buildYouTubeShortDescription(job, job.description_override)
+    : copy.buildYouTubeDescription(job, job.description_override);
   const tags = copy.buildTags(job);
 
   // Step 1: videos.insert with resumable upload
@@ -65,6 +75,28 @@ async function uploadToYouTube(job) {
     } catch (e) {
       // Thumbnail failure shouldn't fail the whole upload — YT auto-picks one.
       console.warn(`[youtube] thumbnail.set failed (non-fatal): ${e.message}`);
+    }
+  }
+
+  // Step 3: pinned comment with store link. Non-fatal if it fails — uploads
+  // are sometimes still ingesting when this runs and comments get rejected
+  // with "videoNotFound" for a minute or two.
+  if (!isShort) {
+    try {
+      const pinned = copy.buildPinnedComment(job);
+      if (pinned) {
+        await yt.commentThreads.insert({
+          part: ['snippet'],
+          requestBody: {
+            snippet: {
+              videoId,
+              topLevelComment: { snippet: { textOriginal: pinned } },
+            },
+          },
+        });
+      }
+    } catch (e) {
+      console.warn(`[youtube] pinned comment failed (non-fatal): ${e.message}`);
     }
   }
 

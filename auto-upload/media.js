@@ -12,10 +12,22 @@ const http = require('http');
 const { promisify } = require('util');
 const { execFile } = require('child_process');
 const execFileAsync = promisify(execFile);
-const ffmpegPath = require('ffmpeg-static');
-const ffprobePath = require('ffprobe-static').path;
-const sharp = require('sharp');
 const cfg = require('./config');
+
+// ffmpeg / ffprobe resolution. Prefer the pinned `ffmpeg-static` +
+// `ffprobe-static` packages (used by the GH Actions cron worker), but fall
+// back to whatever `ffmpeg`/`ffprobe` is on PATH — this lets the desktop-app
+// backend run media.js without shipping ~50 MB of per-platform binaries.
+const ffmpegPath  = (() => { try { return require('ffmpeg-static');           } catch { return 'ffmpeg';  } })();
+const ffprobePath = (() => { try { return require('ffprobe-static').path;     } catch { return 'ffprobe'; } })();
+
+// `sharp` is only used by synthesizeVideoFromAudio's no-cover fallback
+// (generates a solid-black 1920×1080 JPG). Lazy-required so desktop-app
+// doesn't need to install the native bindings just to call makeThumbnail /
+// validateVideo / makeVertical.
+function loadSharp() {
+  try { return require('sharp'); } catch { return null; }
+}
 
 const run = async (bin, args, opts = {}) => {
   try {
@@ -103,8 +115,17 @@ async function synthesizeVideoFromAudio({ beatId, audioUrl, coverUrl }) {
   if (!coverPath) {
     coverPath = path.join(cfg.WORK_DIR, `${beatId}-cover-black.jpg`);
     if (!fs.existsSync(coverPath)) {
-      await sharp({ create: { width: 1920, height: 1080, channels: 3, background: '#000' } })
-        .jpeg({ quality: 80 }).toFile(coverPath);
+      const sharp = loadSharp();
+      if (sharp) {
+        await sharp({ create: { width: 1920, height: 1080, channels: 3, background: '#000' } })
+          .jpeg({ quality: 80 }).toFile(coverPath);
+      } else {
+        // Pure-ffmpeg fallback — generate a solid black frame via lavfi.
+        await run(ffmpegPath, [
+          '-y', '-f', 'lavfi', '-i', 'color=c=black:s=1920x1080',
+          '-frames:v', '1', '-q:v', '3', coverPath,
+        ]);
+      }
     }
   }
 
@@ -224,90 +245,124 @@ async function makeVertical({ beatId, videoPath }) {
   return out;
 }
 
-// ── 4. THUMBNAIL (1280x720, dark/neon overlay) ───────────────────────────
-// sharp composites the album cover, a dark gradient, a neon stroke ring,
-// and an SVG overlay with title + BPM + genre. SVG text is crisp at 1280
-// and doesn't need native `canvas` bindings.
+// ── 4. THUMBNAIL (1280x720, pure-ffmpeg drawtext/drawbox) ────────────────
+// Produces a high-CTR YouTube thumbnail: album cover on the right rail,
+// blurred+darkened cover as the left background, a big [FREE] badge in the
+// top-left, and the title + genre/BPM chip + store brand overlaid on the
+// left rail.
+//
+// Implemented with system `ffmpeg` (via ffmpeg-static when present) using
+// drawbox + drawtext filters — NO sharp, NO canvas. Keeps the desktop-app
+// backend light (no native-binding installs).
 async function makeThumbnail({ beatId, albumCoverPath, title, bpm, genre }) {
   ensureDir(cfg.WORK_DIR);
   const out = path.join(cfg.WORK_DIR, `${beatId}-thumb.jpg`);
   if (fs.existsSync(out)) return out;
 
-  const W = 1280, H = 720;
-  const neon = '#ff2d77';       // hot pink-red
-  const neon2 = '#19f0ff';      // cyan
+  // Resolve cover — fall back to a solid dark frame via lavfi if missing.
+  let coverIn = albumCoverPath && fs.existsSync(albumCoverPath) ? albumCoverPath : null;
+  if (!coverIn) {
+    coverIn = path.join(cfg.WORK_DIR, `${beatId}-cover-black.jpg`);
+    if (!fs.existsSync(coverIn)) {
+      await run(ffmpegPath, [
+        '-y', '-f', 'lavfi', '-i', 'color=c=0x06060a:s=720x720',
+        '-frames:v', '1', '-q:v', '3', coverIn,
+      ]);
+    }
+  }
 
-  // Base: cover image, cover-fit blurred + brightened background, original
-  // on the right-third rail for visual anchor.
-  const coverBuf = albumCoverPath && require('fs').existsSync(albumCoverPath)
-    ? await sharp(albumCoverPath).resize(720, 720, { fit: 'cover' }).toBuffer()
-    : await sharp({ create: { width: 720, height: 720, channels: 3, background: '#06060a' } }).png().toBuffer();
+  const fontFile = findFontFile();
+  const titleTxt = truncateForThumb(String(title || 'Untitled').toUpperCase(), 16);
+  const chipTxt  = `${String(genre || '').toUpperCase()}${bpm ? '  ' + bpm + ' BPM' : ''}`.trim();
+  const titleFontSize = titleTxt.length > 12 ? 72 : 96;
 
-  const blurBg = await sharp(coverBuf)
-    .resize(W, H, { fit: 'cover' })
-    .modulate({ brightness: 0.4 })
-    .blur(18)
-    .toBuffer();
+  // Build the filter chain. Text layers are added only when we have a
+  // resolvable font file — otherwise the thumbnail is image-only (still
+  // better than no thumbnail at all).
+  const chain = [
+    // Blurred, darkened full-frame background from the cover.
+    `[0:v]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,boxblur=22:3,eq=brightness=-0.35[bg]`,
+    // Sharp 720x720 cover anchored to the right rail.
+    `[0:v]scale=720:720:force_original_aspect_ratio=increase,crop=720:720[fg]`,
+    `[bg][fg]overlay=x=W-w:y=0[base]`,
+    // Dark scrim on the left rail for text legibility.
+    `[base]drawbox=x=0:y=0:w=720:h=720:color=black@0.55:t=fill[scrim]`,
+    // Bright [FREE] badge top-left.
+    `[scrim]drawbox=x=40:y=40:w=170:h=64:color=0xff2d77@0.95:t=fill[badge]`,
+  ];
 
-  // SVG overlay: gradient scrim left→right, title, genre/BPM chip, neon
-  // corner ticks. Fonts are `sans-serif` so it renders on any box without
-  // shipping a font file.
-  const escapedTitle = escapeXml(String(title || '').toUpperCase());
-  const chip = `${escapeXml(String(genre || '').toUpperCase())}${bpm ? ` · ${bpm} BPM` : ''}`;
-  const svg = `
-    <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="scrim" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%"  stop-color="#000" stop-opacity="0.85"/>
-          <stop offset="60%" stop-color="#000" stop-opacity="0.25"/>
-          <stop offset="100%" stop-color="#000" stop-opacity="0"/>
-        </linearGradient>
-        <filter id="glow"><feGaussianBlur stdDeviation="3"/></filter>
-      </defs>
+  let last = 'badge';
+  if (fontFile) {
+    const f = ffEscapePath(fontFile);
+    // [FREE] text inside the badge.
+    chain.push(`[${last}]drawtext=fontfile='${f}':text='FREE':fontcolor=white:fontsize=46:x=75:y=48[t1]`);
+    // Genre · BPM chip immediately under the badge.
+    chain.push(`[t1]drawtext=fontfile='${f}':text='${ffEscapeText(chipTxt)}':fontcolor=0x19f0ff:fontsize=30:x=44:y=128[t2]`);
+    // Big title, roughly centered vertically on the left rail, with shadow.
+    chain.push(
+      `[t2]drawtext=fontfile='${f}':text='${ffEscapeText(titleTxt)}':fontcolor=white:fontsize=${titleFontSize}:` +
+      `x=44:y=(h/2)-(text_h/2)+10:shadowcolor=black@0.75:shadowx=3:shadowy=3[t3]`
+    );
+    // Brand block bottom-left.
+    // Apostrophes inside single-quoted drawtext values are fragile across
+    // ffmpeg builds; using the plain form keeps parsing robust.
+    chain.push(`[t3]drawtext=fontfile='${f}':text='ONEIL BEATS':fontcolor=white@0.9:fontsize=28:x=44:y=h-86[t4]`);
+    chain.push(`[t4]drawtext=fontfile='${f}':text='oneilbeats.store':fontcolor=0x19f0ff:fontsize=28:x=44:y=h-50[vout]`);
+    last = 'vout';
+  }
 
-      <!-- Left scrim for text legibility -->
-      <rect width="100%" height="100%" fill="url(#scrim)"/>
-
-      <!-- Neon corner ticks -->
-      <path d="M32 32 L32 120 M32 32 L120 32" stroke="${neon}" stroke-width="6" fill="none"/>
-      <path d="M${W-32} ${H-32} L${W-32} ${H-120} M${W-32} ${H-32} L${W-120} ${H-32}"
-            stroke="${neon2}" stroke-width="6" fill="none"/>
-
-      <!-- Genre/BPM chip -->
-      <rect x="60" y="72" rx="8" ry="8" width="${Math.min(520, chip.length*18+40)}" height="44"
-            fill="rgba(255,45,119,0.18)" stroke="${neon}" stroke-width="2"/>
-      <text x="80" y="103" fill="${neon}" font-family="Impact, Arial Black, sans-serif"
-            font-size="24" font-weight="900" letter-spacing="2">${chip}</text>
-
-      <!-- Title, 2 lines max -->
-      <text x="60" y="${H/2 + 20}" fill="#fff" font-family="Impact, Arial Black, sans-serif"
-            font-size="${escapedTitle.length > 12 ? 96 : 128}" font-weight="900"
-            letter-spacing="1" filter="url(#glow)">${escapedTitle}</text>
-
-      <!-- Brand -->
-      <text x="60" y="${H - 60}" fill="#fff" font-family="Arial, sans-serif"
-            font-size="28" font-weight="700" opacity="0.85">O'NEIL BEATS · FREE BEAT</text>
-      <text x="60" y="${H - 30}" fill="${neon2}" font-family="Arial, sans-serif"
-            font-size="22" font-weight="700">oneilbeats.store</text>
-    </svg>
-  `;
-
-  // Composite: blurBg + cover-right + svg overlay
-  await sharp(blurBg)
-    .composite([
-      { input: coverBuf, left: W - 720, top: 0 },
-      { input: Buffer.from(svg) },
-    ])
-    .jpeg({ quality: 86, progressive: true })
-    .toFile(out);
+  const filter = chain.join(';');
+  await run(ffmpegPath, [
+    '-y', '-i', coverIn,
+    '-filter_complex', filter,
+    '-map', `[${last}]`,
+    '-frames:v', '1', '-q:v', '3', out,
+  ]);
 
   return out;
 }
 
-function escapeXml(s) {
-  return String(s).replace(/[<>&"']/g, c => ({
-    '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;',
-  }[c]));
+// Truncate + line-fit a string so drawtext doesn't overflow the left rail.
+function truncateForThumb(s, maxChars) {
+  if (s.length <= maxChars) return s;
+  return s.slice(0, maxChars - 1).trim() + '…';
+}
+
+// Find a TTF for drawtext. Tries the bundled asset first, then common
+// per-platform system paths. Returns null if none found (drawtext skipped).
+function findFontFile() {
+  const candidates = [
+    path.join(__dirname, 'assets', 'font-bold.ttf'),
+    path.join(__dirname, 'assets', 'Impact.ttf'),
+    'C:/Windows/Fonts/impact.ttf',
+    'C:/Windows/Fonts/arialbd.ttf',
+    'C:/Windows/Fonts/arial.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+    '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
+    '/System/Library/Fonts/HelveticaNeue.ttc',
+    '/System/Library/Fonts/Helvetica.ttc',
+  ];
+  for (const c of candidates) {
+    try { if (fs.existsSync(c)) return c; } catch {}
+  }
+  return null;
+}
+
+// ffmpeg filter-graph path escaping: backslashes → forward slashes, then
+// escape the Windows drive-letter colon. Required because drawtext parses
+// `:` as an option separator inside the filter.
+function ffEscapePath(p) {
+  return String(p).replace(/\\/g, '/').replace(/:/g, '\\:');
+}
+
+// ffmpeg drawtext text escaping: escape backslash, single quote, colon,
+// percent, and the filter-separator characters.
+function ffEscapeText(s) {
+  return String(s)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g,  "\\'")
+    .replace(/:/g,  '\\:')
+    .replace(/%/g,  '\\%');
 }
 
 module.exports = {

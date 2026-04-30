@@ -23,6 +23,15 @@ const PLATFORMS = ['youtube', 'instagram', 'tiktok'];
 //   { audioUrl, coverUrl }   — worker will synthesize the video (normal path)
 //   { videoPath, albumCoverPath }  — legacy, if you already have a local mp4
 async function enqueue(beat) {
+  // If the caller passed a future scheduledAt, honor it. Otherwise run YT now.
+  // ISO string; invalid/past values collapse back to `now()` so a bad picker
+  // value can't silently park a job forever.
+  let scheduledYT = new Date().toISOString();
+  if (beat.scheduledAt) {
+    const d = new Date(beat.scheduledAt);
+    if (!isNaN(d.getTime()) && d.getTime() > Date.now()) scheduledYT = d.toISOString();
+  }
+
   const row = {
     beat_id: beat.id || beat.beat_id,
     beat_title: beat.title,
@@ -34,26 +43,54 @@ async function enqueue(beat) {
     audio_url: beat.audioUrl || null,
     video_path: beat.videoPath || null,
     album_cover_path: beat.albumCoverPath || beat.coverUrl || null,
-    youtube_scheduled_at: new Date().toISOString(),  // YT runs immediately
+    // Pre-generated YouTube description (e.g. Hermes narrative). If set, the
+    // YT processor uses this verbatim and skips the boilerplate builder.
+    description_override: beat.descriptionOverride || null,
+    // Render as 9:16 Short vs 16:9 long-form. Stage 1 always false.
+    is_short: beat.isShort === true,
+    youtube_scheduled_at: scheduledYT,
     // IG / TT scheduled_at stay null until YT finishes, then we set them.
   };
   if (!row.audio_url && !row.video_path) {
     throw new Error('enqueue: need audioUrl (for synthesis) or videoPath (pre-rendered)');
   }
 
-  // On conflict (beat_id) do nothing → select existing.
-  const { data, error } = await supabase
+  // Scheduling a new upload for an existing beat (e.g. re-render with a better
+  // template) should REPLACE the old job, not silently ignore. We handle that
+  // by doing a two-step: select existing by beat_id, update if present else
+  // insert. Avoids PostgREST's ignoreDuplicates swallowing re-schedules.
+  const { data: existing } = await supabase
     .from(TABLE)
-    .upsert(row, { onConflict: 'beat_id', ignoreDuplicates: true })
-    .select()
+    .select('id, youtube_status')
+    .eq('beat_id', row.beat_id)
     .maybeSingle();
 
-  if (error) throw new Error(`enqueue failed: ${error.message}`);
-  if (data) return data;
+  if (existing) {
+    // Only reset YouTube if it's not already done — don't re-publish live videos.
+    const canReset = existing.youtube_status !== 'done' && existing.youtube_status !== 'uploading';
+    const patch = {
+      beat_title: row.beat_title, beat_slug: row.beat_slug, beat_genre: row.beat_genre,
+      beat_bpm: row.beat_bpm, beat_key: row.beat_key, beat_mood: row.beat_mood,
+      audio_url: row.audio_url, video_path: row.video_path,
+      album_cover_path: row.album_cover_path,
+      description_override: row.description_override,
+      is_short: row.is_short,
+    };
+    if (canReset) {
+      patch.youtube_scheduled_at = scheduledYT;
+      patch.youtube_status = 'pending';
+      patch.youtube_attempts = 0;
+      patch.last_error = null;
+    }
+    const { data, error } = await supabase
+      .from(TABLE).update(patch).eq('id', existing.id).select().maybeSingle();
+    if (error) throw new Error(`enqueue update failed: ${error.message}`);
+    return data;
+  }
 
-  // Upsert ignored it — fetch existing.
-  const existing = await supabase.from(TABLE).select('*').eq('beat_id', row.beat_id).maybeSingle();
-  return existing.data;
+  const { data, error } = await supabase.from(TABLE).insert(row).select().maybeSingle();
+  if (error) throw new Error(`enqueue insert failed: ${error.message}`);
+  return data;
 }
 
 // ── Claim next runnable job for a platform ────────────────────────────────
@@ -173,6 +210,51 @@ async function getJob(id) {
   return data;
 }
 
+// ── Queue list for the admin UI ──────────────────────────────────────────
+// Returns the N most recent jobs for a platform, in schedule order. Includes
+// done + failed so the user sees what ran + what errored, not just upcoming.
+async function listJobs({ platform = 'youtube', limit = 50 } = {}) {
+  if (!PLATFORMS.includes(platform)) throw new Error(`bad platform: ${platform}`);
+  const schedCol = `${platform}_scheduled_at`;
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select(`id, beat_id, beat_title, beat_genre, is_short, last_error, ` +
+            `${platform}_status, ${platform}_scheduled_at, ${platform}_attempts, ` +
+            `${platform}_id, ${platform}_url`)
+    .order(schedCol, { ascending: true, nullsFirst: false })
+    .limit(limit);
+  if (error) throw new Error(`listJobs failed: ${error.message}`);
+  return data || [];
+}
+
+// ── Cancel / reschedule ──────────────────────────────────────────────────
+// Setting status=failed prevents the worker from claiming it without deleting
+// history. Null scheduled_at belt-and-suspenders: the claim filter already
+// excludes non-pending, but this also hides it from "upcoming" sorts.
+async function cancelJob(id, platform = 'youtube') {
+  if (!PLATFORMS.includes(platform)) throw new Error(`bad platform: ${platform}`);
+  const patch = {
+    [`${platform}_status`]: 'failed',
+    [`${platform}_scheduled_at`]: null,
+    last_error: 'cancelled by user',
+  };
+  const { error } = await supabase.from(TABLE).update(patch).eq('id', id);
+  if (error) throw new Error(`cancelJob failed: ${error.message}`);
+}
+
+async function rescheduleJob(id, platform, scheduledAt) {
+  if (!PLATFORMS.includes(platform)) throw new Error(`bad platform: ${platform}`);
+  const d = new Date(scheduledAt);
+  if (isNaN(d.getTime())) throw new Error('rescheduleJob: invalid scheduledAt');
+  const patch = {
+    [`${platform}_scheduled_at`]: d.toISOString(),
+    [`${platform}_status`]: 'pending',
+    last_error: null,
+  };
+  const { error } = await supabase.from(TABLE).update(patch).eq('id', id);
+  if (error) throw new Error(`rescheduleJob failed: ${error.message}`);
+}
+
 function slugify(s) {
   return String(s || '').toLowerCase().trim()
     .replace(/[^a-z0-9]+/g, '-')
@@ -189,5 +271,8 @@ module.exports = {
   scheduleDownstream,
   saveDerivatives,
   getJob,
+  listJobs,
+  cancelJob,
+  rescheduleJob,
   PLATFORMS,
 };

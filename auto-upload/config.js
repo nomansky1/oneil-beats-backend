@@ -73,8 +73,13 @@ module.exports = {
   TT_DELAY_MAX_MINUTES: int('TT_DELAY_MAX_MINUTES', 240),
 
   // ── Validation ────────────────────────────────────────────────────────────
-  MIN_DURATION_SEC: 110,   // 1:50
-  MAX_DURATION_SEC: 150,   // 2:30
+  // Window widened 2026-04-21 after hitting real-world beats that exceed the
+  // original 110–150s preview-loop window. The desktop flow is now preview-
+  // first, so the user sees the full video before publish — no need to
+  // re-enforce preview-loop duration here. 30s floor keeps Shorts valid;
+  // 360s ceiling covers long reggaeton/trap beats without forcing a trim.
+  MIN_DURATION_SEC: 30,    // 0:30 (Shorts floor)
+  MAX_DURATION_SEC: 360,   // 6:00 (covers full beats)
 
   // ── Retry policy ──────────────────────────────────────────────────────────
   MAX_ATTEMPTS: 3,
