@@ -35,6 +35,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
+      # The runner image ships with a stripped ffmpeg that lacks drawtext.
+      # The full apt build includes libfreetype + the fonts cron.js references,
+      # so prependHook (ONEIL BEATS / oneilbeats.store overlay) succeeds.
+      - name: Install ffmpeg + fonts
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+
       - name: Install dependencies
         run: npm ci
 
