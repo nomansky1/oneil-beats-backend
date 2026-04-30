@@ -25,9 +25,10 @@ function int(name, fallback) {
   return Number.isFinite(v) ? v : fallback;
 }
 
-// YouTube-only platform flags. IG + TikTok stay off until you flip these on.
+// YouTube-only platform flags. IG + TikTok + Facebook stay off until you flip these on.
 const ENABLE_YOUTUBE   = bool('ENABLE_YOUTUBE',   true);
 const ENABLE_INSTAGRAM = bool('ENABLE_INSTAGRAM', false);
+const ENABLE_FACEBOOK  = bool('ENABLE_FACEBOOK',  false);
 const ENABLE_TIKTOK    = bool('ENABLE_TIKTOK',    false);
 
 // YouTube credentials. Fall back to the existing GOOGLE_OAUTH_* vars so you
@@ -39,7 +40,7 @@ const YT_REFRESH_TOKEN = ENABLE_YOUTUBE ? (opt('YT_REFRESH_TOKEN') || req('GOOGL
 
 module.exports = {
   // ── Platform switches ─────────────────────────────────────────────────────
-  ENABLE_YOUTUBE, ENABLE_INSTAGRAM, ENABLE_TIKTOK,
+  ENABLE_YOUTUBE, ENABLE_INSTAGRAM, ENABLE_FACEBOOK, ENABLE_TIKTOK,
 
   // ── Supabase (reuses your existing project) ───────────────────────────────
   SUPABASE_URL:        req('SUPABASE_URL'),
@@ -55,6 +56,22 @@ module.exports = {
   // ── Meta Graph API (Instagram Reels) — only required if ENABLE_INSTAGRAM ──
   IG_USER_ID:      ENABLE_INSTAGRAM ? req('IG_USER_ID')      : '',
   IG_ACCESS_TOKEN: ENABLE_INSTAGRAM ? req('IG_ACCESS_TOKEN') : '',
+
+  // ── Meta Graph API (Facebook Page video) — only required if ENABLE_FACEBOOK
+  // FB_PAGE_ACCESS_TOKEN can be the same long-lived Page token as IG_ACCESS_TOKEN
+  // (Meta issues one token per Page that works for both IG Business + Page posts).
+  FB_PAGE_ID:           ENABLE_FACEBOOK ? req('FB_PAGE_ID')           : '',
+  FB_PAGE_ACCESS_TOKEN: ENABLE_FACEBOOK ? (opt('FB_PAGE_ACCESS_TOKEN') || (ENABLE_INSTAGRAM ? req('IG_ACCESS_TOKEN') : req('FB_PAGE_ACCESS_TOKEN'))) : '',
+
+  // ── Meta App credentials (used by token health + auto-rotation only) ──────
+  // META_APP_SECRET is optional: if missing, refresh button is disabled but
+  // /debug_token health checks still work (they only need the token itself).
+  META_APP_ID:     opt('META_APP_ID'),
+  META_APP_SECRET: opt('META_APP_SECRET'),
+
+  // Token health policy
+  META_TOKEN_WARN_DAYS: int('META_TOKEN_WARN_DAYS', 14),  // yellow banner threshold
+  META_TOKEN_CRIT_DAYS: int('META_TOKEN_CRIT_DAYS', 3),   // red banner + email alert
 
   // ── TikTok Content Posting API — only required if ENABLE_TIKTOK ───────────
   TIKTOK_ACCESS_TOKEN: ENABLE_TIKTOK ? req('TIKTOK_ACCESS_TOKEN') : '',
