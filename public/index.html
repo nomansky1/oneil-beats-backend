@@ -1238,23 +1238,29 @@ async function loadBeats() {
 }
 
 function injectProductSchema() {
-  // Emit Product JSON-LD for top 20 beats for rich snippets
+  // 2026-04-30 GSC fix: emit MusicRecording (not Product) for beats without
+  // reviews. Google's Product Rich Snippet guidelines require aggregateRating
+  // + review fields when @type=Product. Fabricating ratings violates Google
+  // policy; until we have a real review system, MusicRecording is the
+  // accurate type. Offers (price range) still flow through via the offers
+  // field on MusicRecording — just no ⭐ snippet until reviews exist.
   const products = allBeats.slice(0, 20).map(b => ({
     "@context":"https://schema.org",
-    "@type":"Product",
+    "@type":"MusicRecording",
     "name": `${b.title} — ${b.genre||'Rap'} Beat`,
     "description": `Buy ${b.genre||'rap'} beat "${b.title}"${b.bpm?` at ${b.bpm} BPM`:''}${b.key?` in ${b.key}`:''}. ${b.mood||'Premium'} instrumental for sale.`,
     "image": b.cover_url || "https://oneilbeats.store/og-image.jpg",
-    "brand": {"@type":"Brand","name":"O'Neil Beats"},
+    "byArtist": {"@type":"MusicGroup","name":"O'Neil","url":"https://oneilbeats.store"},
     "url": `https://oneilbeats.store/?beat=${b.id}`,
-    "category": b.genre || "Rap Beat",
+    "genre": b.genre || "Rap",
     "offers": {
       "@type":"AggregateOffer",
       "priceCurrency":"USD",
       "lowPrice": Number(b.lease_price||29.99),
       "highPrice": Number(b.stems_price || b.premium_price || 199.99),
       "offerCount": 4,
-      "availability":"https://schema.org/InStock"
+      "availability":"https://schema.org/InStock",
+      "url": `https://oneilbeats.store/?beat=${b.id}`
     }
   }));
   products.forEach(p => {

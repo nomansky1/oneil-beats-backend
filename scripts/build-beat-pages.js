@@ -114,9 +114,19 @@ function beatJsonLd(beat, slug) {
     }));
   }
 
+  // 2026-04-30 GSC fix: Product schema requires aggregateRating + review per
+  // Google's Product Snippet guidelines. Until we have a real review system
+  // collecting authentic ratings from buyers, we can't claim Product type
+  // (would either violate Google policy by fabricating ratings, or trigger
+  // "missing field" warnings in Search Console). So Product schema is now
+  // CONDITIONAL on having ≥1 approved review. Beats without reviews are
+  // typed as MusicRecording only — Google doesn't require ratings there.
+  // The Offer prices still flow through as "offers" — this just doesn't
+  // light up the ⭐ rich snippet until real reviews exist.
+  const hasReviews = approvedReviews.length > 0;
   const node = {
     '@context': 'https://schema.org',
-    '@type': ['MusicRecording', 'Product'],
+    '@type': hasReviews ? ['MusicRecording', 'Product'] : 'MusicRecording',
     name: beat.title,
     url,
     image: beat.cover_art_url || beat.cover_url || `${SITE_URL}/og-image.jpg`,
