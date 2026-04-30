@@ -850,6 +850,175 @@ app.get('/promo/check-first-purchase', checkFirstPurchaseHandler);
 app.post('/promo/check-first-purchase', checkFirstPurchaseHandler);
 
 // ──────────────────────────────────────────────────────────────────────────────
+// ADMIN COUPONS — Stripe-backed coupon + promotion-code management.
+// Added 2026-04-30 — UI was calling these endpoints but they didn't exist
+// (404 returning HTML page, parsed as JSON, "Unexpected token '<'" error).
+//
+// Coupon = the discount itself (e.g. 10% off). Lives on stripe.coupons.
+// PromotionCode = the human-friendly code (e.g. "FIRST10") that applies the
+// coupon at checkout. Lives on stripe.promotionCodes (one coupon → many codes).
+// ──────────────────────────────────────────────────────────────────────────────
+
+// GET /admin/coupons — list all coupons + their promotion codes for the UI.
+app.get('/admin/coupons', requireAdminKey, async (req, res) => {
+  try {
+    // Stripe pagination: default 10, we want up to 100 active.
+    const couponList = await stripe.coupons.list({ limit: 100 });
+    const promoList  = await stripe.promotionCodes.list({ limit: 100 });
+
+    // Index promo codes by coupon id for O(1) attach.
+    const promosByCoupon = {};
+    for (const p of promoList.data || []) {
+      const cid = p.coupon && p.coupon.id;
+      if (!cid) continue;
+      (promosByCoupon[cid] = promosByCoupon[cid] || []).push({
+        id: p.id,
+        code: p.code,
+        active: p.active,
+        times_redeemed: p.times_redeemed,
+        max_redemptions: p.max_redemptions,
+        expires_at: p.expires_at,
+      });
+    }
+
+    const coupons = (couponList.data || []).map(c => ({
+      id: c.id,
+      name: c.name || c.id,
+      percent_off: c.percent_off,
+      amount_off: c.amount_off,           // cents
+      currency: c.currency,
+      duration: c.duration,                // 'once' | 'repeating' | 'forever'
+      duration_in_months: c.duration_in_months,
+      max_redemptions: c.max_redemptions,
+      times_redeemed: c.times_redeemed,
+      valid: c.valid,
+      created: c.created,
+      promotion_codes: promosByCoupon[c.id] || [],
+    }));
+    res.json({ success: true, coupons });
+  } catch (err) {
+    console.error('[admin/coupons] list error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /admin/coupons — create a coupon (+ optional promotion code).
+// Body: { name, percent_off?, amount_off?, duration?, duration_in_months?,
+//         max_redemptions?, promo_code? }
+// Either percent_off OR amount_off is required (not both).
+app.post('/admin/coupons', requireAdminKey, async (req, res) => {
+  try {
+    const { name, percent_off, amount_off, duration, duration_in_months,
+            max_redemptions, promo_code } = req.body || {};
+    if (!name) return res.status(400).json({ success: false, error: 'name required' });
+    if (percent_off == null && amount_off == null) {
+      return res.status(400).json({ success: false, error: 'percent_off or amount_off required' });
+    }
+    if (percent_off != null && amount_off != null) {
+      return res.status(400).json({ success: false, error: 'cannot set both percent_off and amount_off' });
+    }
+
+    const couponPayload = {
+      name,
+      duration: duration || 'once',
+    };
+    if (percent_off != null) {
+      const pct = Math.max(0, Math.min(100, parseFloat(percent_off)));
+      couponPayload.percent_off = pct;
+    } else {
+      // amount_off is in dollars in our UI; Stripe expects cents
+      const cents = Math.max(1, Math.round(parseFloat(amount_off) * 100));
+      couponPayload.amount_off = cents;
+      couponPayload.currency = 'usd';
+    }
+    if (duration === 'repeating' && duration_in_months) {
+      couponPayload.duration_in_months = parseInt(duration_in_months, 10);
+    }
+    if (max_redemptions) couponPayload.max_redemptions = parseInt(max_redemptions, 10);
+
+    const coupon = await stripe.coupons.create(couponPayload);
+
+    // If a promo code was specified, create the human-friendly code now.
+    let promotionCode = null;
+    if (promo_code && String(promo_code).trim()) {
+      promotionCode = await stripe.promotionCodes.create({
+        coupon: coupon.id,
+        code: String(promo_code).trim().toUpperCase(),
+        active: true,
+      });
+    }
+
+    res.json({
+      success: true,
+      coupon: { id: coupon.id, name: coupon.name, percent_off: coupon.percent_off, amount_off: coupon.amount_off, duration: coupon.duration },
+      promotion_code: promotionCode ? { id: promotionCode.id, code: promotionCode.code } : null,
+    });
+  } catch (err) {
+    console.error('[admin/coupons] create error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /admin/coupons/:id — delete a coupon. Stripe automatically deactivates
+// any promotion codes attached to the coupon.
+app.delete('/admin/coupons/:id', requireAdminKey, async (req, res) => {
+  try {
+    await stripe.coupons.del(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[admin/coupons] delete error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PUT /admin/coupons/:promoId/toggle — activate/deactivate a promotion code.
+// Body: { active: true | false }
+app.put('/admin/coupons/:promoId/toggle', requireAdminKey, async (req, res) => {
+  try {
+    const { active } = req.body || {};
+    if (typeof active !== 'boolean') {
+      return res.status(400).json({ success: false, error: 'active boolean required' });
+    }
+    const updated = await stripe.promotionCodes.update(req.params.promoId, { active });
+    res.json({ success: true, promotion_code: { id: updated.id, code: updated.code, active: updated.active } });
+  } catch (err) {
+    console.error('[admin/coupons] toggle error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /admin/coupons/init-first10 — idempotent: create the FIRST10 coupon
+// (10% off first beat, 'once' duration) + matching promotion code. If they
+// already exist, returns success without re-creating.
+app.post('/admin/coupons/init-first10', requireAdminKey, async (req, res) => {
+  try {
+    const PROMO_CODE = 'FIRST10';
+    // Check if the FIRST10 promo code already exists.
+    const existingPromos = await stripe.promotionCodes.list({ code: PROMO_CODE, limit: 5 });
+    if (existingPromos.data && existingPromos.data.length > 0) {
+      const p = existingPromos.data[0];
+      return res.json({ success: true, alreadyExists: true, coupon_id: p.coupon.id, promo_id: p.id, code: p.code });
+    }
+
+    // Create the coupon + the FIRST10 promotion code.
+    const coupon = await stripe.coupons.create({
+      name: 'First Purchase Discount (FIRST10)',
+      percent_off: 10,
+      duration: 'once',
+    });
+    const promo = await stripe.promotionCodes.create({
+      coupon: coupon.id,
+      code: PROMO_CODE,
+      active: true,
+    });
+    res.json({ success: true, alreadyExists: false, coupon_id: coupon.id, promo_id: promo.id, code: promo.code });
+  } catch (err) {
+    console.error('[admin/coupons/init-first10] error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // ADMIN BEAT CRUD + LICENSE TERMS
 // ──────────────────────────────────────────────────────────────────────────────
 
