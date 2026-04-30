@@ -59,10 +59,19 @@ jobs:
           # back to a default if unset).
           STORE_URL:                    ${{ secrets.STORE_URL }}
 
-          # Feature flags — YouTube only for now. Flip via repo secrets later
-          # without editing this file.
-          ENABLE_YOUTUBE:               ${{ secrets.ENABLE_YOUTUBE || 'true' }}
-          ENABLE_INSTAGRAM:             ${{ secrets.ENABLE_INSTAGRAM || 'false' }}
-          ENABLE_TIKTOK:                ${{ secrets.ENABLE_TIKTOK || 'false' }}
+          # Meta (Instagram + Facebook). FB_PAGE_ACCESS_TOKEN can equal
+          # IG_ACCESS_TOKEN — Meta issues one Page-token that works for both.
+          IG_USER_ID:                   ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN:              ${{ secrets.IG_ACCESS_TOKEN }}
+          FB_PAGE_ID:                   ${{ secrets.FB_PAGE_ID }}
+          FB_PAGE_ACCESS_TOKEN:         ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+
+          # Feature flags. Default to all-on so a scheduled job fans out to
+          # YouTube + Instagram + Facebook automatically (TikTok stays off
+          # until tokens are wired).
+          ENABLE_YOUTUBE:               ${{ secrets.ENABLE_YOUTUBE   || 'true' }}
+          ENABLE_INSTAGRAM:             ${{ secrets.ENABLE_INSTAGRAM || 'true' }}
+          ENABLE_FACEBOOK:              ${{ secrets.ENABLE_FACEBOOK  || 'true' }}
+          ENABLE_TIKTOK:                ${{ secrets.ENABLE_TIKTOK    || 'false' }}
 
         run: node auto-upload/tick-once.js

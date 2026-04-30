@@ -16,11 +16,46 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const FormData = require('form-data');
 const cfg = require('../config');
 const copy = require('../copy');
 const { supabase } = require('../queue');
 
 const GRAPH = 'https://graph.facebook.com/v20.0';
+
+// Cross-post the same vertical video to the Facebook Page after IG succeeds.
+// Best-effort: a FB failure does NOT roll back IG. Returns { ok, url? , error? }.
+async function publishToFacebookPage(job) {
+  if (!cfg.ENABLE_FACEBOOK || !cfg.FB_PAGE_ID || !cfg.FB_PAGE_ACCESS_TOKEN) {
+    return { skipped: true };
+  }
+  const videoPath = job.vertical_path || job.video_path_hooked || job.video_path;
+  if (!videoPath || !fs.existsSync(videoPath)) {
+    return { error: 'no local video to upload' };
+  }
+  try {
+    const title = copy.buildYouTubeTitle(job).slice(0, 255);
+    const description = copy.buildYouTubeDescription(job, job.description_override).slice(0, 5000);
+    const form = new FormData();
+    form.append('title', title);
+    form.append('description', description);
+    form.append('access_token', cfg.FB_PAGE_ACCESS_TOKEN);
+    form.append('source', fs.createReadStream(videoPath), {
+      filename: path.basename(videoPath),
+      contentType: 'video/mp4',
+    });
+    const res = await axios.post(`${GRAPH}/${cfg.FB_PAGE_ID}/videos`, form, {
+      headers: form.getHeaders(),
+      maxContentLength: Infinity, maxBodyLength: Infinity,
+      timeout: 10 * 60 * 1000,
+    });
+    const videoId = res?.data?.id;
+    if (!videoId) return { error: 'FB returned no video id' };
+    return { ok: true, url: `https://www.facebook.com/${cfg.FB_PAGE_ID}/videos/${videoId}`, id: videoId };
+  } catch (e) {
+    return { error: e?.response?.data?.error?.message || e.message || String(e) };
+  }
+}
 
 async function uploadToInstagram(job) {
   // 1. Push the 9:16 video to Supabase Storage (public bucket) so IG can pull it.
@@ -89,6 +124,16 @@ async function uploadToInstagram(job) {
       });
       if (pl.data.permalink) permalink = pl.data.permalink;
     } catch (_) {}
+
+    // 5. Cross-post to Facebook Page (best-effort; doesn't fail the IG job).
+    if (cfg.ENABLE_FACEBOOK) {
+      const fb = await publishToFacebookPage(job);
+      if (fb.ok) {
+        console.log(`[meta] FB cross-post live → ${fb.url}`);
+      } else if (fb.error) {
+        console.warn(`[meta] FB cross-post failed (non-fatal): ${fb.error}`);
+      }
+    }
 
     return { externalId: mediaId, publicUrl: permalink };
 

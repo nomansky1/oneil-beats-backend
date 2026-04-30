@@ -20,6 +20,7 @@
     "ffmpeg-static": "^5.3.0",
     "ffprobe-static": "^3.1.0",
     "fft-js": "^0.0.12",
+    "form-data": "^4.0.5",
     "googleapis": "^140.0.0",
     "mpg123-decoder": "^1.0.3",
     "multer": "^1.4.5-lts.1",
