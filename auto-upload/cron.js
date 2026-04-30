@@ -103,15 +103,22 @@ async function tickPlatform(platform) {
     // YouTube wants the 16:9 hooked video; IG/TT want the 9:16 version.
     if (platform === 'youtube') {
       if (!job.thumbnail_path) {
-        const thumb = await media.makeThumbnail({
-          beatId: job.beat_id,
-          albumCoverPath: job.album_cover_path,
-          title: job.beat_title,
-          bpm: job.beat_bpm,
-          genre: job.beat_genre,
-        });
-        await q.saveDerivatives(job.id, { thumbnailPath: thumb });
-        job.thumbnail_path = thumb;
+        // Thumbnail is nice-to-have, not a publish blocker. YouTube auto-
+        // generates one from the video if we don't supply a custom thumbnail,
+        // and a missing custom thumb is far better than a failed upload.
+        try {
+          const thumb = await media.makeThumbnail({
+            beatId: job.beat_id,
+            albumCoverPath: job.album_cover_path,
+            title: job.beat_title,
+            bpm: job.beat_bpm,
+            genre: job.beat_genre,
+          });
+          await q.saveDerivatives(job.id, { thumbnailPath: thumb });
+          job.thumbnail_path = thumb;
+        } catch (e) {
+          notify.log(`thumbnail generation failed (non-fatal, falling back to YT auto-thumb): ${e.message}`);
+        }
       }
 
       const { externalId, publicUrl } = await uploadToYouTube(job);
