@@ -57,29 +57,29 @@ function esc(s) {
 
 // ── Build per-beat <title>, description, schema ────────────────────────────
 function beatTitleTag(beat) {
-  const year = new Date().getFullYear();
-  const parts = [
-    beat.title,
-    `${beat.genre || 'Rap'} Type Beat ${year}`,
+  // SERP-trimmed: keep beat title + genre + BPM/key + brand under ~60 chars.
+  // Old format hit ~73 chars and got truncated. Drop the year and "Buy at"
+  // tail; collapse BPM and key into one segment. Brand stays at the end so
+  // truncation doesn't kill the keyword.
+  const genre = beat.genre || 'Rap';
+  const tech = [
     beat.bpm ? `${beat.bpm} BPM` : null,
     beat.key || null,
-  ].filter(Boolean);
-  return `${parts.join(' | ')} — Buy at O'Neil Beats`;
+  ].filter(Boolean).join(' ');
+  return `${beat.title} — ${genre} Type Beat${tech ? ' ' + tech : ''} | O'Neil Beats`;
 }
 function beatDescription(beat) {
+  // SERP-optimized 140-160 char meta description. Google truncates at ~160 in
+  // search results so the previous 320-char version had its CTA cut. Now: lead
+  // with the keyword phrase, surface BPM/key, end with price + brand.
   const bpm = beat.bpm ? `${beat.bpm} BPM` : '';
   const key = beat.key ? ` in ${beat.key}` : '';
   const mood = beat.mood ? ` ${String(beat.mood).toLowerCase()}` : '';
   const sub = beat.subgenre || beat.genre || 'rap';
-  const desc1 = `Buy "${beat.title}" — a${mood} ${sub} type beat${bpm ? ' at ' + bpm : ''}${key}.`;
-  let desc2 = '';
-  if (beat.description) {
-    const d = String(beat.description).replace(/\s+/g, ' ').trim();
-    const firstSentence = d.split(/(?<=[.!?])\s/)[0] || d;
-    desc2 = ' ' + firstSentence.slice(0, 160);
-  }
-  const desc3 = ' Lease from $29.99. Instant MP3/WAV delivery. Reggaeton, trap, hip-hop, drill instrumentals by O\'Neil.';
-  return (desc1 + desc2 + desc3).slice(0, 320);
+  const head = `${beat.title} —${mood} ${sub} type beat${bpm ? ' ' + bpm : ''}${key}.`;
+  const tail = ` Lease MP3/WAV from $29.99. Instant delivery. Prod. by O'Neil.`;
+  const full = (head + tail).replace(/\s+/g, ' ').trim();
+  return full.length > 160 ? full.slice(0, 157).trimEnd() + '…' : full;
 }
 
 // MusicRecording + Product schema. Google Music carousel + product rich snippets.
@@ -241,6 +241,15 @@ function renderBeatPage(template, beat, slug) {
   const crawlerBlock = renderCrawlerBlock(beat, slug, url);
   html = html.replace(/<body([^>]*)>/i, `<body$1>${crawlerBlock}`);
 
+  // Demote the homepage hero H1 to H2 — beat pages already supply their own H1
+  // in the crawler block. Two H1s on one page split topical signal in Google.
+  html = html.replace(/<h1\s+class="hero-h1-seo"\s+id="page-h1">([\s\S]*?)<\/h1>/i,
+    '<h2 class="hero-h1-seo" id="page-h1">$1</h2>');
+
+  // Strip the homepage's broken hreflang block — beat pages have no Spanish
+  // equivalent, so claiming es→/ misleads Google. Better to emit nothing.
+  html = html.replace(/\s*<link\s+rel="alternate"\s+hreflang="(?:en|es|x-default)"[^>]*>/gi, '');
+
   return html;
 }
 
@@ -256,6 +265,8 @@ const BLOG_POSTS = [
   {
     slug: 'lease-vs-exclusive-beat-license-guide',
     title: "Lease vs Exclusive vs Stems — What License Should an Artist Actually Buy in 2026?",
+    metaTitle: "Beat Licensing Explained: Lease vs Exclusive 2026",
+    metaDescription: "Lease, Premium, Stems, Exclusive — what each beat license actually gets you, what it costs, and which one matches your release plan.",
     excerpt: "A no-fluff guide to the four beat-license tiers — lease, premium, stems, exclusive. What's actually different, what each costs, and which one you actually need based on what you're doing with the song.",
     publishedDate: '2026-04-26',
     type: 'Article',
@@ -329,6 +340,8 @@ const BLOG_POSTS = [
   {
     slug: 'how-to-write-to-a-reggaeton-beat',
     title: "How to Write to a Reggaeton Beat — Step-by-Step (Hooks, Verses, Drops)",
+    metaTitle: "How to Write to a Reggaeton Beat (Step-by-Step)",
+    metaDescription: "Step-by-step reggaeton songwriting: hook first, find the pocket, structure the song, then record. A practical guide for indie artists writing toplines.",
     excerpt: "A producer's walkthrough on writing toplines, hooks, and verses over a reggaeton instrumental. Where to start, how to find the pocket, and the structure that makes modern reggaeton hits work.",
     publishedDate: '2026-04-26',
     type: 'HowTo',
@@ -412,6 +425,8 @@ const BLOG_POSTS = [
   {
     slug: 'free-beats-vs-paid-tagged-mp3-explained',
     title: "Free Beats vs Paid: What Artists Get with the Tagged MP3 (and When to Upgrade)",
+    metaTitle: "Free vs Paid Beats: When to Upgrade Your License",
+    metaDescription: "What the tagged free MP3 actually allows, why the producer tag exists, and the moment you should upgrade to a paid lease before release.",
     excerpt: "Every producer offers free beats. Most artists don't understand what those free downloads legally let them do. Here's the truth about tagged free MP3s, when they're enough, and the upgrade triggers that mean it's time to buy.",
     publishedDate: '2026-04-26',
     type: 'Article',
@@ -484,6 +499,8 @@ const BLOG_POSTS = [
   {
     slug: 'how-to-find-free-beats-2026-and-why-demos-matter',
     title: "How to Find Free Beats in 2026 (and Why Recording a Demo First Will Make You a Better Artist)",
+    metaTitle: "Free Beats in 2026: Find Them, Demo, Then Buy",
+    metaDescription: "Where indie artists actually find free beats in 2026, why recording a demo before licensing matters more than the catalog size, and when to upgrade.",
     excerpt: "Where to find legit free beats in 2026 — the real sources, the scams to avoid, and why recording a demo over a free tagged beat before you buy a license is the single best habit independent artists can build. Written by an active producer.",
     publishedDate: '2026-04-26',
     type: 'Article',
@@ -558,19 +575,31 @@ const BLOG_POSTS = [
 // Render a single blog post.
 function renderBlogPost(template, post) {
   const url = `${SITE_URL}/blog/${post.slug}`;
-  const title = `${post.title} | O'Neil Beats Blog`;
-  const desc = post.excerpt.replace(/\s+/g, ' ').trim().slice(0, 280);
+  // metaTitle = SERP-trimmed (≤55 chars, no suffix) version for <title>/og:title.
+  // Article H1 keeps post.title (longer, more descriptive). Falls back if absent.
+  const titleTag = post.metaTitle
+    ? `${post.metaTitle} | O'Neil Beats`
+    : `${post.title} | O'Neil Beats Blog`;
+  // Meta description: 140-160 chars max — Google truncates the rest.
+  const descRaw = (post.metaDescription || post.excerpt).replace(/\s+/g, ' ').trim();
+  const desc = descRaw.length > 160 ? descRaw.slice(0, 157).trimEnd() + '…' : descRaw;
 
   let html = template;
-  html = html.replace(/<title>[^<]*<\/title>/i, `<title>${esc(title)}</title>`);
+  html = html.replace(/<title>[^<]*<\/title>/i, `<title>${esc(titleTag)}</title>`);
   html = html.replace(/<meta\s+name="description"\s+content="[^"]*">/i, `<meta name="description" content="${esc(desc)}">`);
   html = html.replace(/<link\s+rel="canonical"\s+href="[^"]*">/i, `<link rel="canonical" href="${url}">`);
   html = html.replace(/<meta\s+property="og:url"\s+content="[^"]*">/i, `<meta property="og:url" content="${url}">`);
-  html = html.replace(/<meta\s+property="og:title"\s+content="[^"]*">/i, `<meta property="og:title" content="${esc(title)}">`);
+  html = html.replace(/<meta\s+property="og:title"\s+content="[^"]*">/i, `<meta property="og:title" content="${esc(titleTag)}">`);
   html = html.replace(/<meta\s+property="og:description"\s+content="[^"]*">/i, `<meta property="og:description" content="${esc(desc)}">`);
   html = html.replace(/<meta\s+property="og:type"\s+content="website">/i, `<meta property="og:type" content="article">`);
-  html = html.replace(/<meta\s+name="twitter:title"\s+content="[^"]*">/i, `<meta name="twitter:title" content="${esc(title)}">`);
+  html = html.replace(/<meta\s+name="twitter:title"\s+content="[^"]*">/i, `<meta name="twitter:title" content="${esc(titleTag)}">`);
   html = html.replace(/<meta\s+name="twitter:description"\s+content="[^"]*">/i, `<meta name="twitter:description" content="${esc(desc)}">`);
+
+  // Demote homepage hero H1 to H2 (article supplies its own H1 below).
+  html = html.replace(/<h1\s+class="hero-h1-seo"\s+id="page-h1">([\s\S]*?)<\/h1>/i,
+    '<h2 class="hero-h1-seo" id="page-h1">$1</h2>');
+  // Strip inherited broken hreflang — blog posts have no Spanish equivalent.
+  html = html.replace(/\s*<link\s+rel="alternate"\s+hreflang="(?:en|es|x-default)"[^>]*>/gi, '');
 
   // Article (or HowTo) + BreadcrumbList schema
   const baseSchema = {
@@ -677,8 +706,12 @@ function renderBlogPost(template, post) {
 // Render the blog index page listing all posts.
 function renderBlogIndex(template) {
   const url = `${SITE_URL}/blog`;
-  const title = "Blog — Beat Buying Guides, License Explainers & Songwriting | O'Neil Beats";
-  const desc = "Articles for artists buying beats: license tier explainers, songwriting walkthroughs, and free-beat guides. Written by O'Neil — independent producer of reggaeton, trap, and hip-hop instrumentals.";
+  // <title> trimmed to ~55 chars so it doesn't get truncated in SERPs.
+  const title = "Blog — Beat Licensing & Songwriting Guides | O'Neil Beats";
+  // Page subtitle / on-page intro (longer copy, kept for the visible card).
+  const intro = "Articles for artists buying beats: license tier explainers, songwriting walkthroughs, and free-beat guides. Written by O'Neil — independent producer of reggaeton, trap, and hip-hop instrumentals.";
+  // Meta description trimmed to ~155 chars.
+  const desc = "Beat licensing guides, songwriting walkthroughs, and free-beat advice from O'Neil — independent producer of reggaeton, trap & hip-hop instrumentals.";
 
   let html = template;
   html = html.replace(/<title>[^<]*<\/title>/i, `<title>${esc(title)}</title>`);
@@ -687,6 +720,12 @@ function renderBlogIndex(template) {
   html = html.replace(/<meta\s+property="og:url"\s+content="[^"]*">/i, `<meta property="og:url" content="${url}">`);
   html = html.replace(/<meta\s+property="og:title"\s+content="[^"]*">/i, `<meta property="og:title" content="${esc(title)}">`);
   html = html.replace(/<meta\s+property="og:description"\s+content="[^"]*">/i, `<meta property="og:description" content="${esc(desc)}">`);
+
+  // Demote homepage hero H1 to H2 (blog index supplies its own H1 below).
+  html = html.replace(/<h1\s+class="hero-h1-seo"\s+id="page-h1">([\s\S]*?)<\/h1>/i,
+    '<h2 class="hero-h1-seo" id="page-h1">$1</h2>');
+  // Strip inherited broken hreflang.
+  html = html.replace(/\s*<link\s+rel="alternate"\s+hreflang="(?:en|es|x-default)"[^>]*>/gi, '');
 
   const blogSchema = {
     '@context': 'https://schema.org', '@type': 'Blog',
@@ -718,7 +757,7 @@ function renderBlogIndex(template) {
 <section class="blog-index">
   <nav class="blog-index-bc" aria-label="Breadcrumb"><a href="/">Home</a> · Blog</nav>
   <h1>O'Neil Beats Blog</h1>
-  <p class="blog-index-sub">${esc(desc)}</p>
+  <p class="blog-index-sub">${esc(intro)}</p>
   <div class="blog-index-grid">
     ${BLOG_POSTS.map(p => `
       <a class="blog-index-card" href="/blog/${p.slug}">
@@ -1020,7 +1059,9 @@ function renderSpanishLandingPage(template, page, beats) {
   const url = `${SITE_URL}/${page.slug}`;
   const enUrl = `${SITE_URL}${page.enAlt}`;
   const titleTag = page.metaTitle;
-  const desc = page.metaDescription;
+  // Trim to 155 chars — Google truncates Spanish meta descriptions the same way.
+  const descRaw = page.metaDescription;
+  const desc = descRaw.length > 160 ? descRaw.slice(0, 157).trimEnd() + '…' : descRaw;
   const ogImage = (matches[0] && (matches[0].cover_art_url || matches[0].cover_url)) || `${SITE_URL}/og-image.jpg`;
 
   let html = template;
@@ -1103,6 +1144,12 @@ function renderSpanishLandingPage(template, page, beats) {
 </script>`;
     html = html.replace(/<\/body>/i, filterScript + '</body>');
   }
+
+  // Demote homepage hero H1 to H2 (Spanish landing supplies its own H1 in the
+  // crawler block above).
+  html = html.replace(/<h1\s+class="hero-h1-seo"\s+id="page-h1">([\s\S]*?)<\/h1>/i,
+    '<h2 class="hero-h1-seo" id="page-h1">$1</h2>');
+
   return html;
 }
 
@@ -1114,7 +1161,9 @@ function renderLandingPage(template, page, beats) {
   const matches = beats.filter(b => { try { return page.filter(b); } catch (e) { return false; } });
   const url = `${SITE_URL}/${page.slug}`;
   const titleTag = `${page.name} ${new Date().getFullYear()} | O'Neil Beats`;
-  const desc = (page.intro.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()).slice(0, 280);
+  // Trim to 155 chars — Google truncates meta description at ~160.
+  const descRaw = page.intro.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  const desc = descRaw.length > 160 ? descRaw.slice(0, 157).trimEnd() + '…' : descRaw;
   // First matching beat's cover for OG, fall back to default.
   const ogImage = (matches[0] && (matches[0].cover_art_url || matches[0].cover_url)) || `${SITE_URL}/og-image.jpg`;
 
@@ -1202,6 +1251,15 @@ function renderLandingPage(template, page, beats) {
 })();
 </script>`;
   html = html.replace(/<\/body>/i, filterScript + '</body>');
+
+  // Demote homepage hero H1 to H2 (landing page supplies its own H1 in the
+  // crawler block above).
+  html = html.replace(/<h1\s+class="hero-h1-seo"\s+id="page-h1">([\s\S]*?)<\/h1>/i,
+    '<h2 class="hero-h1-seo" id="page-h1">$1</h2>');
+  // Strip inherited broken hreflang. Most English landing pages have no Spanish
+  // mirror; the few that do (pairs declared in SPANISH_LANDING_PAGES.enAlt) get
+  // their hreflang from the Spanish-side renderer instead.
+  html = html.replace(/\s*<link\s+rel="alternate"\s+hreflang="(?:en|es|x-default)"[^>]*>/gi, '');
 
   return html;
 }
