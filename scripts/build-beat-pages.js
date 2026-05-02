@@ -883,6 +883,50 @@ const TYPE_BEAT_ARTISTS = [
 <p>Explore <a href="/trap-beats">trap beats</a>, <a href="/reggaeton-beats">reggaeton beats</a> (Drake has worked extensively with Latin artists), and the <a href="/future-type-beat">Future</a> + <a href="/lil-baby-type-beat">Lil Baby</a> pages for the harder melodic-trap end of his catalog.</p>` },
 ];
 
+// Featured one-off landing pages — keyword-targeted pages that don't fit the
+// type-beat / genre / subgenre / mood templates. Always rendered (no minimum
+// match count). High-volume search queries that the site couldn't otherwise
+// rank for live here.
+const FEATURED_PAGES = [
+  {
+    kind: 'featured',
+    slug: 'free-beats',
+    name: 'Free Reggaeton & Trap Beats',
+    h1: 'Free Reggaeton, Trap & Hip-Hop Beats — Tagged MP3 Previews',
+    intro: 'Free reggaeton, trap, hip-hop & drill beats — tagged MP3 previews to download and demo with. Upgrade to untagged MP3/WAV from $29.99. Instant delivery.',
+    filter: () => true, // every beat has a free tagged preview
+    body: `<h2>What "free tagged MP3 preview" actually means</h2>
+<p>Every beat in the O'Neil Beats catalog has a free downloadable tagged MP3 preview. The "tag" is a producer voice clip ("Prod. by O'Neil") that plays every 30 seconds throughout the beat. The tag is what lets you demo without paying — and what stops you from releasing the song without licensing the untagged version.</p>
+<p>Use the tagged MP3 to: write your topline, record a rough demo on your phone or in your DAW, audition the beat against your voice, share with a producer or A&amp;R for feedback. Don't use it to: release on Spotify, post a finished version on YouTube, sell anywhere, or pitch for sync. Those uses require an untagged license — Lease ($29.99) at minimum.</p>
+<h2>How to get a free reggaeton or trap beat right now</h2>
+<p>Open any beat detail page, hit the "Free Tagged MP3" download. No email required, no credit card, no signup. The file is yours within five seconds. Try the beat against a vocal idea — if it sticks, come back and lease.</p>
+<p>If you want a steady supply: subscribe to the <a href="/#free-signup">Free Beat Friday</a> email. Every Friday, one new beat goes out as a tagged MP3 to subscribers. Cancel anytime. The beats rotate through reggaeton, trap, drill, dancehall, and afrobeats — same range as the full catalog.</p>
+<h2>When you should upgrade from free to paid</h2>
+<p>Three triggers that mean it's time to license:</p>
+<ul>
+  <li><strong>You're putting the song on a DSP</strong> (Spotify, Apple Music, Tidal, Deezer). Tagged MP3s violate platform terms of service for paid distributions. Lease tier ($29.99) covers up to 100K streams.</li>
+  <li><strong>You're posting a finished version on YouTube or TikTok</strong> with monetization on. Same logic — the tag conflicts with monetization rights. Premium Lease ($99.99) covers unlimited streams and includes the WAV.</li>
+  <li><strong>You're pitching the song to a label or sync agency.</strong> Labels and sync agencies won't touch a tagged song. They'll usually require Exclusive rights ($500+) before signing anything.</li>
+</ul>
+<p>For the deeper breakdown of when each license tier is the right call, read <a href="/blog/free-beats-vs-paid-tagged-mp3-explained">Free Beats vs Paid: What Artists Get with the Tagged MP3</a> or the <a href="/blog/lease-vs-exclusive-beat-license-guide">license tier guide</a>.</p>
+<h2>Browse free tagged previews by genre</h2>
+<p>Every beat across every genre has a free tagged MP3:</p>
+<ul>
+  <li><a href="/reggaeton-beats">Free Reggaeton Beats</a> — modern reggaeton, perreo, dembow, old-school</li>
+  <li><a href="/trap-beats">Free Trap Beats</a> — Latin trap, dark trap, melodic trap</li>
+  <li><a href="/hip-hop-beats">Free Hip-Hop Beats</a> — boom bap, lo-fi, East Coast, West Coast</li>
+  <li><a href="/drill-beats">Free Drill Beats</a> — UK drill, NY drill, Chicago drill</li>
+  <li><a href="/perreo-beats">Free Perreo Beats</a></li>
+  <li><a href="/dark-trap-beats">Free Dark Trap Beats</a></li>
+</ul>
+<h2>Why most "free beats" online are scams or junk</h2>
+<p>Search "free reggaeton beats" on Google and you'll get thousands of results. Most are: (1) scraped beats producers never authorized for free distribution, (2) AI-generated slop with no producer attached, (3) free downloads that lock behind email opt-ins to platforms that resell your address, or (4) outdated demo links that 404. The clean alternative is to download from active producers directly. <a href="/blog/how-to-find-free-beats-2026-and-why-demos-matter">Full guide on finding legit free beats in 2026</a>.</p>
+<h2>The producer behind these beats</h2>
+<p>Every beat in this catalog is produced by O'Neil — independent reggaeton, trap, and hip-hop producer. Each beat is mixed and mastered before it hits the catalog. New tagged previews drop weekly. The free section is the front door; licensing is what funds the next batch.</p>
+<p>Spanish-speaking artists: la versión en español de esta página es <a href="/comprar-beats-de-reggaeton">Comprar beats de reggaeton</a>.</p>`,
+  },
+];
+
 // Genre/subgenre/mood landing pages — auto-derived from catalog data.
 // Returns an array of { slug, name, intro, filter } configs based on what's in
 // the actual beats list. Skips any bucket with fewer than 2 matching beats
@@ -965,7 +1009,7 @@ function getAllLandingPages(beats) {
     filter: t.filter,
     artist: t.artist,
   }));
-  return [...typeBeats, ...deriveLandingPages(beats)];
+  return [...typeBeats, ...FEATURED_PAGES, ...deriveLandingPages(beats)];
 }
 
 // ── Spanish landing pages — bilingual SEO ──
@@ -1420,4 +1464,4 @@ if (require.main === module) {
   main().catch(e => { console.error('[build-beat-pages] FATAL', e); process.exit(0); /* don't fail build */ });
 }
 
-module.exports = { slugify, shortId, beatSlug, renderBeatPage, beatJsonLd, renderLandingPage, getAllLandingPages, TYPE_BEAT_ARTISTS, BLOG_POSTS, renderBlogPost, renderBlogIndex, SPANISH_LANDING_PAGES, renderSpanishLandingPage };
+module.exports = { slugify, shortId, beatSlug, renderBeatPage, beatJsonLd, renderLandingPage, getAllLandingPages, TYPE_BEAT_ARTISTS, FEATURED_PAGES, BLOG_POSTS, renderBlogPost, renderBlogIndex, SPANISH_LANDING_PAGES, renderSpanishLandingPage };
