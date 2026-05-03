@@ -55,6 +55,31 @@ function esc(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// ── Related-beat scoring ────────────────────────────────────────────────────
+// Picks the N highest-scoring related beats for a given beat, weighted by
+// matching genre / subgenre / mood / BPM / key. Used to populate the "Related
+// Beats" section in the crawler block — gives Google more internal links
+// between same-genre pages, and helps the site's crawl depth.
+function findRelatedBeats(beat, allBeats, n = 4) {
+  if (!Array.isArray(allBeats) || !allBeats.length) return [];
+  const score = (b) => {
+    if (!b || b.id === beat.id) return -1;
+    let s = 0;
+    if (b.genre && b.genre === beat.genre) s += 3;
+    if (b.subgenre && b.subgenre === beat.subgenre) s += 2;
+    if (b.mood && b.mood === beat.mood) s += 1;
+    if (b.bpm && beat.bpm && Math.abs(Number(b.bpm) - Number(beat.bpm)) <= 5) s += 1;
+    if (b.key && b.key === beat.key) s += 0.5;
+    return s;
+  };
+  return allBeats
+    .map(b => ({ b, s: score(b) }))
+    .filter(x => x.s > 0)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, n)
+    .map(x => x.b);
+}
+
 // ── Build per-beat <title>, description, schema ────────────────────────────
 function beatTitleTag(beat) {
   // SERP-trimmed: keep beat title + genre + BPM/key + brand under ~60 chars.
@@ -161,7 +186,7 @@ function beatJsonLd(beat, slug) {
 // ── Template injection ──────────────────────────────────────────────────────
 // Replace the homepage's SEO-critical <head> tags with beat-specific values.
 // Uses anchored regex matches so the rest of index.html is preserved verbatim.
-function renderBeatPage(template, beat, slug) {
+function renderBeatPage(template, beat, slug, allBeats = []) {
   const url = `${SITE_URL}/beat/${slug}`;
   const titleTag = beatTitleTag(beat);
   const descTag  = beatDescription(beat);
@@ -238,7 +263,8 @@ function renderBeatPage(template, beat, slug) {
   // Add a hidden <h1> + structured beat content visible to crawlers (and screen
   // readers) without disrupting the SPA's visual design. The SPA's grid renders
   // over this, so users see the normal homepage; crawlers see the beat content.
-  const crawlerBlock = renderCrawlerBlock(beat, slug, url);
+  const related = findRelatedBeats(beat, allBeats, 4);
+  const crawlerBlock = renderCrawlerBlock(beat, slug, url, related);
   html = html.replace(/<body([^>]*)>/i, `<body$1>${crawlerBlock}`);
 
   // Demote the homepage hero H1 to H2 — beat pages already supply their own H1
@@ -890,6 +916,38 @@ const TYPE_BEAT_ARTISTS = [
 const FEATURED_PAGES = [
   {
     kind: 'featured',
+    slug: 'beats',
+    name: 'All Beats',
+    metaTitle: "Browse All Beats — Reggaeton, Trap & Hip-Hop | O'Neil Beats",
+    h1: 'Browse All Beats — The Full O\'Neil Beats Catalog',
+    intro: "Every reggaeton, trap, hip-hop, drill, dancehall and afrobeats instrumental in the O'Neil Beats catalog. Lease MP3/WAV from $29.99 with instant delivery.",
+    filter: () => true,
+    body: `<h2>How the catalog is organized</h2>
+<p>This page lists every active instrumental in the O'Neil Beats store right now. New beats drop weekly across the full reggaeton/trap/hip-hop range. Each beat detail page has a free tagged MP3 preview, a license selector (Lease, Premium Lease, Stems, Exclusive), and an offer slider for negotiated exclusive deals.</p>
+<h2>Browse by genre</h2>
+<ul>
+  <li><a href="/reggaeton-beats">Reggaeton Beats</a> — modern reggaeton, perreo, dembow, old-school dembow, reggaeton-pop</li>
+  <li><a href="/trap-beats">Trap Beats</a> — Latin trap, dark trap, melodic trap</li>
+  <li><a href="/hip-hop-beats">Hip-Hop Beats</a> — boom bap, lo-fi, East Coast, West Coast, 90s</li>
+  <li><a href="/drill-beats">Drill Beats</a> — UK drill, NY drill, Chicago drill</li>
+  <li><a href="/dark-trap-beats">Dark Trap Beats</a> · <a href="/perreo-beats">Perreo Beats</a> · <a href="/modern-reggaeton-beats">Modern Reggaeton</a></li>
+</ul>
+<h2>Browse by artist (type beats)</h2>
+<p>Pick by the artist whose lane fits your vocal: <a href="/bad-bunny-type-beat">Bad Bunny</a>, <a href="/feid-type-beat">Feid</a>, <a href="/rauw-alejandro-type-beat">Rauw Alejandro</a>, <a href="/karol-g-type-beat">Karol G</a>, <a href="/anuel-type-beat">Anuel</a>, <a href="/daddy-yankee-type-beat">Daddy Yankee</a>, <a href="/don-omar-type-beat">Don Omar</a>, <a href="/j-balvin-type-beat">J Balvin</a>, <a href="/ozuna-type-beat">Ozuna</a>, <a href="/myke-towers-type-beat">Myke Towers</a>, <a href="/peso-pluma-type-beat">Peso Pluma</a>, <a href="/future-type-beat">Future</a>, <a href="/lil-baby-type-beat">Lil Baby</a>, <a href="/metro-boomin-type-beat">Metro Boomin</a>, <a href="/southside-type-beat">Southside</a>, <a href="/j-cole-type-beat">J Cole</a>, <a href="/drake-type-beat">Drake</a>.</p>
+<h2>License tiers, briefly</h2>
+<ul>
+  <li><strong>Lease ($29.99)</strong> — MP3, non-exclusive, up to 100K streams. Right answer for most artists, most songs.</li>
+  <li><strong>Premium Lease ($99.99)</strong> — MP3 + WAV, unlimited streams, radio rights. Right answer for songs you actually believe in.</li>
+  <li><strong>Stems ($199.99)</strong> — All separated tracks (drums, melody, bass, 808s) for full mix control.</li>
+  <li><strong>Exclusive ($500+)</strong> — You own the beat outright; it's removed from the store. Negotiable price slider on every beat page.</li>
+</ul>
+<p>Full breakdown: <a href="/blog/lease-vs-exclusive-beat-license-guide">Lease vs Exclusive vs Stems</a>.</p>
+<h2>Free tagged MP3 previews</h2>
+<p>Every beat in the catalog has a free tagged MP3 preview. Use it to demo, write your topline, audition the beat against your voice. When you're ready to release, license. <a href="/free-beats">All free tagged previews →</a></p>
+<p>Spanish: <a href="/comprar-beats-de-reggaeton">Comprar beats de reggaeton</a> · <a href="/beats-de-perreo">Beats de perreo</a> · <a href="/comprar-beats-de-trap-latino">Beats de trap latino</a>.</p>`,
+  },
+  {
+    kind: 'featured',
     slug: 'free-beats',
     name: 'Free Reggaeton & Trap Beats',
     h1: 'Free Reggaeton, Trap & Hip-Hop Beats — Tagged MP3 Previews',
@@ -1204,7 +1262,9 @@ function renderSpanishLandingPage(template, page, beats) {
 function renderLandingPage(template, page, beats) {
   const matches = beats.filter(b => { try { return page.filter(b); } catch (e) { return false; } });
   const url = `${SITE_URL}/${page.slug}`;
-  const titleTag = `${page.name} ${new Date().getFullYear()} | O'Neil Beats`;
+  // page.metaTitle wins if set (precise SERP control); otherwise auto-generate
+  // from page.name with the year + brand suffix.
+  const titleTag = page.metaTitle || `${page.name} ${new Date().getFullYear()} | O'Neil Beats`;
   // Trim to 155 chars — Google truncates meta description at ~160.
   const descRaw = page.intro.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
   const desc = descRaw.length > 160 ? descRaw.slice(0, 157).trimEnd() + '…' : descRaw;
@@ -1309,9 +1369,31 @@ function renderLandingPage(template, page, beats) {
 }
 
 // Hidden-but-indexable content. .sr-only is already defined in index.html's CSS.
-function renderCrawlerBlock(beat, slug, url) {
+function renderCrawlerBlock(beat, slug, url, related = []) {
   const tags = Array.isArray(beat.tags) ? beat.tags : (typeof beat.tags === 'string' ? beat.tags.split(',') : []);
   const desc = beat.description ? esc(String(beat.description).slice(0, 1500)) : '';
+  // Related-beats list — Google reads this and gets explicit internal links
+  // between same-genre/same-mood pages. Massively improves crawl depth and
+  // gives the topical-cluster signal we currently lack.
+  const relatedHtml = related.length ? `
+  <h2>Related Beats</h2>
+  <ul>
+    ${related.map(b => {
+      const rSlug = beatSlug(b);
+      const rDetail = [b.subgenre || b.genre, b.bpm ? `${b.bpm} BPM` : null, b.key].filter(Boolean).join(' · ');
+      return `<li><a href="${SITE_URL}/beat/${rSlug}">${esc(b.title)}</a>${rDetail ? ` — ${esc(rDetail)}` : ''}</li>`;
+    }).join('')}
+  </ul>` : '';
+  // Genre catalog links — point at real /<genre>-beats landing pages instead
+  // of the homepage hash-anchors that previously linked nowhere useful.
+  const genreSlug = beat.genre ? slugify(beat.genre) + '-beats' : null;
+  const browseLinks = [
+    `<a href="${SITE_URL}/">Browse all beats</a>`,
+    genreSlug ? `<a href="${SITE_URL}/${genreSlug}">${esc(beat.genre)} Beats</a>` : null,
+    `<a href="${SITE_URL}/reggaeton-beats">Reggaeton</a>`,
+    `<a href="${SITE_URL}/trap-beats">Trap</a>`,
+    `<a href="${SITE_URL}/free-beats">Free Beats</a>`,
+  ].filter(Boolean).join(' · ');
   return `
 <div class="sr-only" aria-hidden="false">
   <h1>${esc(beat.title)} — ${esc(beat.genre || 'Rap')} Type Beat ${beat.bpm ? esc(beat.bpm) + ' BPM' : ''} ${esc(beat.key || '')}</h1>
@@ -1328,8 +1410,8 @@ function renderCrawlerBlock(beat, slug, url) {
     ${beat.stems_price ? `<li>Stems / Track Out: $${esc(beat.stems_price)}</li>` : ''}
     ${beat.exclusive_price ? `<li>Exclusive Rights starting from: $${esc(beat.exclusive_price)}</li>` : ''}
   </ul>
-  ${tags.length ? `<p>Tags: ${tags.map(t => esc(String(t).trim())).filter(Boolean).join(', ')}</p>` : ''}
-  <p><a href="${SITE_URL}/">Browse all beats</a> · <a href="${SITE_URL}/#catalog">Reggaeton</a> · <a href="${SITE_URL}/#catalog">Trap</a> · <a href="${SITE_URL}/#catalog">Drill</a></p>
+  ${tags.length ? `<p>Tags: ${tags.map(t => esc(String(t).trim())).filter(Boolean).join(', ')}</p>` : ''}${relatedHtml}
+  <p>${browseLinks}</p>
 </div>`;
 }
 
@@ -1403,7 +1485,8 @@ async function main() {
   let written = 0;
   for (const beat of beats) {
     const slug = beatSlug(beat);
-    const html = renderBeatPage(template, beat, slug);
+    // Pass the full beats array so each page can compute its 4 related beats.
+    const html = renderBeatPage(template, beat, slug, beats);
     const outPath = path.join(OUT_DIR, slug + '.html');
     fs.writeFileSync(outPath, html, 'utf8');
     written++;
