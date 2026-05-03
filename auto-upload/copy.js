@@ -236,6 +236,21 @@ function buildYouTubeDescription(beat, narrative) {
     .map(t => '#' + t.replace(/[^a-z0-9]+/g, ''))
     .join(' ');
 
+  // "Explore more" deep-links to other site sections — pushes YouTube viewers
+  // into the genre catalog, free-beats landing, and the license-guide blog.
+  // YouTube's algorithm reads description URLs to associate the video with the
+  // domain's other content; this strengthens topical clustering. Each link
+  // also doubles as a domain-authority backlink earned per upload.
+  const genreSlug = _slugify(beat.beat_genre || beat.genre || 'reggaeton');
+  const exploreLines = [
+    `🎼 MORE FROM O'NEIL BEATS`,
+    `▸ Free tagged beats: ${cfg.STORE_URL}/free-beats`,
+    `▸ ${genre || 'Reggaeton'} catalog: ${cfg.STORE_URL}/${genreSlug}-beats`,
+    `▸ Browse all beats: ${cfg.STORE_URL}/beats`,
+    `▸ Lease vs Exclusive guide: ${cfg.STORE_URL}/blog/lease-vs-exclusive-beat-license-guide`,
+    `▸ Free Beat Friday email: ${cfg.STORE_URL}/#free-signup`,
+  ].join('\n');
+
   const lines = [
     `🔥 Download this beat: ${beatStoreUrl(beat)}`,
     ``,
@@ -254,6 +269,8 @@ function buildYouTubeDescription(beat, narrative) {
     `▸ Instagram: @oneilbeats`,
     `▸ TikTok: @oneilbeats`,
     `━━━━━━━━━━━━━━━━━━━━━━━`,
+    ``,
+    exploreLines,
     ``,
     related ? `🔎 Related searches:\n${related}\n` : '',
     `Tags:`,
