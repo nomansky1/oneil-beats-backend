@@ -8,6 +8,7 @@ const path = require('path');
 const {
   renderBeatPage, renderLandingPage, renderSpanishLandingPage,
   renderBlogPost, renderBlogIndex, BLOG_POSTS, SPANISH_LANDING_PAGES,
+  FEATURED_PAGES,
 } = require('./build-beat-pages.js');
 
 const TEMPLATE = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
@@ -78,12 +79,14 @@ const enLandingHtml    = renderLandingPage(TEMPLATE, mockEnPage, [mockBeat]);
 const esLandingHtml    = renderSpanishLandingPage(TEMPLATE, SPANISH_LANDING_PAGES[0], [mockBeat]);
 const blogPostHtml     = renderBlogPost(TEMPLATE, BLOG_POSTS[0]);
 const blogIndexHtml    = renderBlogIndex(TEMPLATE);
+const freeBeatsHtml    = renderLandingPage(TEMPLATE, FEATURED_PAGES.find(p => p.slug === 'free-beats'), [mockBeat]);
 
 const r1 = audit('Beat page (Luna)',                       beatHtml);
 const r2 = audit('English landing (reggaeton-beats)',      enLandingHtml);
 const r3 = audit(`Spanish landing (${SPANISH_LANDING_PAGES[0].slug})`, esLandingHtml);
 const r4 = audit(`Blog post (${BLOG_POSTS[0].slug})`,       blogPostHtml);
 const r5 = audit('Blog index',                              blogIndexHtml);
+const r6 = audit('Featured page (/free-beats)',            freeBeatsHtml);
 
 console.log('\n' + COLOR.yellow('Hreflang report'));
 console.log(`  Beat page:    ${r1.hreflangCount} (expected 0)  → ${r1.hreflangs.join(' ') || 'none'}`);
@@ -91,9 +94,10 @@ console.log(`  EN landing:   ${r2.hreflangCount} (expected 0)  → ${r2.hreflang
 console.log(`  ES landing:   ${r3.hreflangCount} (expected 3)  → ${r3.hreflangs.length ? r3.hreflangs.join('\n                ') : 'none'}`);
 console.log(`  Blog post:    ${r4.hreflangCount} (expected 0)  → ${r4.hreflangs.join(' ') || 'none'}`);
 console.log(`  Blog index:   ${r5.hreflangCount} (expected 0)  → ${r5.hreflangs.join(' ') || 'none'}`);
+console.log(`  /free-beats:  ${r6.hreflangCount} (expected 0)  → ${r6.hreflangs.join(' ') || 'none'}`);
 
 console.log('\n' + COLOR.yellow('Summary'));
-const all = [r1, r2, r3, r4, r5];
+const all = [r1, r2, r3, r4, r5, r6];
 const passed = all.filter(r => r.allOk).length;
 console.log(`  ${passed}/${all.length} renderers pass all SEO checks`);
 process.exit(passed === all.length ? 0 : 1);
