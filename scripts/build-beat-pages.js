@@ -976,7 +976,7 @@ const FEATURED_PAGES = [
 <h2>How I scale the catalog (the AI question)</h2>
 <p>Yes, I use AI tools as part of my workflow. I think being honest about that is more interesting than pretending otherwise — see <a href="/how-its-made">How It's Made</a> for the full breakdown. The short version: AI helps me explore composition ideas faster, but every beat is mixed and mastered by hand, and nothing ships until I'd be willing to put a song over it myself.</p>
 <h2>Custom beats &amp; collaborations</h2>
-<p>Need a beat that's not in the catalog? <a href="mailto:produceroneil@gmail.com?subject=Custom%20beat%20request">Email me</a>. Fast turnaround, fair price.</p>
+<p>Need a beat that's not in the catalog? Go to <a href="/custom-beat">Custom Beat</a> for fast-turnaround orders, or <a href="mailto:produceroneil@gmail.com?subject=Custom%20beat%20request">email me</a> directly.</p>
 <h2>Connect</h2>
 <p>Catalog updates and Free Beat Friday emails: <a href="/#free-signup">subscribe here</a>. Direct contact: <a href="mailto:produceroneil@gmail.com">produceroneil@gmail.com</a>.</p>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Person","name":"Nelson Rios","alternateName":"O'Neil","jobTitle":"Music Producer","description":"Independent producer of reggaeton, trap, hip-hop, drill and Latin instrumentals. Founder of O'Neil Beats.","url":"https://oneilbeats.store/about","email":"produceroneil@gmail.com","worksFor":{"@type":"Organization","name":"O'Neil Beats","url":"https://oneilbeats.store"},"sameAs":["https://oneilbeats.store","https://www.instagram.com/oneilbeats","https://twitter.com/oneilbeats","https://www.youtube.com/@oneilbeats"]}</script>`,
@@ -1027,6 +1027,56 @@ const FEATURED_PAGES = [
   <li>Every exclusive offer is reviewed and accepted/countered manually.</li>
 </ul>
 <p>Catalog: <a href="/browse-beats">browse all beats</a> · <a href="/free-beats">free tagged previews</a> · <a href="/about">more about O'Neil</a></p>`,
+  },
+  {
+    // /custom-beat — paid product page for fast-turnaround custom beats. The
+    // AI-assisted workflow makes 24-48h turnaround at $99 economically viable
+    // where pure-human producers charge $300+ with 1-2 week turnaround. v1
+    // uses a pre-filled mailto for intake; a real form-backed flow can replace
+    // it later without changing the URL.
+    kind: 'featured',
+    slug: 'custom-beat',
+    name: 'Custom Beat',
+    metaTitle: "Custom Beat in 24-48h — $99 Reggaeton, Trap & Hip-Hop | O'Neil",
+    h1: 'Custom Beat in 24-48 Hours — $99',
+    intro: "Need a beat that's not in the catalog? I'll produce a custom reggaeton, trap, hip-hop, drill or Latin instrumental from your reference track in 24-48 hours. From $99.",
+    filter: () => false,
+    informational: true,
+    body: `<h2>What you get</h2>
+<ul>
+  <li><strong>One custom beat</strong> built to your reference track + brief.</li>
+  <li><strong>Mixed and mastered</strong> studio-quality (FL Studio + iZotope Ozone).</li>
+  <li><strong>Untagged WAV + MP3</strong> delivered by email within 24-48 hours.</li>
+  <li><strong>Premium Lease license included</strong> — unlimited streams on Spotify, Apple Music, YouTube. Radio rights. Producer credit required ("Prod. by O'Neil").</li>
+  <li><strong>One round of revisions</strong> at no extra cost (BPM swap, drum tweak, melody adjustment).</li>
+</ul>
+<h2>Pricing</h2>
+<ul>
+  <li><strong>Custom Beat — $99.</strong> Premium Lease license bundled. The standard offer.</li>
+  <li><strong>Custom Beat + Stems — $199.</strong> Adds separated stems for full mix control.</li>
+  <li><strong>Custom Beat + Exclusive — $499+.</strong> You own the beat outright. No producer credit required.</li>
+</ul>
+<h2>How it works</h2>
+<ol>
+  <li><strong>Send your brief.</strong> Genre, BPM (or "match this song's tempo"), key, mood, and a YouTube/Spotify reference track. Click the button below — opens a pre-filled email.</li>
+  <li><strong>I confirm + Stripe-invoice you</strong> within a few hours. Beat starts after payment.</li>
+  <li><strong>Production: 24-48 hours.</strong> AI-assisted composition matching your reference; I arrange, mix, master, and QC by ear. <a href="/how-its-made">How my workflow actually works</a>.</li>
+  <li><strong>Delivery email.</strong> Untagged WAV + MP3 + license PDF.</li>
+</ol>
+<h2>Why this exists (and why it's $99)</h2>
+<p>Most producers selling custom beats charge $300-1000 because they're working from scratch on every order. My workflow uses AI for composition exploration, which lets me deliver custom beats at lease-tier quality without lease-tier compromise. You get studio-quality output at indie-artist pricing. If you don't love the result after the revision round, full refund. No questions, no ego.</p>
+<h2>Common turnaround examples</h2>
+<ul>
+  <li>Modern reggaeton, ~95 BPM, like Feid "Classy 101" → 18-30 hours typical</li>
+  <li>Dark trap, 140 BPM, like Future "Mask Off" → 24-36 hours typical</li>
+  <li>Boom bap, 90 BPM, J Cole vibe → 24-48 hours typical</li>
+  <li>Latin trap × afrobeats fusion, 100 BPM → 36-48 hours typical</li>
+</ul>
+<h2>Request a custom beat</h2>
+<p>Click the button — opens an email pre-filled with the fields I need. Reply with your reference track, I'll confirm pricing and timeline within hours.</p>
+<p style="margin:24px 0"><a href="mailto:produceroneil@gmail.com?subject=Custom%20beat%20request&amp;body=Hey%20O'Neil%2C%20I'd%20like%20a%20custom%20beat.%0A%0AGenre%3A%20%0ABPM%20%28or%20%22match%20reference%22%29%3A%20%0AKey%3A%20%0AMood%3A%20%0AReference%20track%20%28YouTube%2FSpotify%20link%29%3A%20%0ARelease%20context%20%28what%20you%27re%20using%20it%20for%29%3A%20%0AAdditional%20notes%3A%20%0A%0AThanks%21" style="display:inline-block;background:linear-gradient(135deg,#e63946,#f59e0b);color:#fff;padding:14px 28px;border-radius:10px;font-weight:800;text-decoration:none;font-size:16px">📧 Request Custom Beat — $99</a></p>
+<h2>Or browse the existing catalog first</h2>
+<p>The fastest option is usually a beat already in the catalog. <a href="/browse-beats">Browse all beats</a>, <a href="/free-beats">grab free tagged previews</a>, demo with them — if nothing fits, then come back here.</p>`,
   },
   {
     kind: 'featured',
