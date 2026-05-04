@@ -26,7 +26,11 @@ function int(name, fallback) {
 }
 
 // YouTube-only platform flags. IG + TikTok + Facebook stay off until you flip these on.
-const ENABLE_YOUTUBE   = bool('ENABLE_YOUTUBE',   true);
+const ENABLE_YOUTUBE        = bool('ENABLE_YOUTUBE',        true);
+// Auto-fanout to YouTube Shorts after each longform upload. Renders a 60s
+// 9:16 trim of the same beat and uploads it as a Short. Independent of
+// ENABLE_YOUTUBE — set to false to skip the Shorts companion upload.
+const ENABLE_YOUTUBE_SHORTS = bool('ENABLE_YOUTUBE_SHORTS', true);
 const ENABLE_INSTAGRAM = bool('ENABLE_INSTAGRAM', false);
 const ENABLE_FACEBOOK  = bool('ENABLE_FACEBOOK',  false);
 const ENABLE_TIKTOK    = bool('ENABLE_TIKTOK',    false);
@@ -40,7 +44,7 @@ const YT_REFRESH_TOKEN = ENABLE_YOUTUBE ? (opt('YT_REFRESH_TOKEN') || req('GOOGL
 
 module.exports = {
   // ── Platform switches ─────────────────────────────────────────────────────
-  ENABLE_YOUTUBE, ENABLE_INSTAGRAM, ENABLE_FACEBOOK, ENABLE_TIKTOK,
+  ENABLE_YOUTUBE, ENABLE_YOUTUBE_SHORTS, ENABLE_INSTAGRAM, ENABLE_FACEBOOK, ENABLE_TIKTOK,
 
   // ── Supabase (reuses your existing project) ───────────────────────────────
   SUPABASE_URL:        req('SUPABASE_URL'),

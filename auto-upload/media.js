@@ -245,6 +245,33 @@ async function makeVertical({ beatId, videoPath }) {
   return out;
 }
 
+// ── 3b. MAKE 60s YOUTUBE SHORT (1080x1920, capped at 60s) ────────────────
+// YouTube Shorts must be ≤60s and 9:16. This trims the hooked source video
+// to 60 seconds and applies the same blur-pad vertical treatment as
+// makeVertical. The 3s hook (ONEIL BEATS / oneilbeats.store overlay) is
+// preserved at the start, leaving ~57s of beat — long enough for a hook
+// to land and a chorus to play through. The Short is cached on disk so
+// retries don't re-encode.
+async function makeShort60s({ beatId, videoPath }) {
+  ensureDir(cfg.WORK_DIR);
+  const out = path.join(cfg.WORK_DIR, `${beatId}-short60.mp4`);
+  if (fs.existsSync(out)) return out;
+
+  await run(ffmpegPath, [
+    '-y', '-i', videoPath,
+    '-t', '60', // hard cap at 60 seconds (Shorts limit)
+    '-filter_complex',
+    '[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=40:4[bg];' +
+    '[0:v]scale=1080:-2[fg];' +
+    '[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1[vout]',
+    '-map', '[vout]', '-map', '0:a',
+    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'medium', '-crf', '20',
+    '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart',
+    '-r', '30', out,
+  ]);
+  return out;
+}
+
 // ── 4. THUMBNAIL (1280x720, pure-ffmpeg drawtext/drawbox) ────────────────
 // Produces a high-CTR YouTube thumbnail: album cover on the right rail,
 // blurred+darkened cover as the left background, a big [FREE] badge in the
@@ -370,6 +397,7 @@ module.exports = {
   validateVideo,
   prependHook,
   makeVertical,
+  makeShort60s,
   makeThumbnail,
   downloadToCache,
 };
