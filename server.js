@@ -154,6 +154,26 @@ app.use(cors({
   origin: ['https://oneilbeats.store', 'https://www.oneilbeats.store', /localhost/, /\.vercel\.app$/],
   credentials: true,
 }));
+
+// Baseline security headers — applied to every response. Vercel doesn't
+// inject these by default, so the storefront is otherwise embeddable in any
+// iframe (clickjacking risk) and lacks MIME-sniffing/referrer protections.
+// Kept conservative so the SPA + analytics + Stripe + GA4 keep working:
+//   - X-Frame-Options DENY blocks iframe embedding
+//   - X-Content-Type-Options nosniff blocks MIME-confusion attacks
+//   - Referrer-Policy strict-origin-when-cross-origin protects user privacy
+//     while still letting GA4/Stripe see same-origin paths
+//   - Permissions-Policy disables geolocation/camera/mic the SPA never asks
+//     for, so a future XSS can't request them either.
+// Intentionally NOT enabling CSP yet — the SPA loads from Vercel + Supabase
+// + Stripe + Google + Cloudflare; a too-strict CSP would break checkout.
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=(), payment=(self "https://js.stripe.com")');
+  next();
+});
 // ── Dynamic /sitemap.xml — must be registered BEFORE express.static so it
 // overrides any stale public/sitemap.xml file. Lists every active beat as a
 // per-URL <url> entry, plus the homepage and primary section anchors.
@@ -778,7 +798,7 @@ app.post('/beats/:id/download', async (req, res) => {
 
 app.post('/customer/track', async (req, res) => {
   try {
-    const { userId, action, data } = req.body || {};
+    const { userId, clientId, action, data } = req.body || {};
     if (!action) return res.json({ success: true, skipped: 'no action' });
     try {
       const supabase = getSupabaseClient();
@@ -791,6 +811,39 @@ app.post('/customer/track', async (req, res) => {
     } catch (dbErr) {
       console.warn('customer_events insert skipped:', dbErr.message);
     }
+
+    // GA4 Measurement Protocol forward — fire-and-forget so app event flow
+    // isn't blocked by the round trip to Google. Gated on env so the app
+    // stays functional if the secret hasn't been set yet. The clientId
+    // (anon UUID, persistent per device) is used as GA4's client_id so
+    // returning-user metrics work; userId, when present, becomes user_id.
+    // Param names normalized to GA4-friendly snake_case where possible.
+    const measId = process.env.GA4_MEASUREMENT_ID;
+    const apiSecret = process.env.GA4_API_SECRET;
+    if (measId && apiSecret && clientId) {
+      const cleanParams = {};
+      if (data && typeof data === 'object') {
+        for (const [k, v] of Object.entries(data)) {
+          // GA4 param values must be string/number/bool. Skip arrays/objects
+          // (they'd be silently dropped) — the Supabase row keeps the full data.
+          if (v == null) continue;
+          if (typeof v === 'object') continue;
+          cleanParams[k.slice(0, 40)] = typeof v === 'string' ? v.slice(0, 100) : v;
+        }
+      }
+      const body = JSON.stringify({
+        client_id: String(clientId),
+        ...(userId ? { user_id: String(userId) } : {}),
+        events: [{ name: String(action).slice(0, 40).replace(/[^a-zA-Z0-9_]/g, '_'), params: cleanParams }],
+      });
+      const url = `https://www.google-analytics.com/mp/collect?measurement_id=${encodeURIComponent(measId)}&api_secret=${encodeURIComponent(apiSecret)}`;
+      // Don't await — fire-and-forget. Log the rejection so a misconfigured
+      // secret surfaces in Vercel logs instead of failing silently forever.
+      fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })
+        .then(r => { if (!r.ok) r.text().then(t => console.warn('GA4 MP non-OK:', r.status, t.slice(0, 120))); })
+        .catch(err => console.warn('GA4 MP forward failed:', err.message));
+    }
+
     res.json({ success: true });
   } catch (err) {
     res.json({ success: true, error: err.message });

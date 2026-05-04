@@ -1540,10 +1540,20 @@ function renderLandingPage(template, page, beats) {
   // crawler block above).
   html = html.replace(/<h1\s+class="hero-h1-seo"\s+id="page-h1">([\s\S]*?)<\/h1>/i,
     '<h2 class="hero-h1-seo" id="page-h1">$1</h2>');
-  // Strip inherited broken hreflang. Most English landing pages have no Spanish
-  // mirror; the few that do (pairs declared in SPANISH_LANDING_PAGES.enAlt) get
-  // their hreflang from the Spanish-side renderer instead.
+  // Strip inherited broken hreflang first. Then add reciprocal bilingual
+  // hreflang for the EN landing pages that have a Spanish mirror in
+  // SPANISH_LANDING_PAGES (Google ignores one-way hreflang declarations).
   html = html.replace(/\s*<link\s+rel="alternate"\s+hreflang="(?:en|es|x-default)"[^>]*>/gi, '');
+  const enPath = '/' + page.slug;
+  const esMirror = SPANISH_LANDING_PAGES.find(s => s.enAlt === enPath);
+  if (esMirror) {
+    const esUrl = `${SITE_URL}/${esMirror.slug}`;
+    const reciprocal = `
+<link rel="alternate" hreflang="en" href="${url}">
+<link rel="alternate" hreflang="es" href="${esUrl}">
+<link rel="alternate" hreflang="x-default" href="${url}">`;
+    html = html.replace(/<\/head>/i, reciprocal + '\n</head>');
+  }
 
   return html;
 }
