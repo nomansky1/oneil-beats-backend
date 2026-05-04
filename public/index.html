@@ -9,6 +9,13 @@
 <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
 <meta name="author" content="O'Neil">
 <meta name="theme-color" content="#06060a">
+<!-- Google Analytics 4 — set the content attribute to the GA4 Measurement ID
+     (looks like G-XXXXXXXXXX). Empty content = analytics disabled (the loader
+     at the bottom of <body> no-ops). Get the ID at https://analytics.google.com
+     → Admin → Property → Data streams → Web. Setting it here also activates
+     gtag('event', ...) mirroring inside the track() helper — every existing
+     first-party event ('view_beat', 'play', etc.) reports to GA4 too. -->
+<meta name="ga-measurement-id" content="">
 <link rel="canonical" href="https://oneilbeats.store/">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon.png">
@@ -1986,8 +1993,18 @@ async function lookupOrders() {
 
 function toggleFaq(el) { el.closest('.faq-item').classList.toggle('open'); }
 
+// First-party tracking (always on, writes to /customer/track → customer_events
+// table → /admin/analytics dashboard) PLUS Google Analytics 4 mirror (only if
+// the ga-measurement-id meta tag has a non-empty value — see <head>). The
+// boot script at the bottom of <body> sets up gtag() and loads the GA4
+// library once, then this helper just dispatches every event to both.
 function track(action, data) {
   fetch(`${API}/customer/track`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,data:{...data,source:'web'}})}).catch(()=>{});
+  // Mirror to GA4 if configured. Action becomes the event name; data fields
+  // become event params (GA4 accepts arbitrary custom params per event).
+  if (typeof gtag === 'function') {
+    try { gtag('event', action, data || {}); } catch(e){}
+  }
 }
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -2274,6 +2291,34 @@ async function submitFreeSignup() {
 setView(viewMode);
 loadBeats();
 loadFeaturedFree();
+
+// ───────────── GOOGLE ANALYTICS 4 ─────────────
+// Boots only when the <meta name="ga-measurement-id"> in <head> has a real
+// G-XXXXXXXXXX value. With it empty, the meta is harmless and gtag() never
+// gets defined — the track() bridge just no-ops the GA4 mirror branch.
+//
+// Pageview is automatic on first config call. SPA route changes (when a
+// modal opens or the hash changes) fire an explicit page_view via track()
+// elsewhere, so GA4 sees them as separate views in funnel reports.
+(function bootGA4(){
+  var meta = document.querySelector('meta[name="ga-measurement-id"]');
+  var id = meta && meta.getAttribute('content');
+  if (!id || !/^G-[A-Z0-9]+$/.test(id)) return; // not configured yet — quiet no-op
+  var s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(id);
+  document.head.appendChild(s);
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function(){ window.dataLayer.push(arguments); };
+  gtag('js', new Date());
+  // anonymize_ip + cookieless first-party SameSite=Lax give a privacy-decent
+  // default. send_page_view auto-fires on config — covers the initial /
+  // landing. SPA navigations are reported via track() further up.
+  gtag('config', id, {
+    anonymize_ip: true,
+    send_page_view: true,
+  });
+})();
 </script>
 </body>
 </html>
