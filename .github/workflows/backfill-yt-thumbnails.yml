@@ -1,0 +1,71 @@
+name: backfill youtube thumbnails
+
+# One-shot manual backfill for custom thumbnails on existing YouTube uploads.
+#
+# WHY THIS WORKFLOW (vs. /admin/backfill-yt-thumbnails endpoint): the YouTube
+# OAuth refresh token is set as a GitHub Actions secret, not in Vercel's env.
+# The auto-upload pipeline runs from this same Actions environment so its
+# token is fresh and working. The Vercel-hosted admin endpoint hits
+# `invalid_grant` because Vercel doesn't have the up-to-date token. Running
+# the same scripts/backfill-yt-thumbnails.js module from Actions reuses the
+# auto-upload-tick secrets and Just Works.
+
+on:
+  # Manual trigger only — no schedule. This is a maintenance op, not routine.
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Actually upload thumbnails (false = dry-run preview)'
+        required: true
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+      lookbackDays:
+        description: 'How many days back to scan for missing thumbnails'
+        required: true
+        default: '60'
+        type: string
+
+concurrency:
+  group: backfill-yt-thumbnails
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      # makeThumbnail uses ffmpeg drawtext + dejavu fonts (same dependency
+      # the auto-upload-tick workflow installs).
+      - name: Install ffmpeg + fonts
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run backfill (${{ github.event.inputs.apply == 'true' && 'APPLY' || 'DRY-RUN' }})
+        env:
+          SUPABASE_URL:                 ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY:         ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GOOGLE_OAUTH_CLIENT_ID:       ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET:   ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          GOOGLE_OAUTH_REFRESH_TOKEN:   ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
+          ENABLE_YOUTUBE:               'true'
+          BACKFILL_LOOKBACK_DAYS:       ${{ github.event.inputs.lookbackDays }}
+        run: |
+          if [ "${{ github.event.inputs.apply }}" = "true" ]; then
+            node scripts/backfill-yt-thumbnails.js --apply
+          else
+            node scripts/backfill-yt-thumbnails.js
+          fi
