@@ -194,15 +194,28 @@ async function scheduleDownstream(id, enable = { instagram: true, tiktok: true }
 }
 
 // Cache generated derivatives so a retry doesn't re-run FFmpeg.
-async function saveDerivatives(id, { videoPath, verticalPath, thumbnailPath, albumCoverPath }) {
+async function saveDerivatives(id, { videoPath, verticalPath, thumbnailPath, albumCoverPath, shortPath }) {
   const patch = {};
   if (videoPath)       patch.video_path       = videoPath;
   if (verticalPath)    patch.vertical_path    = verticalPath;
   if (thumbnailPath)   patch.thumbnail_path   = thumbnailPath;
   if (albumCoverPath)  patch.album_cover_path = albumCoverPath;
+  if (shortPath)       patch.short_path       = shortPath;
   if (Object.keys(patch).length === 0) return;
   const { error } = await supabase.from(TABLE).update(patch).eq('id', id);
   if (error) throw new Error(`saveDerivatives failed: ${error.message}`);
+}
+
+// Persist the YouTube Shorts companion upload's id + url. Stored alongside
+// the longform metadata on the same auto_upload_jobs row (one row per beat
+// keeps queries simple — see auto_upload_jobs_shorts.sql migration).
+async function markYouTubeShortPublished(id, { externalId, publicUrl }) {
+  const patch = {
+    youtube_short_id:  externalId || null,
+    youtube_short_url: publicUrl || null,
+  };
+  const { error } = await supabase.from(TABLE).update(patch).eq('id', id);
+  if (error) throw new Error(`markYouTubeShortPublished failed: ${error.message}`);
 }
 
 async function getJob(id) {
@@ -270,6 +283,7 @@ module.exports = {
   markFailure,
   scheduleDownstream,
   saveDerivatives,
+  markYouTubeShortPublished,
   getJob,
   listJobs,
   cancelJob,

@@ -125,6 +125,39 @@ async function tickPlatform(platform) {
       await q.markSuccess(job.id, 'youtube', { externalId, publicUrl });
       notify.notifyPublished('youtube', job, publicUrl);
 
+      // ── YouTube Shorts auto-fanout ──────────────────────────────────────
+      // After the longform succeeds, render a 60s 9:16 trim and upload it as
+      // a separate Short on the same channel. Each beat becomes two YouTube
+      // videos (longform on the home tab, Short in the Shorts feed) which
+      // ~doubles the discovery surface for the same production effort.
+      // Inline (not a separate platform queue) so:
+      //   - one row per beat stays the source of truth
+      //   - we can reuse the just-uploaded longform job's hooked video as the
+      //     trim source — no second render of the hook overlay
+      //   - failure logs but doesn't fail the longform run
+      // Toggleable via ENABLE_YOUTUBE_SHORTS (defaults true). Skipped on
+      // jobs that were already enqueued as is_short=true (Stage 2 callers
+      // that publish Shorts directly).
+      if (cfg.ENABLE_YOUTUBE_SHORTS && !job.is_short) {
+        try {
+          const shortPath = job.short_path && fs.existsSync(job.short_path)
+            ? job.short_path
+            : await media.makeShort60s({ beatId: job.beat_id, videoPath: hookedPath });
+          if (!job.short_path) await q.saveDerivatives(job.id, { shortPath });
+
+          // Build a Short-flavored job copy (different title/description, and
+          // points uploadToYouTube at the trimmed vertical file).
+          const shortJob = { ...job, is_short: true, video_path_hooked: shortPath };
+          const shortRes = await uploadToYouTube(shortJob);
+          await q.markYouTubeShortPublished(job.id, shortRes);
+          notify.log(`shorts fanout published for beat ${job.beat_id}: ${shortRes.publicUrl}`);
+        } catch (e) {
+          // Shorts failure is non-fatal — longform already shipped, IG/TT
+          // still get scheduled below. Logged so the user can spot it.
+          notify.log(`shorts fanout failed for beat ${job.beat_id} (non-fatal): ${e.message}`);
+        }
+      }
+
       // Schedule downstream platforms with the requested stagger — but only
       // for the ones that are enabled. Disabled platforms stay `pending` with
       // scheduled_at=null so they never get claimed (and re-enabling later
