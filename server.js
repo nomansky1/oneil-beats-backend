@@ -798,7 +798,7 @@ app.post('/beats/:id/download', async (req, res) => {
 
 app.post('/customer/track', async (req, res) => {
   try {
-    const { userId, action, data } = req.body || {};
+    const { userId, clientId, action, data } = req.body || {};
     if (!action) return res.json({ success: true, skipped: 'no action' });
     try {
       const supabase = getSupabaseClient();
@@ -811,6 +811,39 @@ app.post('/customer/track', async (req, res) => {
     } catch (dbErr) {
       console.warn('customer_events insert skipped:', dbErr.message);
     }
+
+    // GA4 Measurement Protocol forward — fire-and-forget so app event flow
+    // isn't blocked by the round trip to Google. Gated on env so the app
+    // stays functional if the secret hasn't been set yet. The clientId
+    // (anon UUID, persistent per device) is used as GA4's client_id so
+    // returning-user metrics work; userId, when present, becomes user_id.
+    // Param names normalized to GA4-friendly snake_case where possible.
+    const measId = process.env.GA4_MEASUREMENT_ID;
+    const apiSecret = process.env.GA4_API_SECRET;
+    if (measId && apiSecret && clientId) {
+      const cleanParams = {};
+      if (data && typeof data === 'object') {
+        for (const [k, v] of Object.entries(data)) {
+          // GA4 param values must be string/number/bool. Skip arrays/objects
+          // (they'd be silently dropped) — the Supabase row keeps the full data.
+          if (v == null) continue;
+          if (typeof v === 'object') continue;
+          cleanParams[k.slice(0, 40)] = typeof v === 'string' ? v.slice(0, 100) : v;
+        }
+      }
+      const body = JSON.stringify({
+        client_id: String(clientId),
+        ...(userId ? { user_id: String(userId) } : {}),
+        events: [{ name: String(action).slice(0, 40).replace(/[^a-zA-Z0-9_]/g, '_'), params: cleanParams }],
+      });
+      const url = `https://www.google-analytics.com/mp/collect?measurement_id=${encodeURIComponent(measId)}&api_secret=${encodeURIComponent(apiSecret)}`;
+      // Don't await — fire-and-forget. Log the rejection so a misconfigured
+      // secret surfaces in Vercel logs instead of failing silently forever.
+      fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })
+        .then(r => { if (!r.ok) r.text().then(t => console.warn('GA4 MP non-OK:', r.status, t.slice(0, 120))); })
+        .catch(err => console.warn('GA4 MP forward failed:', err.message));
+    }
+
     res.json({ success: true });
   } catch (err) {
     res.json({ success: true, error: err.message });
