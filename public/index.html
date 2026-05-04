@@ -61,8 +61,19 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
+<script>/* Apply saved theme BEFORE the body renders to avoid a flash of dark mode for light-mode users. */
+(function(){try{var t=localStorage.getItem('theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
+</script>
 <style>
 :root{--bg:#06060a;--surface:#0e0e16;--surface2:#14141f;--surface3:#1c1c2a;--accent:#e63946;--gold:#f59e0b;--purple:#8b5cf6;--green:#10b981;--text:#e2e8f0;--dim:#64748b;--border:rgba(255,255,255,0.07);--radius:14px;--radius-sm:8px;--player-h:80px}
+/* Light theme override — toggled via the profile-menu "Light mode" item.
+   Brand accents (red/gold/purple/green) stay constant; only the neutral
+   backgrounds, text, and borders flip to light values. */
+:root[data-theme="light"]{--bg:#fafafa;--surface:#ffffff;--surface2:#f4f5f7;--surface3:#e7e9ee;--text:#0f172a;--border:rgba(0,0,0,0.08)}
+:root[data-theme="light"] header{background:rgba(255,255,255,.94)}
+:root[data-theme="light"] body{color:var(--text)}
+:root[data-theme="light"] ::-webkit-scrollbar-track{background:var(--bg)}
+:root[data-theme="light"] ::-webkit-scrollbar-thumb{background:#cbd5e1}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{scroll-behavior:smooth}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
@@ -2106,6 +2117,11 @@ function toggleAcctMenu(ev) {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
       My Favorites <span style="margin-left:auto;color:var(--dim);font-size:11px">${favorites.size}</span>
     </a>
+    <button class="acct-menu-item" id="theme-toggle-btn" onclick="toggleTheme(event)">
+      ${document.documentElement.getAttribute('data-theme') === 'light'
+        ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>Dark mode`
+        : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>Light mode`}
+    </button>
     <div class="acct-menu-divider"></div>
     <button class="acct-menu-item" onclick="signOut()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -2117,6 +2133,28 @@ function closeAcctMenu() { document.getElementById('acct-menu').classList.remove
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.acct-wrap')) closeAcctMenu();
 });
+
+// Theme toggle — flips between dark (default, no attribute) and light
+// (data-theme="light" on <html>). Persisted to localStorage so the choice
+// survives reloads. The early-render <head> script reads the same key
+// before paint to avoid a flash of dark mode for light-mode users.
+function toggleTheme(ev) {
+  ev?.stopPropagation();
+  const root = document.documentElement;
+  const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  if (next === 'light') {
+    root.setAttribute('data-theme', 'light');
+    try { localStorage.setItem('theme', 'light'); } catch(e){}
+  } else {
+    root.removeAttribute('data-theme');
+    try { localStorage.removeItem('theme'); } catch(e){}
+  }
+  // Re-render the menu so the icon + label flip without closing the dropdown.
+  if (document.getElementById('acct-menu')?.classList.contains('open')) {
+    closeAcctMenu();
+    toggleAcctMenu(ev);
+  }
+}
 
 function loadMyOrders() {
   if (!currentUser?.email) return;
