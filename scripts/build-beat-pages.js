@@ -952,6 +952,83 @@ const FEATURED_PAGES = [
 <p>Spanish: <a href="/comprar-beats-de-reggaeton">Comprar beats de reggaeton</a> · <a href="/beats-de-perreo">Beats de perreo</a> · <a href="/comprar-beats-de-trap-latino">Beats de trap latino</a>.</p>`,
   },
   {
+    // /about — establishes the Person entity for E-E-A-T (Experience, Expertise,
+    // Authority, Trust). Embedded Person JSON-LD with sameAs links lets Google
+    // tie every beat/blog page (which has byArtist: O'Neil) to a real producer
+    // profile, which compounds into topical authority.
+    kind: 'featured',
+    slug: 'about',
+    name: 'About O\'Neil',
+    metaTitle: "About O'Neil — Independent Reggaeton & Trap Producer",
+    h1: 'About O\'Neil — Independent Reggaeton & Trap Producer',
+    intro: "O'Neil (Nelson Rios) is an independent producer making reggaeton, trap, hip-hop, drill, and Latin instrumentals. Studio-mixed beats for indie artists. Lease from $29.99.",
+    filter: () => false, // no beat list on this page
+    informational: true, // skip catalog scaffolding in renderLandingPage
+    body: `<h2>Who's behind these beats</h2>
+<p>I'm Nelson Rios — known as <strong>O'Neil</strong> in the production world. I've been making beats since 2011, originally under the name Mixbeatsforsale, with placements ranging from independent reggaeton releases to videos that cross a million views on YouTube.</p>
+<p>This catalog is the next chapter — focused entirely on reggaeton, modern Latin, trap, drill, and hip-hop instrumentals built for the artists who can't (yet) drop $500+ on custom production but still want studio-grade sound.</p>
+<h2>Why I built this store</h2>
+<p>Most beat marketplaces are built for the marketplace, not the artist. Generic templates, no producer voice, no curation. I built oneilbeats.store the opposite way: every beat is mine, every license is documented, every preview is a tagged MP3 you can demo on without paying anything.</p>
+<p>If you find a beat that fits your song, you're 60 seconds from owning it — Lease ($29.99), Premium Lease ($99.99), Stems ($199.99), or Exclusive (negotiable on every beat page). Instant delivery. Done.</p>
+<h2>Studio &amp; production</h2>
+<p>Mixed in FL Studio with iZotope Ozone for mastering. Reference tracks lean on Bad Bunny's <em>X 100PRE</em>, Feid's <em>Mor No Le Temas a la Oscuridad</em>, J Cole's <em>2014 Forest Hills Drive</em>, and Future's <em>DS2</em> — different lanes, same standard for low-end translation and vocal-friendly mid space.</p>
+<p>Every beat ships as a clean studio mixdown. Premium Lease unlocks the WAV (uncompressed). Stems give you the individual drums, melody, bass, and 808 layers separated for full mix control.</p>
+<h2>How I scale the catalog (the AI question)</h2>
+<p>Yes, I use AI tools as part of my workflow. I think being honest about that is more interesting than pretending otherwise — see <a href="/how-its-made">How It's Made</a> for the full breakdown. The short version: AI helps me explore composition ideas faster, but every beat is mixed and mastered by hand, and nothing ships until I'd be willing to put a song over it myself.</p>
+<h2>Custom beats &amp; collaborations</h2>
+<p>Need a beat that's not in the catalog? <a href="mailto:produceroneil@gmail.com?subject=Custom%20beat%20request">Email me</a>. Fast turnaround, fair price.</p>
+<h2>Connect</h2>
+<p>Catalog updates and Free Beat Friday emails: <a href="/#free-signup">subscribe here</a>. Direct contact: <a href="mailto:produceroneil@gmail.com">produceroneil@gmail.com</a>.</p>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Person","name":"Nelson Rios","alternateName":"O'Neil","jobTitle":"Music Producer","description":"Independent producer of reggaeton, trap, hip-hop, drill and Latin instrumentals. Founder of O'Neil Beats.","url":"https://oneilbeats.store/about","email":"produceroneil@gmail.com","worksFor":{"@type":"Organization","name":"O'Neil Beats","url":"https://oneilbeats.store"},"sameAs":["https://oneilbeats.store","https://www.instagram.com/oneilbeats","https://twitter.com/oneilbeats","https://www.youtube.com/@oneilbeats"]}</script>`,
+  },
+  {
+    // /how-its-made — AI-disclosure transparency page. Turns the "is this AI?"
+    // question from a liability into a USP. Core argument: AI for composition
+    // exploration, human for mixing/mastering/QC. Sets honest expectations and
+    // differentiates from both pure-AI sites and pure-human producers.
+    kind: 'featured',
+    slug: 'how-its-made',
+    name: 'How It\'s Made',
+    metaTitle: "How O'Neil Beats Are Made — AI-Assisted, Studio-Mixed",
+    h1: 'How These Beats Are Made — AI Composition, Human Mix &amp; Master',
+    intro: "An honest breakdown of the workflow behind O'Neil Beats: AI for composition exploration, human for arrangement, mixing, mastering, and quality control. No black-box claims.",
+    filter: () => false,
+    informational: true,
+    body: `<h2>The honest answer first</h2>
+<p>I use AI as part of the production workflow. Every beat in the catalog goes through human-controlled arrangement, mixing, mastering, and quality review before it ever hits the store. Nothing ships untouched. Here's the actual breakdown.</p>
+<h2>What the AI does</h2>
+<ul>
+  <li><strong>Composition exploration.</strong> Given a genre, BPM, key, and mood prompt, the AI generates candidate progressions, melody motifs, and drum patterns. Most are throwaways. The 1 in 20 that has something I can build on is where the beat starts.</li>
+  <li><strong>Reference matching.</strong> When I want a "Bad Bunny modern reggaeton, but in F minor at 95 BPM" feel, the AI helps land in that pocket faster than starting from a blank session would.</li>
+  <li><strong>Stem generation.</strong> Drums, bass, melody, and pads come out as separate audio layers I can re-balance, swap, or rebuild.</li>
+</ul>
+<h2>What I do (the human part)</h2>
+<ul>
+  <li><strong>Arrangement.</strong> Verse-hook structure, drops, transitions, ear candy — that's all me. AI gives me material; arrangement turns material into a song.</li>
+  <li><strong>Sound replacement.</strong> Drum hits, 808s, snares — I swap a lot of the AI-generated sounds for samples I've curated over years. The signature low-end weight on these beats comes from sounds that pre-date the AI tools.</li>
+  <li><strong>Mixing.</strong> Every beat is mixed by ear in FL Studio. EQ, compression, sidechain, automation, stereo width — all manual. This is where studio-quality vs. "AI demo quality" actually diverges.</li>
+  <li><strong>Mastering.</strong> iZotope Ozone with reference tracks for the genre. Loudness, tonal balance, headroom — engineered to translate from AirPods to a club system.</li>
+  <li><strong>QC.</strong> If I wouldn't put a song over it, it doesn't go in the store. About 60% of what I generate gets cut.</li>
+</ul>
+<h2>Why this matters for you</h2>
+<ul>
+  <li><strong>Speed.</strong> I can ship 20-50 beats a month at studio quality. A pure-human producer ships 4-8. The AI-assisted workflow is the only way an indie producer can fill a catalog this wide without raising prices to $500+/beat.</li>
+  <li><strong>Price.</strong> Lease tier stays at $29.99 because the unit economics work. If you find a beat you like, you don't need a label budget to license it.</li>
+  <li><strong>Originality.</strong> Every beat is unique to the catalog. You won't find the same instrumental on a free-beat aggregator or a competing store. The AI generates raw material; the arrangement, mix, and master make it specific.</li>
+  <li><strong>Transparency.</strong> Most stores selling AI-assisted beats don't say so. I do — because the disclosure is a feature, not a bug. You know what you're buying.</li>
+</ul>
+<h2>The "is this just AI slop?" question</h2>
+<p>Fair question. Two practical tests: (1) preview any beat for free as a tagged MP3, and (2) compare the mix to whatever else you'd lease at $29.99. The 808s hit, the high-end translates on phone speakers, and the drum bus has the loudness modern reggaeton demands. If a beat fails either test, don't buy it. If it passes, that's the answer.</p>
+<h2>What's NOT AI on this site</h2>
+<ul>
+  <li>Every license PDF is a real contract I've reviewed.</li>
+  <li>Every email reply is from me (Nelson, the producer).</li>
+  <li>Every blog post on this site is written by me — including this page.</li>
+  <li>Every exclusive offer is reviewed and accepted/countered manually.</li>
+</ul>
+<p>Catalog: <a href="/browse-beats">browse all beats</a> · <a href="/free-beats">free tagged previews</a> · <a href="/about">more about O'Neil</a></p>`,
+  },
+  {
     kind: 'featured',
     slug: 'free-beats',
     name: 'Free Reggaeton & Trap Beats',
@@ -1350,12 +1427,23 @@ function renderLandingPage(template, page, beats) {
   const ldBlock = `<script type="application/ld+json" data-landing="${esc(page.slug)}">${JSON.stringify(collectionLd)}</script>`;
   html = html.replace(/<\/head>/i, ldBlock + '</head>');
 
-  // Crawler-visible content block — H1, intro, beat list, internal links
+  // Crawler-visible content block — H1, intro, beat list, internal links.
+  // Informational pages (page.informational === true) skip the catalog
+  // scaffolding — no "Available <X>" header, no beat list, no licensing
+  // footer. Just H1 + intro + body. Useful for /about, /how-its-made,
+  // /custom-beat, etc., where the body IS the content.
   const beatListHtml = matches.length
     ? `<ul>${matches.map(b => `<li><a href="${SITE_URL}/beat/${beatSlug(b)}">${esc(b.title)}</a> — ${esc(b.subgenre || b.genre || 'beat')}${b.bpm ? ', ' + esc(b.bpm) + ' BPM' : ''}${b.key ? ', ' + esc(b.key) : ''}</li>`).join('')}</ul>`
     : `<p>No exact matches in stock right now. <a href="mailto:produceroneil@gmail.com?subject=${encodeURIComponent('Custom ' + page.name + ' request')}">Email O'Neil</a> for a custom drop, or <a href="${SITE_URL}/">browse the full catalog</a>.</p>`;
 
-  const crawlerBlock = `
+  const crawlerBlock = page.informational
+    ? `
+<div class="sr-only" aria-hidden="false">
+  <h1>${esc(page.h1)}</h1>
+  <p>${esc(page.intro)}</p>
+  ${page.body || ''}
+</div>`
+    : `
 <div class="sr-only" aria-hidden="false">
   <h1>${esc(page.h1)}</h1>
   <p>${esc(page.intro)}</p>
