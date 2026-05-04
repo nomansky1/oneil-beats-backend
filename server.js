@@ -350,6 +350,38 @@ app.get('/health', async (req, res) => {
 //       this repo). Set in Vercel project env settings.
 // Rate: GitHub Actions repository_dispatch is unlimited; minute budget is the
 //       2000-min/month free tier on private repos (~30 hours total).
+// /admin/backfill-yt-thumbnails — backfills custom thumbnails on existing
+// YouTube uploads. The auto-upload pipeline marks thumbnail-generation as
+// non-fatal so videos sometimes publish with YouTube's auto-picked frame
+// instead of the templated thumbnail. This endpoint lists recent videos
+// missing the maxres (custom) thumbnail, matches each back to a beat in
+// the catalog, regenerates via media.makeThumbnail, and uploads via
+// yt.thumbnails.set.
+//
+// Local dev's GOOGLE_OAUTH_REFRESH_TOKEN is often stale — running this on
+// production (Vercel) is the reliable path since the live pipeline already
+// uses these credentials successfully.
+//
+// Query params:
+//   apply=1            — actually upload (default is dry-run preview)
+//   lookbackDays=N     — how far back to scan (default 60)
+//
+// Returns: { fixed, skipped, errored, items: [...] }
+app.post('/admin/backfill-yt-thumbnails', requireAdminKey, async (req, res) => {
+  try {
+    const apply = req.query.apply === '1' || req.body?.apply === true;
+    const lookbackDays = parseInt(req.query.lookbackDays || req.body?.lookbackDays || '60', 10);
+    const { runBackfill } = require('./scripts/backfill-yt-thumbnails');
+    const lines = [];
+    const log = (line) => { lines.push(line); console.log(line); };
+    const result = await runBackfill({ apply, lookbackDays, log });
+    res.json({ ok: true, ...result, log: lines });
+  } catch (err) {
+    console.error('[admin/backfill-yt-thumbnails]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.post('/admin/cloud-render', requireAdminKey, async (req, res) => {
   try {
     const { jobId, inputPrefix, outputKey } = req.body || {};
