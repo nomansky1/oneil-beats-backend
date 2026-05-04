@@ -1033,6 +1033,36 @@ function deriveLandingPages(beats) {
     });
   }
 
+  // BPM × Genre clusters — programmatic long-tail SEO. Targets queries like
+  // "reggaeton type beat 95 bpm" and "trap beat 140 bpm". These are very
+  // low-competition (most stores ignore BPM-specific landings) but real
+  // search volume from producers picking beats by tempo. Each cluster is
+  // centered on a 5-BPM mark and matches beats within ±4 BPM (so 95 BPM
+  // covers 91-99). Only emits when ≥2 beats fall in the cluster.
+  const bpmCenters = [70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160];
+  const bpmByGenre = {};
+  for (const b of beats) {
+    const g = (b.genre || '').trim();
+    const bpm = parseInt(b.bpm, 10);
+    if (!g || !bpm || !Number.isFinite(bpm)) continue;
+    (bpmByGenre[g] = bpmByGenre[g] || []).push({ bpm, b });
+  }
+  for (const [genre, items] of Object.entries(bpmByGenre)) {
+    for (const center of bpmCenters) {
+      const matches = items.filter(x => Math.abs(x.bpm - center) <= 4);
+      if (matches.length < 2) continue;
+      const slug = `${slugify(genre)}-beats-${center}-bpm`;
+      pages.push({
+        kind: 'bpm-genre',
+        slug,
+        name: `${genre} Beats ${center} BPM`,
+        h1: `${genre} Type Beats at ${center} BPM — ${matches.length}+ Instrumentals`,
+        intro: `${matches.length} ${genre.toLowerCase()} type beats around ${center} BPM at O'Neil Beats. Tempo-matched ${genre.toLowerCase()} instrumentals — modern, perreo, dembow, and Latin trap variations all in the ${center}-BPM pocket. Lease from $29.99 with instant MP3/WAV delivery.`,
+        filter: (b) => (b.genre || '').trim() === genre && Math.abs(parseInt(b.bpm, 10) - center) <= 4,
+      });
+    }
+  }
+
   // Mood × Genre combos (only for the dominant genre)
   const moodGenre = {};
   for (const b of beats) {
@@ -1341,9 +1371,16 @@ function renderLandingPage(template, page, beats) {
   // hydrates, set the search input value to a query that matches this landing
   // page's beats. The simplest signal that always exists in tags is the genre
   // or subgenre name.
-  const searchSeed = page.kind === 'genre' || page.kind === 'subgenre' || page.kind === 'mood-genre'
-    ? page.name.replace(/\s+Beats$/i, '')
-    : (page.artist || '');
+  // searchSeed pre-filters the SPA's grid via the existing search input. For
+  // bpm-genre pages we strip the " Beats <N> BPM" tail so the seed matches
+  // just the genre (the SPA's text search can't filter by numeric BPM, but
+  // genre-filtering at least gets the visitor to the right neighborhood).
+  const searchSeed =
+    page.kind === 'genre' || page.kind === 'subgenre' || page.kind === 'mood-genre'
+      ? page.name.replace(/\s+Beats$/i, '')
+      : page.kind === 'bpm-genre'
+        ? page.name.replace(/\s+Beats\s+\d+\s+BPM$/i, '')
+        : (page.artist || '');
   const filterScript = `<script>
 (function(){
   var seed=${JSON.stringify(searchSeed)};
