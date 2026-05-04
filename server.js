@@ -154,6 +154,26 @@ app.use(cors({
   origin: ['https://oneilbeats.store', 'https://www.oneilbeats.store', /localhost/, /\.vercel\.app$/],
   credentials: true,
 }));
+
+// Baseline security headers — applied to every response. Vercel doesn't
+// inject these by default, so the storefront is otherwise embeddable in any
+// iframe (clickjacking risk) and lacks MIME-sniffing/referrer protections.
+// Kept conservative so the SPA + analytics + Stripe + GA4 keep working:
+//   - X-Frame-Options DENY blocks iframe embedding
+//   - X-Content-Type-Options nosniff blocks MIME-confusion attacks
+//   - Referrer-Policy strict-origin-when-cross-origin protects user privacy
+//     while still letting GA4/Stripe see same-origin paths
+//   - Permissions-Policy disables geolocation/camera/mic the SPA never asks
+//     for, so a future XSS can't request them either.
+// Intentionally NOT enabling CSP yet — the SPA loads from Vercel + Supabase
+// + Stripe + Google + Cloudflare; a too-strict CSP would break checkout.
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=(), payment=(self "https://js.stripe.com")');
+  next();
+});
 // ── Dynamic /sitemap.xml — must be registered BEFORE express.static so it
 // overrides any stale public/sitemap.xml file. Lists every active beat as a
 // per-URL <url> entry, plus the homepage and primary section anchors.
