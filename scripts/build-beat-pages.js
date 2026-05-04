@@ -915,9 +915,14 @@ const TYPE_BEAT_ARTISTS = [
 // rank for live here.
 const FEATURED_PAGES = [
   {
+    // Slug deliberately NOT 'beats' — that collides with the /beats JSON API
+    // endpoint in server.js. Vercel serves public/{slug}.html as a static file
+    // BEFORE Express routes run, so naming this 'beats' bypassed the API
+    // handler and broke the SPA's fetch('/beats') call (parsed HTML as JSON,
+    // catalog showed "Could not load beats"). 'browse-beats' is conflict-free.
     kind: 'featured',
-    slug: 'beats',
-    name: 'All Beats',
+    slug: 'browse-beats',
+    name: 'Browse All Beats',
     metaTitle: "Browse All Beats — Reggaeton, Trap & Hip-Hop | O'Neil Beats",
     h1: 'Browse All Beats — The Full O\'Neil Beats Catalog',
     intro: "Every reggaeton, trap, hip-hop, drill, dancehall and afrobeats instrumental in the O'Neil Beats catalog. Lease MP3/WAV from $29.99 with instant delivery.",

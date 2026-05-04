@@ -90,7 +90,7 @@ const esLandingHtml    = renderSpanishLandingPage(TEMPLATE, SPANISH_LANDING_PAGE
 const blogPostHtml     = renderBlogPost(TEMPLATE, BLOG_POSTS[0]);
 const blogIndexHtml    = renderBlogIndex(TEMPLATE);
 const freeBeatsHtml    = renderLandingPage(TEMPLATE, FEATURED_PAGES.find(p => p.slug === 'free-beats'), mockCatalog);
-const allBeatsHtml     = renderLandingPage(TEMPLATE, FEATURED_PAGES.find(p => p.slug === 'beats'), mockCatalog);
+const allBeatsHtml     = renderLandingPage(TEMPLATE, FEATURED_PAGES.find(p => p.slug === 'browse-beats'), mockCatalog);
 
 const r1 = audit('Beat page (Luna)',                       beatHtml);
 const r2 = audit('English landing (reggaeton-beats)',      enLandingHtml);
@@ -98,7 +98,7 @@ const r3 = audit(`Spanish landing (${SPANISH_LANDING_PAGES[0].slug})`, esLanding
 const r4 = audit(`Blog post (${BLOG_POSTS[0].slug})`,       blogPostHtml);
 const r5 = audit('Blog index',                              blogIndexHtml);
 const r6 = audit('Featured page (/free-beats)',            freeBeatsHtml);
-const r7 = audit('Featured page (/beats)',                 allBeatsHtml);
+const r7 = audit('Featured page (/browse-beats)',          allBeatsHtml);
 
 // Related Beats — verify the beat page links to its same-genre siblings.
 console.log('\n' + COLOR.yellow('Related Beats sanity check'));
@@ -112,7 +112,7 @@ console.log(`  ES landing:   ${r3.hreflangCount} (expected 3)  → ${r3.hreflang
 console.log(`  Blog post:    ${r4.hreflangCount} (expected 0)  → ${r4.hreflangs.join(' ') || 'none'}`);
 console.log(`  Blog index:   ${r5.hreflangCount} (expected 0)  → ${r5.hreflangs.join(' ') || 'none'}`);
 console.log(`  /free-beats:  ${r6.hreflangCount} (expected 0)  → ${r6.hreflangs.join(' ') || 'none'}`);
-console.log(`  /beats:       ${r7.hreflangCount} (expected 0)  → ${r7.hreflangs.join(' ') || 'none'}`);
+console.log(`  /browse-beats: ${r7.hreflangCount} (expected 0)  → ${r7.hreflangs.join(' ') || 'none'}`);
 
 console.log('\n' + COLOR.yellow('Summary'));
 const all = [r1, r2, r3, r4, r5, r6, r7];
