@@ -328,7 +328,7 @@ ${blogFigure({
   src: '/img/blog/lease-vs-exclusive-hero.jpg',
   alt: 'Beat license contract on a producer desk — Lease, Premium, Stems, and Exclusive tiers explained for artists buying reggaeton and trap beats in 2026',
   caption: 'Every tier on a beat store is a different contract. Knowing what each PDF actually grants you is the difference between a clean release and a takedown email.',
-  width: 1200, height: 630, hero: true,
+  width: 1059, height: 556, hero: true,
 })}
 
 <h2>The TL;DR</h2>
@@ -353,7 +353,7 @@ ${blogFigure({
   src: '/img/blog/lease-vs-exclusive-mid.jpg',
   alt: 'Streaming royalty calculator showing the math behind a beat lease versus exclusive license at 100K and 1M Spotify streams',
   caption: 'The lease-vs-exclusive math: $29.99 lease + 100K streams nets you $270. $1,500 exclusive only beats that once you cross several million streams or chase a sync placement.',
-  width: 1100, height: 620,
+  width: 1022, height: 576,
 })}
 
 <h2>The exclusive trap most stores set</h2>
@@ -418,7 +418,7 @@ ${blogFigure({
   src: '/img/blog/how-to-write-hero.jpg',
   alt: 'Latin reggaeton recording session — vocalist at the mic with producer at the mixing console, the standard setup for tracking dembow and perreo hooks',
   caption: 'How a reggaeton hook actually gets recorded: hum the melody first, find the words second, track over the dembow groove last.',
-  width: 1200, height: 630, hero: true,
+  width: 1059, height: 556, hero: true,
 })}
 
 <h2>Step 1: Listen to the beat without trying to write</h2>
@@ -445,7 +445,7 @@ ${blogFigure({
   src: '/img/blog/how-to-write-mid.jpg',
   alt: 'Songwriter writing a reggaeton hook in a lyric notebook with the dembow groove playing on studio monitors',
   caption: 'Hook first, verse second. Hum the melody on a voice memo, write the words to fit the melody, then build the verse to set up the hook.',
-  width: 1100, height: 620,
+  width: 1022, height: 576,
 })}
 
 <h2>Step 3: Build the verse around the hook</h2>
@@ -516,7 +516,7 @@ ${blogFigure({
   src: '/img/blog/free-vs-paid-hero.jpg',
   alt: 'Free tagged MP3 beat compared to a paid clean WAV beat — what artists are licensing when they upgrade',
   caption: 'Same audio, two versions. Tagged MP3 free for demos and SoundCloud. Clean untagged WAV with a license PDF for any release that goes monetized.',
-  width: 1200, height: 630, hero: true,
+  width: 1059, height: 556, hero: true,
 })}
 
 <h2>What a tagged free beat actually is</h2>
@@ -544,7 +544,7 @@ ${blogFigure({
   src: '/img/blog/free-vs-paid-mid.jpg',
   alt: 'Independent producer mixing a beat in a home studio — the human work behind a paid untagged license',
   caption: 'The producer voice tag is the producer protecting their right to get paid. Buy the license and the tag goes away — that is the entire business model in one trade.',
-  width: 1100, height: 620,
+  width: 1022, height: 576,
 })}
 
 <h2>What does the untagged version cost?</h2>
@@ -604,7 +604,7 @@ ${blogFigure({
   src: '/img/blog/how-to-find-hero.jpg',
   alt: 'Independent rapper browsing free beats online at a home bedroom studio in 2026 — the modern free-beat-to-release workflow',
   caption: 'Most artist careers start here: a laptop, a cheap mic, and a hunt for free tagged beats to write over. The trick in 2026 is filtering signal from spam.',
-  width: 1200, height: 630, hero: true,
+  width: 1059, height: 556, hero: true,
 })}
 
 <h2>Where to find legit free beats in 2026</h2>
@@ -632,7 +632,7 @@ ${blogFigure({
   src: '/img/blog/how-to-find-mid.jpg',
   alt: 'Voice memo recording app capturing a vocal demo over a free tagged beat — the cheapest way to test if a song idea works before licensing',
   caption: 'The unglamorous habit nobody talks about: voice-memo a demo over the free version before you spend $29 on the license. The phone mic is fine. The point is commitment.',
-  width: 1100, height: 620,
+  width: 1022, height: 576,
 })}
 
 <h2>Why recording a demo first is the move</h2>
@@ -692,7 +692,7 @@ ${blogFigure({
   src: '/img/blog/ai-reggaeton-hero.jpg',
   alt: 'AI reggaeton beats 2026 — split view of free AI music generator output versus a professional producer at a hardware mixing console',
   caption: 'The 2026 split: raw AI generation on one screen, curated producer-made reggaeton beats on the other. Suno and Udio fill the catalog. Producers fill the song.',
-  width: 1200, height: 630, hero: true,
+  width: 1059, height: 556, hero: true,
 })}
 
 <h2>The 2025-2026 power-shift: labels just bought their seat at the AI table</h2>
@@ -722,7 +722,7 @@ ${blogFigure({
   src: '/img/blog/ai-reggaeton-mid.jpg',
   alt: 'Major music label boardroom signing an AI music platform licensing deal in 2026 — symbolic of UMG-Udio and Warner-Suno settlements',
   caption: 'The settlements you only hear about on legal blogs: UMG buying into Udio, Warner buying into Suno. The labels did not lose the AI music war — they bought a seat at the table.',
-  width: 1100, height: 620,
+  width: 1022, height: 576,
 })}
 
 <h2>What "AI-augmented" actually means (and why it's not the same as Suno)</h2>
@@ -861,14 +861,17 @@ function renderBlogPost(template, post) {
   .blog-article a:hover{color:var(--gold)}
   .blog-article p.cta-block{margin-top:32px;padding:18px;background:linear-gradient(135deg,rgba(230,57,70,.08),rgba(245,158,11,.06));border:1px solid var(--border);border-radius:12px;text-align:center;font-size:15px}
   .blog-article p.cta-block .cta-link{margin:0 8px;font-weight:800}
-  /* Figures + inline article images. Hosted on Pollinations with stable seeds
-     so the URL always returns the same image. loading=lazy on non-hero so
-     LCP isn't penalized; hero image is loading=eager so above-fold paints. */
+  /* Figures + inline article images. The img width/height attributes carry the
+     intrinsic aspect ratio so the browser reserves space pre-load (no CLS).
+     We deliberately do NOT set CSS aspect-ratio or object-fit here — Pollinations
+     delivers slightly different dimensions than we requested (e.g. 1022×576
+     instead of 1100×620) and forcing a CSS ratio caused horizontal cropping
+     that read as "stretched". Letting images render at their natural ratio
+     looks correct on every post. */
   .blog-article figure{margin:28px 0 30px;border-radius:14px;overflow:hidden;background:var(--surface2);border:1px solid var(--border)}
-  .blog-article figure img{display:block;width:100%;height:auto;aspect-ratio:5/3;object-fit:cover;background:var(--surface2);color:transparent}
+  .blog-article figure img{display:block;width:100%;height:auto;background:var(--surface2);color:transparent}
   .blog-article figure figcaption{padding:10px 14px 12px;font-size:12px;color:var(--dim);font-style:italic;border-top:1px solid var(--border);background:var(--surface);line-height:1.5}
   .blog-article figure.hero{margin:8px 0 28px}
-  .blog-article figure.hero img{aspect-ratio:1200/630}
   .blog-related{max-width:760px;margin:0 auto 60px;padding:0 24px}
   .blog-related h3{font-size:14px;font-weight:800;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;margin-bottom:14px}
   .blog-related-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
