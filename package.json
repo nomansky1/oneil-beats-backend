@@ -12,6 +12,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
     "@breezystack/lamejs": "^1.2.7",
+    "@google-cloud/storage": "^7.19.0",
     "@supabase/supabase-js": "^2.45.0",
     "axios": "^1.15.1",
     "cors": "^2.8.5",

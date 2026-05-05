@@ -1,6 +1,10 @@
 ﻿node_modules/
 .env
 oneil-beats-*.json
+# Google Cloud service-account keys — never commit these.
+gcs-service-account.json
+gcs-*.json
+*-service-account.json
 .vercel
 # Per-beat SEO pages — regenerated on every Vercel deploy via the
 # `vercel-build` npm script (see scripts/build-beat-pages.js). Don't
