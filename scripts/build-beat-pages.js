@@ -287,6 +287,29 @@ function renderBeatPage(template, beat, slug, allBeats = []) {
 // internal links and formatting stay precise. Generated at /blog/{slug} with
 // Article (or HowTo) schema, BreadcrumbList, full per-post SEO head.
 
+// Inline figure helper for blog posts. Renders a Pollinations.ai-hosted image
+// (the same free, unlimited image engine our /upload/generate-cover endpoint
+// uses) wrapped in a <figure> with caption + alt for SEO + a11y.
+//
+//   • Stable seed → same URL always returns the same image (browser-cacheable).
+//   • Hero figures use loading=eager + fetchpriority=high so above-fold paints.
+//   • Non-hero figures use loading=lazy to keep LCP scores high.
+//   • Prompt explicitly disallows text/letters so the model doesn't render
+//     watermark gibberish; alt + figcaption carry the keyword payload.
+function blogFigure({ prompt, alt, caption, width = 1000, height = 600, seed, hero = false }) {
+  const url = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt)
+    + '?width=' + width + '&height=' + height + '&seed=' + seed + '&nologo=true&model=flux';
+  const cls = hero ? 'hero' : '';
+  const loading = hero ? 'eager' : 'lazy';
+  const prio = hero ? ' fetchpriority="high"' : '';
+  const altEsc = String(alt).replace(/"/g, '&quot;');
+  const capEsc = String(caption).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  return '<figure class="' + cls + '">'
+    + '<img src="' + url + '" alt="' + altEsc + '" loading="' + loading + '" width="' + width + '" height="' + height + '"' + prio + '>'
+    + '<figcaption>' + capEsc + '</figcaption>'
+    + '</figure>';
+}
+
 const BLOG_POSTS = [
   {
     slug: 'lease-vs-exclusive-beat-license-guide',
@@ -298,6 +321,13 @@ const BLOG_POSTS = [
     type: 'Article',
     bodyHtml: `
 <p class="lead">If you've ever stared at a beat store's "Lease — $29.99" / "Premium — $99" / "Stems — $199" / "Exclusive — Contact" page and wondered <em>what the actual difference is</em>, this is for you. I'm going to explain what every tier really gets you, when each one is worth the money, and the one mistake that costs artists the most.</p>
+
+${blogFigure({
+  prompt: 'professional beat license contract document on dark wooden desk in music studio, audio waveform glowing red and gold overlaid on the page, headphones and pen beside it, mixing console blurred in background, dramatic side lighting, photorealistic editorial style, no text no words no letters',
+  alt: 'Beat license contract on a producer desk — Lease, Premium, Stems, and Exclusive tiers explained for artists buying reggaeton and trap beats in 2026',
+  caption: 'Every tier on a beat store is a different contract. Knowing what each PDF actually grants you is the difference between a clean release and a takedown email.',
+  width: 1200, height: 630, seed: 11420260, hero: true,
+})}
 
 <h2>The TL;DR</h2>
 <ul>
@@ -316,6 +346,13 @@ const BLOG_POSTS = [
   <li>Putting a track on a major DSP (Spotify, Apple Music) and you expect 50K+ streams? Premium Lease at minimum, and start a conversation about exclusive if you're confident.</li>
   <li>Pitching a label or a sync placement (TV/film/ads)? Exclusive. Labels and sync agencies will not touch a non-exclusive beat.</li>
 </ul>
+
+${blogFigure({
+  prompt: 'calculator and streaming royalty earnings chart bar graph on a sleek modern desk, smartphone showing a music streaming app interface with play counts, headphones, warm golden lamp light, music business analysis aesthetic, photorealistic editorial photography, no text no words no letters',
+  alt: 'Streaming royalty calculator showing the math behind a beat lease versus exclusive license at 100K and 1M Spotify streams',
+  caption: 'The lease-vs-exclusive math: $29.99 lease + 100K streams nets you $270. $1,500 exclusive only beats that once you cross several million streams or chase a sync placement.',
+  width: 1100, height: 620, seed: 11420261,
+})}
 
 <h2>The exclusive trap most stores set</h2>
 <p>Watch how most beat stores handle exclusive. They list lease prices on every beat — and when you click "Exclusive", it says <strong>"Contact for pricing"</strong> with a mailto link. You email. Half the time you don't get a reply for days. By then you've lost momentum.</p>
@@ -375,6 +412,13 @@ const BLOG_POSTS = [
     bodyHtml: `
 <p class="lead">You bought a reggaeton beat — or you're testing one of the free previews — and now you have to write something to it. If you're new to writing reggaeton, the genre can feel deceptively simple. The chords loop, the dembow groove repeats, and somehow Bad Bunny makes a hit out of it. Here's the actual process, broken down.</p>
 
+${blogFigure({
+  prompt: 'Latin reggaeton recording session in a modern professional studio, vocalist at large diaphragm condenser microphone with pop filter, mixing engineer at a wide audio console with red and gold LED indicators, palm tree silhouette through window at golden hour sunset, cinematic warm lighting, photorealistic editorial photography, hip hop urban aesthetic, no text no words no letters',
+  alt: 'Latin reggaeton recording session — vocalist at the mic with producer at the mixing console, the standard setup for tracking dembow and perreo hooks',
+  caption: 'How a reggaeton hook actually gets recorded: hum the melody first, find the words second, track over the dembow groove last.',
+  width: 1200, height: 630, seed: 41420260, hero: true,
+})}
+
 <h2>Step 1: Listen to the beat without trying to write</h2>
 <p>Play it back twice with no notepad open. Reggaeton is a <em>groove-first</em> genre. The dembow pattern (boom-ch-boom-chick) is the foundation; everything you write needs to lock into it. Don't try to overlay melodies or words on the first listen — feel the pocket first.</p>
 <p>Notice three things:</p>
@@ -394,6 +438,13 @@ const BLOG_POSTS = [
   <li>Now find words that fit that melody — usually a short phrase (5-9 syllables) that captures one emotion or one image.</li>
 </ol>
 <p>Example: a smooth modern reggaeton beat at 92 BPM in minor key — try a hook melody that descends down 3-4 notes, with a 5-7 syllable phrase like "Tú ere' lo que yo busqué" or "Bailamo' hasta que amanezca." Write the hook before anything else.</p>
+
+${blogFigure({
+  prompt: 'songwriter at home studio writing in lyric notebook with reggaeton beat playing on studio monitors, headphones around neck, smartphone with voice memo recording, warm amber lamp lighting, focused thoughtful expression, urban Latino aesthetic, photorealistic editorial photography, no text no words no letters',
+  alt: 'Songwriter writing a reggaeton hook in a lyric notebook with the dembow groove playing on studio monitors',
+  caption: 'Hook first, verse second. Hum the melody on a voice memo, write the words to fit the melody, then build the verse to set up the hook.',
+  width: 1100, height: 620, seed: 41420261,
+})}
 
 <h2>Step 3: Build the verse around the hook</h2>
 <p>Verses in reggaeton are conversational. They don't compete with the hook melodically — they set it up. Most artists rap-sing verses, alternating between melodic phrases and faster rhythmic delivery. Listen to "<a href="/beat/luna-5167">Luna</a>" — the melodic loop in the hook becomes a sung phrase, but the verse is more spoken-word.</p>
@@ -459,6 +510,13 @@ const BLOG_POSTS = [
     bodyHtml: `
 <p class="lead">"Free beat" is the most-searched query in the entire beat-store space. Every producer page has a free section. But almost no artist understands what they're actually allowed to do with a free tagged beat — and the misunderstanding is what gets songs taken down off Spotify.</p>
 
+${blogFigure({
+  prompt: 'modern music producer studio with two large monitors comparing audio waveforms side by side, left waveform with overlay watermarks indicating producer voice tag, right waveform clean and pristine, professional editorial composition, dramatic red and gold studio lighting, photorealistic, no text no words no letters',
+  alt: 'Free tagged MP3 beat compared to a paid clean WAV beat — what artists are licensing when they upgrade',
+  caption: 'Same audio, two versions. Tagged MP3 free for demos and SoundCloud. Clean untagged WAV with a license PDF for any release that goes monetized.',
+  width: 1200, height: 630, seed: 31420260, hero: true,
+})}
+
 <h2>What a tagged free beat actually is</h2>
 <p>When a producer offers a "free beat" download, you're getting an MP3 file that has a producer voice tag layered on top — usually a short audio clip like "Prod. by O'Neil" repeated every 30 seconds throughout the beat. That tag isn't a bug. It's the entire business model.</p>
 <p>The tag means:</p>
@@ -479,6 +537,13 @@ const BLOG_POSTS = [
 <h2>Why the tag exists</h2>
 <p>The tag protects the producer's right to get paid. If you release a tagged beat to Spotify, the platform's audio fingerprinting (ContentID, Audible Magic, etc.) can flag it. The producer's distributor often catches the unauthorized use, files a takedown, and your song disappears — usually after it's already started building plays. Sometimes the producer files a copyright claim and gets retroactive royalties; either way you've lost the song.</p>
 <p>The fix is simple: when you decide a song is going to release, buy a license. The license gives you the <strong>untagged studio-clean version</strong> of the beat — same audio, no voice tag, plus a PDF license with your name on it. From that point forward, you can release legally on any platform.</p>
+
+${blogFigure({
+  prompt: 'producer in dark home studio with hands on hardware audio mixer, professional condenser microphone with pop filter foreground, multiple monitors showing audio editing software, deep red ambient lighting with subtle gold accents, hip hop urban aesthetic, photorealistic editorial photography, no text no words no letters',
+  alt: 'Independent producer mixing a beat in a home studio — the human work behind a paid untagged license',
+  caption: 'The producer voice tag is the producer protecting their right to get paid. Buy the license and the tag goes away — that is the entire business model in one trade.',
+  width: 1100, height: 620, seed: 31420261,
+})}
 
 <h2>What does the untagged version cost?</h2>
 <p>At <a href="/">oneilbeats.store</a>, the cheapest license is $29.99 (Lease) — that gets you the MP3 untagged + the right to release on streaming platforms with up to 100K streams. For most independent artists' first or second release, that's the right tier.</p>
@@ -533,6 +598,13 @@ const BLOG_POSTS = [
     bodyHtml: `
 <p class="lead">Every aspiring rapper, singer, and reggaetonero starts the same way: hunting for free beats. In 2026 there are more free beats online than ever — and more scams, dead links, and DMCA traps than ever. This guide is the shortcut: where active producers actually drop free beats this year, how to tell a real free beat from a stolen one, and the unglamorous habit that separates artists who blow up from artists who stay stuck — recording a demo before you ever spend a dollar.</p>
 
+${blogFigure({
+  prompt: 'young independent rapper at home bedroom studio with laptop showing music beat marketplace interface, USB condenser microphone in foreground, headphones on desk, hoodie wearing artist focused on screen, warm golden bedroom lamp lighting, urban aesthetic, photorealistic editorial photography, no text no words no letters',
+  alt: 'Independent rapper browsing free beats online at a home bedroom studio in 2026 — the modern free-beat-to-release workflow',
+  caption: 'Most artist careers start here: a laptop, a cheap mic, and a hunt for free tagged beats to write over. The trick in 2026 is filtering signal from spam.',
+  width: 1200, height: 630, seed: 42620260, hero: true,
+})}
+
 <h2>Where to find legit free beats in 2026</h2>
 <p>"Free beats" is one of the highest-volume music queries on Google and YouTube — which means the SERP is also the most flooded with garbage. Here are the sources that are still real in 2026, ranked by signal-to-noise:</p>
 <ol>
@@ -553,6 +625,13 @@ const BLOG_POSTS = [
   <li><strong>AI-generated beats marketed as "free producer beats."</strong> They're free because they cost the uploader nothing. The structure is usually flat, the mix is brittle, and there's no human to license from when you want to actually release. You can hear it within 30 seconds — the drops don't breathe.</li>
   <li><strong>Type-beat channels with no link to a store.</strong> No store = no license path. Even if you write your best song over that beat, you'll never be able to release it legally.</li>
 </ul>
+
+${blogFigure({
+  prompt: 'smartphone voice memo recording app capturing vocal demo over playing reggaeton beat, sticky notes with handwritten lyrics scattered on a wooden desk, headphones beside, focused songwriting atmosphere, warm amber lamp lighting, intimate creative workspace, photorealistic editorial photography, no text no words no letters',
+  alt: 'Voice memo recording app capturing a vocal demo over a free tagged beat — the cheapest way to test if a song idea works before licensing',
+  caption: 'The unglamorous habit nobody talks about: voice-memo a demo over the free version before you spend $29 on the license. The phone mic is fine. The point is commitment.',
+  width: 1100, height: 620, seed: 42620261,
+})}
 
 <h2>Why recording a demo first is the move</h2>
 <p>This is the part most artists skip, and it's the part that actually matters. Before you buy a license — before you book a studio, before you book a mix engineer, before you even commit to a release date — record a demo over the free tagged version. Not a polished take. A rough one. Phone mic is fine. Laptop mic is fine. The demo isn't for the world; it's for you.</p>
@@ -607,6 +686,13 @@ const BLOG_POSTS = [
     bodyHtml: `
 <p class="lead">In the last six months the AI music industry stopped being a Wild West and started being a boardroom. Universal Music settled with Udio. Warner Music settled with Suno. Sony is still in court. Spotify rolled out AI Credits. And underneath all of it, Latin streaming is being flooded with raw, free AI-generated reggaeton that pays the producer nothing and the artist less. This is a guide for the people who actually want to ship music in 2026 — independent artists, indie producers, songwriters — and the case for why AI-augmented beats curated by a real producer are about to become the only kind of AI music that survives the next twelve months.</p>
 
+${blogFigure({
+  prompt: 'modern reggaeton music producer studio, split scene comparison, left side cluttered laptop showing AI music generation interface with waveforms, right side professional producer at hardware audio mixing console with studio monitors and microphone, dim red and gold ambient lighting, palm tree silhouette through window at sunset, cinematic editorial photography, photorealistic, no text no words no letters',
+  alt: 'AI reggaeton beats 2026 — split view of free AI music generator output versus a professional producer at a hardware mixing console',
+  caption: 'The 2026 split: raw AI generation on one screen, curated producer-made reggaeton beats on the other. Suno and Udio fill the catalog. Producers fill the song.',
+  width: 1200, height: 630, seed: 20260505, hero: true,
+})}
+
 <h2>The 2025-2026 power-shift: labels just bought their seat at the AI table</h2>
 <p>Three legal events in the last year reset the AI music landscape:</p>
 <ul>
@@ -629,6 +715,13 @@ const BLOG_POSTS = [
 <p>Reggaeton, dembow, Latin trap, bachata, and corridos tumbados are some of the fastest-growing genres on streaming in 2026. They're also the most aggressively flooded with AI slop. Reporters at <em>Rest of World</em> and complaints from the Sociedad de Autores en español documented late-2025 waves of fully-AI dembow and reggaeton tracks pushed to Spotify and Deezer in Latin America by spam farms — drowning out independent Latin artists and shrinking royalty pools.</p>
 <p>The reason is that Latin urban music is — from a pure-modeling standpoint — easy to fake at the surface. The dembow pattern is rigid. The chord palette is small. The vocal phrasing is repetitive. Suno can generate a "reggaeton beat" that sounds passable in five seconds. What it cannot generate is the curated taste, the regional pocket (Puerto Rican vs Dominican vs Colombian vs Mexican Trapeton), the trend-tracking, or the licensing paperwork that makes the beat actually usable in 2026.</p>
 <p>That gap — between "AI can fake a reggaeton beat" and "the beat clears policy and helps an artist actually ship a song" — is the entire opportunity for curated, human-touched AI production. It's also the opportunity that the labels are trying to close before independents realize it exists.</p>
+
+${blogFigure({
+  prompt: 'modern major music label corporate boardroom with executives in suits reviewing AI music platform partnership contract on giant illuminated screen showing audio waveform analysis and royalty data, sleek glass office with floor to ceiling windows at sunset over city skyline, blue and gold lighting, photorealistic editorial photography, dramatic composition, no text no words no letters',
+  alt: 'Major music label boardroom signing an AI music platform licensing deal in 2026 — symbolic of UMG-Udio and Warner-Suno settlements',
+  caption: 'The settlements you only hear about on legal blogs: UMG buying into Udio, Warner buying into Suno. The labels did not lose the AI music war — they bought a seat at the table.',
+  width: 1100, height: 620, seed: 20260506,
+})}
 
 <h2>What "AI-augmented" actually means (and why it's not the same as Suno)</h2>
 <p>People hear "AI beats" and assume one thing: a model generates a track, you download it, you upload it, you collect (or fail to collect) royalties. That's the cheap version. The version that wins in 2026 is different.</p>
@@ -766,6 +859,14 @@ function renderBlogPost(template, post) {
   .blog-article a:hover{color:var(--gold)}
   .blog-article p.cta-block{margin-top:32px;padding:18px;background:linear-gradient(135deg,rgba(230,57,70,.08),rgba(245,158,11,.06));border:1px solid var(--border);border-radius:12px;text-align:center;font-size:15px}
   .blog-article p.cta-block .cta-link{margin:0 8px;font-weight:800}
+  /* Figures + inline article images. Hosted on Pollinations with stable seeds
+     so the URL always returns the same image. loading=lazy on non-hero so
+     LCP isn't penalized; hero image is loading=eager so above-fold paints. */
+  .blog-article figure{margin:28px 0 30px;border-radius:14px;overflow:hidden;background:var(--surface2);border:1px solid var(--border)}
+  .blog-article figure img{display:block;width:100%;height:auto;aspect-ratio:5/3;object-fit:cover;background:var(--surface2);color:transparent}
+  .blog-article figure figcaption{padding:10px 14px 12px;font-size:12px;color:var(--dim);font-style:italic;border-top:1px solid var(--border);background:var(--surface);line-height:1.5}
+  .blog-article figure.hero{margin:8px 0 28px}
+  .blog-article figure.hero img{aspect-ratio:1200/630}
   .blog-related{max-width:760px;margin:0 auto 60px;padding:0 24px}
   .blog-related h3{font-size:14px;font-weight:800;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;margin-bottom:14px}
   .blog-related-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
