@@ -95,7 +95,26 @@ async function incrementPlayCount(beatId) {
 }
 
 // ── STORAGE UPLOADS ─────────────────────────────────────────────────────────
+// 2026-05-05 — when GCS_BUCKET env var is set, all NEW uploads route to
+// Google Cloud Storage instead of Supabase. The mobile apps don't care which
+// domain they load from, so this swap is transparent to them. Existing
+// Supabase URLs in the DB remain valid — see scripts/migrate-supabase-to-gcs.js
+// for a one-shot tool that copies legacy files to GCS and updates the DB rows.
+let _gcs = null;
+function getGCS() {
+  if (_gcs) return _gcs;
+  try { _gcs = require('./gcsApi'); } catch (e) { _gcs = null; }
+  return _gcs;
+}
+function gcsEnabled() {
+  const m = getGCS();
+  return !!(m && m.isGCSEnabled && m.isGCSEnabled());
+}
+
 async function uploadFileToStorage(buffer, filename, bucket, mimeType) {
+  if (gcsEnabled()) {
+    return getGCS().uploadFileToStorage(buffer, filename, bucket, mimeType);
+  }
   const { data, error } = await supabase.storage.from(bucket).upload(filename, buffer, { contentType: mimeType, upsert: false });
   if (error) throw new Error(`Upload error: ${error.message}`);
   return supabase.storage.from(bucket).getPublicUrl(filename).data.publicUrl;
