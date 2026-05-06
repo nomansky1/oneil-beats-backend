@@ -227,9 +227,21 @@ app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] })
 // file matched (i.e., a beat uploaded after the last build). Builds the page
 // on the fly using the same template + renderBeatPage helper from the build
 // script, then serves it with a short cache so the next request is fast.
+//
+// 2026-05-06 — IMPORTANT: this route is registered before GET /beat/:id (the
+// share-link handler at the bottom of the file). The in-app share sheet
+// produces /beat/{uuid} URLs (UUIDs pass the [a-z0-9-] filter), and prior to
+// today this handler caught them, didn't find a slug match, then 302→/.
+// WhatsApp/iMessage scrapers followed the redirect and saw the homepage (no
+// beat-specific OG tags), so unfurls showed only the bare URL with no beat
+// title or cover art. UUID guard now falls through to the UUID handler.
+const _UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 app.get('/beat/:slug', async (req, res, next) => {
   const slug = req.params.slug;
   if (!slug || /[^a-z0-9-]/i.test(slug)) return next();
+  // UUID-style share URLs belong to the GET /beat/:id handler below (richer
+  // OG/JSON-LD render keyed off DB id directly). Fall through.
+  if (_UUID_RE.test(slug)) return next();
   try {
     const fs = require('fs');
     const { beatSlug, renderBeatPage } = require('./scripts/build-beat-pages');
@@ -1134,6 +1146,68 @@ app.delete('/admin/beat/:id', requireAdminKey, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Admin beat delete error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /admin/audit-dirty-urls — scan the catalog for whitespace-corrupted URLs.
+// Belt-and-suspenders for the GCS_BUCKET trailing-newline bug (PR #23). Run
+// this nightly (or on demand) and alert on any beat whose audio_url, mp3_url,
+// cover_url, cover_art_url, artwork_url, stems_url, or wav_url contains
+// whitespace, a literal "\n", or a doubled-slash that isn't `https://`.
+//
+// Returns: { success, scanned, dirty: [{ id, title, fields: [{name, url, reason}] }] }
+// Use ?fix=1 to also REPAIR rows in-place (trims all matched URLs). Without
+// ?fix=1 the endpoint is read-only — safe to wire to a cron + Slack ping.
+app.get('/admin/audit-dirty-urls', requireAdminKey, async (req, res) => {
+  try {
+    const beats = await fetchBeatsFromDB();
+    const URL_FIELDS = ['audio_url', 'mp3_url', 'wav_url', 'stems_url', 'cover_url', 'cover_art_url', 'artwork_url', 'midi_url', 'youtube_url', 'thumbnail_url'];
+    const isDirty = (u) => {
+      if (typeof u !== 'string' || !u) return null;
+      if (/[\s\r\n\t]/.test(u))             return 'whitespace';
+      if (u.includes('\\n') || u.includes('\\r')) return 'literal-escape';
+      // doubled slashes that aren't part of the protocol
+      const afterProto = u.replace(/^https?:\/\//, '');
+      if (afterProto.includes('//'))         return 'doubled-slash';
+      return null;
+    };
+    const dirty = [];
+    for (const b of beats) {
+      const fields = [];
+      for (const f of URL_FIELDS) {
+        const reason = isDirty(b[f]);
+        if (reason) fields.push({ name: f, url: b[f], reason });
+      }
+      if (fields.length) dirty.push({ id: b.id, title: b.title, fields });
+    }
+
+    // Optional in-place repair (?fix=1). Trims the offending URLs and persists
+    // to Supabase. Only repairs the EXACT fields flagged above — never touches
+    // anything else on the row. Logs every write.
+    let fixed = 0;
+    if (req.query.fix === '1' && dirty.length) {
+      const supabase = getSupabaseClient();
+      for (const d of dirty) {
+        const patch = {};
+        for (const f of d.fields) {
+          patch[f.name] = String(f.url || '').replace(/[\s\r\n\t]+/g, '').trim() || null;
+        }
+        const { error } = await supabase.from('beats').update(patch).eq('id', d.id);
+        if (!error) fixed++;
+        else console.warn('[audit-dirty-urls] fix failed for', d.id, error.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      scanned: beats.length,
+      dirtyCount: dirty.length,
+      fixed,
+      dirty,
+    });
+  } catch (err) {
+    console.error('Admin audit-dirty-urls error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2634,8 +2708,25 @@ app.get('/orders/lookup', async (req, res) => {
 
 // GET /preview/:id — stream MP3 preview (proxies Drive/Supabase through backend
 // so the <audio> tag gets a real audio/mpeg stream with proper CORS)
-// GET /beat/:id — public share landing page with Open Graph meta tags.
-// Shared links from the app land here so WhatsApp/IG/iMessage/Twitter render rich previews with cover art.
+// GET /beat/:id — public share landing page with Open Graph + JSON-LD.
+// Shared links from the app (iOS + Android share sheet → /beat/{uuid}) land
+// here so WhatsApp / iMessage / Twitter / Discord / LinkedIn / Facebook all
+// render rich previews with the beat cover, title, genre + BPM, and a $price.
+//
+// 2026-05-06 — Producer reported: "When I share a beat, it shows weblink but
+// no name of the beat." Diagnosis: GET /beat/:slug above was matching UUID
+// share URLs, failing to resolve them as slugs, then 302-redirecting to /.
+// Scrapers followed the redirect and saw the homepage's <head>, so the unfurl
+// rendered with no beat-specific tags. Fixed the slug handler with a UUID
+// guard (line ~232). This route now ALSO ships:
+//   • Sanitized cover_url (defensive trim — guards against the GCS_BUCKET
+//     trailing-newline bug that produced URLs like ".../oneilbeats-media\n/...")
+//   • JSON-LD MusicRecording + Product schema with offers (so Google can show
+//     ⭐ + price in search results once we accumulate reviews)
+//   • <link rel="canonical"> pointing at the slug URL when available (better
+//     SEO consolidation; the slug page is the indexed canonical)
+//   • og:audio so iMessage / Discord can show a play button
+//   • Real prices in the visible price row (was hard-coded "FROM $30")
 app.get('/beat/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -2645,39 +2736,140 @@ app.get('/beat/:id', async (req, res) => {
       res.status(404).set('Content-Type', 'text/html').send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Beat not found</title></head><body style="background:#06060a;color:#fff;font-family:sans-serif;padding:40px;text-align:center"><h1>Beat not found</h1><p><a href="/" style="color:#d4af37">Browse all beats</a></p></body></html>`);
       return;
     }
+    // Defensive URL sanitization. The GCS_BUCKET env-var bug (PR #23) wrote
+    // some cover_urls with embedded \n. Trim every URL we serve so a single
+    // dirty row can't break Open Graph image rendering.
+    const _cleanUrl = (u) => {
+      if (!u || typeof u !== 'string') return null;
+      const c = u.replace(/[\s\r\n\t]+/g, '').trim();
+      return c || null;
+    };
     const esc = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-    const title = esc(b.title || 'Untitled Beat');
-    const genre = esc(b.genre || '');
-    const bpm = b.bpm ? `${b.bpm} BPM` : '';
-    const mood = esc(b.mood || '');
-    const cover = b.artwork_url || b.cover_url || `${req.protocol}://${req.get('host')}/icon.png`;
-    const desc = `${genre}${bpm ? ' · ' + bpm : ''}${mood ? ' · ' + mood : ''} — Stream, license & download on O'Neil Beats.`;
-    const pageUrl = `${req.protocol}://${req.get('host')}/beat/${id}`;
-    const lease = b.lease_price || b.mp3_price || 30;
 
-    res.set('Content-Type', 'text/html').send(`<!DOCTYPE html>
+    const titleRaw = b.title || 'Untitled Beat';
+    const title = esc(titleRaw);
+    const genreRaw = b.genre || '';
+    const genre = esc(genreRaw);
+    const subgenre = b.subgenre || '';
+    const bpmStr = b.bpm ? `${b.bpm} BPM` : '';
+    const keyStr = b.key || '';
+    const moodRaw = b.mood || '';
+    const mood = esc(moodRaw);
+    const cover = _cleanUrl(b.cover_art_url || b.artwork_url || b.cover_url) || `${req.protocol}://${req.get('host')}/icon.png`;
+    const audioUrl = _cleanUrl(b.audio_url || b.mp3_url);
+    const previewUrl = `${req.protocol}://${req.get('host')}/preview/${id}`;
+    const desc = `${genreRaw}${bpmStr ? ' · ' + bpmStr : ''}${keyStr ? ' · ' + keyStr : ''}${moodRaw ? ' · ' + moodRaw : ''} — Stream, license & download on O'Neil Beats.`.trim();
+    const pageUrl = `${req.protocol}://${req.get('host')}/beat/${id}`;
+
+    // Try to compute the slug-based canonical URL so Google consolidates the
+    // UUID share link with the indexed slug page. If the slug helper isn't
+    // available (e.g. build script not present), fall back to the UUID URL.
+    let canonicalUrl = pageUrl;
+    try {
+      const { beatSlug } = require('./scripts/build-beat-pages');
+      if (typeof beatSlug === 'function' && b.title) {
+        canonicalUrl = `${req.protocol}://${req.get('host')}/beat/${beatSlug(b)}`;
+      }
+    } catch (_) { /* no-op */ }
+
+    // Pricing — surface real values, not hard-coded $30. Falls back gracefully.
+    const lease = b.lease_price || b.mp3_price || 30;
+    const premium = b.premium_price || null;
+    const stems = b.stems_price || null;
+    const exclusive = b.exclusive_price || null;
+    const tiers = [
+      lease ? { name: 'MP3 Lease', price: lease } : null,
+      premium ? { name: 'Premium (MP3+WAV)', price: premium } : null,
+      stems ? { name: 'Stems / Track Out', price: stems } : null,
+      exclusive ? { name: 'Exclusive', price: exclusive } : null,
+    ].filter(Boolean);
+
+    // JSON-LD: MusicRecording + Product offers. Mirrors build-beat-pages.js
+    // (the static SEO pages) so the rich-preview surface is identical no
+    // matter which URL form a fan shares.
+    const offers = tiers.map(t => ({
+      '@type': 'Offer',
+      name: t.name,
+      price: String(t.price),
+      priceCurrency: 'USD',
+      availability: 'https://schema.org/InStock',
+      url: pageUrl,
+    }));
+    const ldNode = {
+      '@context': 'https://schema.org',
+      '@type': 'MusicRecording',
+      name: titleRaw,
+      url: canonicalUrl,
+      image: cover,
+      description: desc,
+      sku: id,
+      genre: genreRaw || undefined,
+      inAlbum: subgenre ? { '@type': 'MusicAlbum', name: subgenre, byArtist: { '@type': 'MusicGroup', name: "O'Neil" } } : undefined,
+      byArtist: { '@type': 'MusicGroup', name: "O'Neil", url: `${req.protocol}://${req.get('host')}/` },
+      brand: { '@type': 'Brand', name: "O'Neil Beats" },
+      offers: offers.length ? offers : undefined,
+      audio: audioUrl ? { '@type': 'AudioObject', contentUrl: audioUrl, encodingFormat: 'audio/mpeg' } : undefined,
+      keywords: Array.isArray(b.tags) ? b.tags.join(', ') : (b.tags || undefined),
+    };
+    const ldBreadcrumb = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${req.protocol}://${req.get('host')}/` },
+        { '@type': 'ListItem', position: 2, name: 'Beats', item: `${req.protocol}://${req.get('host')}/#catalog` },
+        { '@type': 'ListItem', position: 3, name: titleRaw, item: pageUrl },
+      ],
+    };
+    const jsonLd = JSON.stringify(ldNode) + '\n' + JSON.stringify(ldBreadcrumb);
+
+    // Cache: 60s public, 600s edge. Balances freshness (price/cover edits
+    // propagate in 1 min) with scraper-friendly response times. WA / iMessage
+    // re-scrape on demand and don't honor private cache anyway.
+    res.set('Cache-Control', 'public, max-age=60, s-maxage=600, stale-while-revalidate=86400');
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${title} — Prod. by O'Neil</title>
+<title>${title} — ${genre || 'Type Beat'}${bpmStr ? ' ' + bpmStr : ''} | Prod. by O'Neil</title>
 <meta name="description" content="${esc(desc)}">
+<link rel="canonical" href="${esc(canonicalUrl)}">
 
 <!-- Open Graph (Facebook, WhatsApp, iMessage, LinkedIn, Discord) -->
 <meta property="og:type" content="music.song">
-<meta property="og:title" content="${title} — Prod. by O'Neil">
+<meta property="og:title" content="${title} — ${genre || 'Type Beat'}${bpmStr ? ' ' + bpmStr : ''}">
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:image" content="${esc(cover)}">
+<meta property="og:image:secure_url" content="${esc(cover)}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="1200">
+<meta property="og:image:alt" content="${title} cover art">
 <meta property="og:url" content="${esc(pageUrl)}">
 <meta property="og:site_name" content="O'Neil Beats">
+${audioUrl ? `<meta property="og:audio" content="${esc(previewUrl)}">
+<meta property="og:audio:type" content="audio/mpeg">
+<meta property="music:musician" content="${esc(req.protocol + '://' + req.get('host') + '/')}">
+${b.bpm ? `<meta property="music:duration" content="${b.duration ? Math.round(Number(b.duration)) : ''}">` : ''}` : ''}
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="${title} — Prod. by O'Neil">
+<meta name="twitter:site" content="@oneilbeats">
+<meta name="twitter:title" content="${title} — ${genre || 'Type Beat'}${bpmStr ? ' ' + bpmStr : ''}">
 <meta name="twitter:description" content="${esc(desc)}">
 <meta name="twitter:image" content="${esc(cover)}">
+<meta name="twitter:image:alt" content="${title} cover art">
+
+<!-- App-link metadata (lets iMessage / Twitter offer "Open in app") -->
+<meta property="al:ios:url" content="oneilbeats://beat/${id}">
+<meta property="al:ios:app_store_id" content="6763227699">
+<meta property="al:ios:app_name" content="OB Beats">
+<meta property="al:android:url" content="oneilbeats://beat/${id}">
+<meta property="al:android:package" content="com.oneilbeats.app">
+<meta property="al:android:app_name" content="OB Beats">
+<meta property="al:web:url" content="${esc(pageUrl)}">
+
+<script type="application/ld+json">${jsonLd}</script>
 
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2688,9 +2880,15 @@ app.get('/beat/:id', async (req, res) => {
   .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .title { font-size: 32px; font-weight: 900; margin-top: 24px; line-height: 1.1; }
   .meta { color: #c8c8d0; font-size: 16px; margin-top: 10px; }
+  .audio { margin-top: 20px; width: 100%; }
+  .audio audio { width: 100%; }
   .price-row { display: flex; align-items: center; justify-content: space-between; margin-top: 28px; padding: 18px 22px; background: linear-gradient(135deg, rgba(212,175,55,.12) 0%, rgba(230,57,70,.12) 100%); border: 1px solid rgba(212,175,55,.4); border-radius: 16px; }
   .price-row .label { color: #d4af37; font-size: 13px; letter-spacing: 2px; font-weight: 700; }
   .price-row .price { font-size: 28px; font-weight: 900; }
+  .tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-top: 12px; }
+  .tier { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 10px 12px; text-align: center; }
+  .tier .name { color: #c8c8d0; font-size: 11px; letter-spacing: 1px; font-weight: 700; }
+  .tier .p { color: #fff; font-size: 18px; font-weight: 800; margin-top: 2px; }
   .cta { display: block; margin-top: 28px; padding: 18px; background: linear-gradient(135deg, #d4af37 0%, #e63946 100%); color: #000; text-align: center; font-weight: 900; font-size: 17px; letter-spacing: 1px; border-radius: 14px; text-decoration: none; }
   .cta:hover { opacity: .9; }
   .secondary { display: block; margin-top: 12px; padding: 14px; background: rgba(255,255,255,.05); color: #fff; text-align: center; font-weight: 600; border-radius: 14px; text-decoration: none; border: 1px solid rgba(255,255,255,.12); }
@@ -2701,15 +2899,17 @@ app.get('/beat/:id', async (req, res) => {
 <body>
 <div class="wrap">
   <div class="brand">O'NEIL BEATS</div>
-  <div class="cover"><img src="${esc(cover)}" alt="${title}"></div>
-  <div class="title">${title}</div>
-  <div class="meta">${esc(genre)}${bpm ? ' &middot; ' + bpm : ''}${mood ? ' &middot; ' + mood : ''}</div>
+  <div class="cover"><img src="${esc(cover)}" alt="${title} cover art"></div>
+  <h1 class="title">${title}</h1>
+  <div class="meta">${esc(genreRaw)}${bpmStr ? ' &middot; ' + bpmStr : ''}${keyStr ? ' &middot; ' + esc(keyStr) : ''}${moodRaw ? ' &middot; ' + mood : ''}</div>
+  ${audioUrl ? `<div class="audio"><audio controls preload="none" src="${esc(previewUrl)}"></audio></div>` : ''}
   <div class="price-row">
     <div><div class="label">FROM</div><div class="price">$${lease}</div></div>
-    <div><div class="label">LEASE</div><div class="price" style="font-size:16px;color:#c8c8d0">MP3 · WAV · Stems · Exclusive</div></div>
+    <div><div class="label">LICENSE</div><div class="price" style="font-size:16px;color:#c8c8d0">MP3 · WAV · Stems · Exclusive</div></div>
   </div>
-  <a class="cta" href="/">Browse on O'Neil Beats</a>
-  <a class="secondary" href="oneilbeats://beat/${id}">Open in app</a>
+  ${tiers.length > 1 ? `<div class="tiers">${tiers.map(t => `<div class="tier"><div class="name">${esc(t.name)}</div><div class="p">$${t.price}</div></div>`).join('')}</div>` : ''}
+  <a class="cta" href="oneilbeats://beat/${id}">Open in OB Beats App</a>
+  <a class="secondary" href="/">Browse all beats</a>
   <div class="footer">Prod. by O'Neil &middot; <a href="/">oneilbeats.store</a></div>
 </div>
 </body>
