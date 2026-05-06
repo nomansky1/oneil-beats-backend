@@ -150,6 +150,12 @@ async function sendPushNotification(expoPushTokens, title, body, data = {}) {
 
 // ── Express Setup ────────────────────────────────────────────────────────────
 const app = express();
+// Vercel terminates TLS at the edge and forwards via HTTP, so without
+// `trust proxy` Express reads `req.protocol === 'http'` for all requests
+// even though the public URL is HTTPS. That broke canonical / og:audio /
+// schema URLs in the share-link page (rendered as http://oneilbeats.store/...).
+// Trusting the proxy header makes req.protocol + req.ip + req.ips correct.
+app.set('trust proxy', true);
 app.use(cors({
   origin: ['https://oneilbeats.store', 'https://www.oneilbeats.store', /localhost/, /\.vercel\.app$/],
   credentials: true,
