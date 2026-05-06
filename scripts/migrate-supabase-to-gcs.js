@@ -44,7 +44,10 @@ const CONCURRENCY = parseInt((argv.find(a => a.startsWith('--concurrency=')) || 
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://thmqqplnrjwimgqubkhp.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
-const GCS_BUCKET = process.env.GCS_BUCKET;
+// 2026-05-06 — defensive .trim(): a trailing newline on the Vercel-stored
+// env var caused a corrupted cover_url to land in the catalog. See
+// backend/gcsApi.js for full context.
+const GCS_BUCKET = (process.env.GCS_BUCKET || '').trim();
 
 if (!GCS_BUCKET) { console.error('ERROR: GCS_BUCKET env var not set'); process.exit(1); }
 if (!SUPABASE_KEY) { console.error('ERROR: SUPABASE_SERVICE_KEY env var not set'); process.exit(1); }
@@ -196,17 +199,20 @@ async function updateUrlColumnsForTable(table, columns) {
 (async () => {
   log(`migration starting | dry-run=${DRY_RUN} | gcs_bucket=${GCS_BUCKET}`);
 
-  // Sanity: confirm GCS bucket is reachable.
+  // Sanity: probe by writing/reading/deleting a tiny test object. Avoids
+  // bucket.exists() which requires storage.buckets.get IAM permission that
+  // the Storage Object Admin role doesn't include.
   try {
-    const [exists] = await bucket.exists();
-    if (!exists) throw new Error(`bucket "${GCS_BUCKET}" not found`);
+    const probeFile = bucket.file('_migration-probe.txt');
+    await probeFile.save(Buffer.from('probe'), { contentType: 'text/plain' });
+    await probeFile.delete();
   } catch (e) {
     console.error(`✗ cannot access GCS bucket: ${e.message}`);
     console.error(`   check GCS_BUCKET env, GOOGLE_APPLICATION_CREDENTIALS path,`);
-    console.error(`   and that the service account has Storage Object Admin role.`);
+    console.error(`   and that the service account has Storage Object Admin role on the bucket.`);
     process.exit(1);
   }
-  log('✓ GCS bucket reachable');
+  log('✓ GCS bucket reachable (object-level access verified)');
 
   const totals = { copied: 0, skipped: 0, failed: 0, dbUpdated: 0 };
 
