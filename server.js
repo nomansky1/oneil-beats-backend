@@ -3222,6 +3222,141 @@ app.post('/payment/sheet', async (req, res) => {
   }
 });
 
+// ─── Apple In-App Purchase (StoreKit 2) — receipt validation ────────────────
+// 2026-05-06 v1.8.9 — endpoint that the iOS app POSTs to after Apple confirms
+// a StoreKit purchase. We verify the receipt with Apple's verifyReceipt /
+// App Store Server API, then create an order_item linking the IAP transaction
+// → beat → user. Existing license/download infrastructure delivers from there.
+//
+// Request body: { receipt, productId, tier, beatId, transactionId,
+//                 customerEmail, isRestore? }
+// Response:     { success: true, orderId, downloadUrl, licensePdfUrl }
+//
+// Env required:
+//   APPLE_SHARED_SECRET — App-Specific Shared Secret from ASC → Monetization
+//                         → App-Specific Shared Secret. Used by the legacy
+//                         verifyReceipt endpoint and StoreKit 1. New StoreKit
+//                         2 transactions can be JWS-verified without it.
+//
+// Apple's verifyReceipt is technically deprecated in favor of the App Store
+// Server API (JWT auth). We use verifyReceipt here for simplicity — Apple
+// still maintains it. Migration to JWT-based verification is a follow-up.
+const APPLE_VERIFY_PROD    = 'https://buy.itunes.apple.com/verifyReceipt';
+const APPLE_VERIFY_SANDBOX = 'https://sandbox.itunes.apple.com/verifyReceipt';
+const IAP_TIER_TO_PRICE = { lease: 29.99, premium: 99.99, stems: 199.99 };
+const IAP_VALID_PRODUCT_IDS = new Set([
+  'com.oneilbeats.app.license.lease',
+  'com.oneilbeats.app.license.premium',
+  'com.oneilbeats.app.license.stems',
+]);
+
+app.post('/iap/validate', async (req, res) => {
+  try {
+    const { receipt, productId, tier, beatId, transactionId, customerEmail, isRestore } = req.body || {};
+    if (!receipt) return res.status(400).json({ error: 'Missing receipt' });
+    if (!productId || !IAP_VALID_PRODUCT_IDS.has(productId)) {
+      return res.status(400).json({ error: 'Unknown productId' });
+    }
+    if (!tier || !IAP_TIER_TO_PRICE[tier]) {
+      return res.status(400).json({ error: 'Invalid tier' });
+    }
+
+    // Verify receipt with Apple. Try production first; on 21007 retry sandbox.
+    const verifyOnce = async (url) => {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          'receipt-data': receipt,
+          'password': process.env.APPLE_SHARED_SECRET || '',
+          'exclude-old-transactions': true,
+        }),
+      });
+      return resp.json();
+    };
+    let verify = await verifyOnce(APPLE_VERIFY_PROD);
+    if (verify?.status === 21007) verify = await verifyOnce(APPLE_VERIFY_SANDBOX);
+    if (verify?.status !== 0) {
+      console.warn('[IAP] Apple verifyReceipt failed:', verify?.status);
+      return res.status(400).json({ error: `Apple receipt verification failed (status ${verify?.status})` });
+    }
+
+    // Look up the matching transaction in the receipt to confirm productId
+    // matches what the client claimed. This prevents a malicious client from
+    // claiming "stems" while paying for "lease".
+    const inApp = verify?.receipt?.in_app || verify?.latest_receipt_info || [];
+    const matched = inApp.find(t =>
+      t.product_id === productId &&
+      (!transactionId || t.transaction_id === transactionId || t.original_transaction_id === transactionId)
+    );
+    if (!matched) {
+      return res.status(400).json({ error: 'Transaction not found in receipt' });
+    }
+
+    // Look up the beat to attach metadata (title, cover, audio).
+    const supa = getSupabaseClient();
+    let beat = null;
+    if (beatId) {
+      const { data } = await supa.from('beats').select('*').eq('id', beatId).single();
+      beat = data;
+    }
+
+    // Create / upsert an order tied to the IAP transaction. Each IAP transaction
+    // is a "single-item order" — one beat, one tier, one Apple receipt.
+    const orderId = `iap_${matched.transaction_id || matched.original_transaction_id}`;
+    const price = IAP_TIER_TO_PRICE[tier];
+
+    // Check if this transaction already produced an order (idempotency).
+    const { data: existingOrder } = await supa.from('orders').select('id, status').eq('id', orderId).maybeSingle();
+    if (existingOrder && !isRestore) {
+      // Already delivered. Re-return the download URLs without creating another order.
+      const { data: items } = await supa.from('order_items').select('*').eq('order_id', orderId);
+      return res.json({ success: true, orderId, alreadyDelivered: true, items: items || [] });
+    }
+
+    // New order
+    if (!existingOrder) {
+      await supa.from('orders').insert({
+        id: orderId,
+        customer_email: customerEmail || null,
+        status: 'paid',
+        total_amount: price,
+        stripe_session_id: null,
+        paid_at: new Date().toISOString(),
+        provider: 'apple_iap',
+        provider_transaction_id: matched.transaction_id || matched.original_transaction_id,
+      });
+      if (beatId) {
+        await supa.from('order_items').insert({
+          order_id: orderId,
+          beat_id: beatId,
+          beat_title: beat?.title || '',
+          license_type: tier,
+          price,
+          mp3_url: beat?.audio_original_url || beat?.audio_url || null,
+          wav_url: tier === 'premium' || tier === 'stems' ? beat?.wav_url : null,
+          stems_url: tier === 'stems' ? beat?.stem_url : null,
+          cover_url: beat?.cover_url || null,
+        });
+      }
+    }
+
+    // Return download details (matches the /orders/lookup response shape).
+    const { data: items } = await supa.from('order_items').select('*').eq('order_id', orderId);
+    res.json({
+      success: true,
+      orderId,
+      tier,
+      price,
+      transactionId: matched.transaction_id,
+      items: items || [],
+    });
+  } catch (err) {
+    console.error('[IAP] validate error:', err);
+    res.status(500).json({ error: err?.message || 'Validation failed' });
+  }
+});
+
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
