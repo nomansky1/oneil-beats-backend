@@ -40,12 +40,21 @@ const SUPABASE_TO_GCS_PREFIX = {
   'cloud-render':'cloud-render',
 };
 
+// 2026-05-06 — production bug: a "Mark I" beat uploaded with cover_url
+//   "https://storage.googleapis.com/oneilbeats-media\n/cover-art/..."
+// turned out to be a trailing-whitespace newline on GCS_BUCKET (Vercel env
+// var copy-paste artifact). Trim everywhere we read the env so a single
+// dirty character can't corrupt every URL written by the upload pipeline.
+function _bucketName() {
+  return (process.env.GCS_BUCKET || '').trim();
+}
+
 function isGCSEnabled() {
-  return !!process.env.GCS_BUCKET;
+  return !!_bucketName();
 }
 
 function getGCSBucketName() {
-  return process.env.GCS_BUCKET;
+  return _bucketName();
 }
 
 function getStorage() {
