@@ -1158,9 +1158,15 @@ app.delete('/admin/beat/:id', requireAdminKey, async (req, res) => {
 
 // GET /admin/audit-dirty-urls — scan the catalog for whitespace-corrupted URLs.
 // Belt-and-suspenders for the GCS_BUCKET trailing-newline bug (PR #23). Run
-// this nightly (or on demand) and alert on any beat whose audio_url, mp3_url,
-// cover_url, cover_art_url, artwork_url, stems_url, or wav_url contains
-// whitespace, a literal "\n", or a doubled-slash that isn't `https://`.
+// this nightly (or on demand) and alert on any beat whose audio_url,
+// audio_original_url, cover_url, stem_url, or wav_url contains whitespace,
+// a literal "\n", or a doubled-slash that isn't `https://`.
+//
+// 2026-05-06 (post-PR #24): column list corrected to match actual schema —
+// previous list referenced mp3_url / stems_url / cover_art_url / artwork_url /
+// midi_url / youtube_url / thumbnail_url, none of which exist on the beats
+// table. Verified against information_schema; the only URL-bearing columns
+// are: audio_url, audio_original_url, cover_url, stem_url, wav_url.
 //
 // Returns: { success, scanned, dirty: [{ id, title, fields: [{name, url, reason}] }] }
 // Use ?fix=1 to also REPAIR rows in-place (trims all matched URLs). Without
@@ -1168,7 +1174,7 @@ app.delete('/admin/beat/:id', requireAdminKey, async (req, res) => {
 app.get('/admin/audit-dirty-urls', requireAdminKey, async (req, res) => {
   try {
     const beats = await fetchBeatsFromDB();
-    const URL_FIELDS = ['audio_url', 'mp3_url', 'wav_url', 'stems_url', 'cover_url', 'cover_art_url', 'artwork_url', 'midi_url', 'youtube_url', 'thumbnail_url'];
+    const URL_FIELDS = ['audio_url', 'audio_original_url', 'cover_url', 'stem_url', 'wav_url'];
     const isDirty = (u) => {
       if (typeof u !== 'string' || !u) return null;
       if (/[\s\r\n\t]/.test(u))             return 'whitespace';
@@ -2853,6 +2859,8 @@ app.get('/beat/:id', async (req, res) => {
 <meta property="og:image:alt" content="${title} cover art">
 <meta property="og:url" content="${esc(pageUrl)}">
 <meta property="og:site_name" content="O'Neil Beats">
+<meta property="og:locale" content="en_US">
+${process.env.FB_APP_ID ? `<meta property="fb:app_id" content="${esc(process.env.FB_APP_ID)}">` : ''}
 ${audioUrl ? `<meta property="og:audio" content="${esc(previewUrl)}">
 <meta property="og:audio:type" content="audio/mpeg">
 <meta property="music:musician" content="${esc(req.protocol + '://' + req.get('host') + '/')}">
