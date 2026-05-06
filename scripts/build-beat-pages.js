@@ -215,17 +215,37 @@ function renderBeatPage(template, beat, slug, allBeats = []) {
     `<meta property="og:description" content="${esc(descTag)}">`);
   html = html.replace(/<meta\s+property="og:image"\s+content="[^"]*">/i,
     `<meta property="og:image" content="${esc(cover)}">`);
+  // 2026-05-06 — also update og:image:width/height/alt + add og:image:secure_url.
+  // Prior to this, only og:image content was rewritten; the companion attributes
+  // stayed at the homepage defaults (1200x630 + generic alt). Facebook's scraper
+  // saw a 1200x630 declaration but loaded a 1024x1024 actual cover, treated the
+  // mismatch as untrusted, and fell back to the producer avatar <img> on the
+  // page body for the link preview. Now declares 1200x1200 (matches AI-generated
+  // square covers) and gives FB a beat-specific alt + secure_url so it has zero
+  // ambiguity about which image to render in the unfurl.
+  html = html.replace(/<meta\s+property="og:image:width"\s+content="[^"]*">/i,
+    `<meta property="og:image:width" content="1200">`);
+  html = html.replace(/<meta\s+property="og:image:height"\s+content="[^"]*">/i,
+    `<meta property="og:image:height" content="1200">`);
+  html = html.replace(/<meta\s+property="og:image:alt"\s+content="[^"]*">/i,
+    `<meta property="og:image:alt" content="${esc(beat.title + ' cover art')}">`);
+  // Add og:image:secure_url (HTTPS-only platforms prefer this) + og:image type.
+  // Inject right after og:image so the cluster stays together for FB's parser.
+  html = html.replace(/(<meta\s+property="og:image"\s+content="[^"]*">)/i,
+    `$1\n<meta property="og:image:secure_url" content="${esc(cover)}">\n<meta property="og:image:type" content="image/png">`);
   // og:type for individual song page
   html = html.replace(/<meta\s+property="og:type"\s+content="website">/i,
     `<meta property="og:type" content="music.song">`);
 
-  // twitter:title, twitter:description, twitter:image
+  // twitter:title, twitter:description, twitter:image (+ alt for accessibility / parser)
   html = html.replace(/<meta\s+name="twitter:title"\s+content="[^"]*">/i,
     `<meta name="twitter:title" content="${esc(ogTitle)}">`);
   html = html.replace(/<meta\s+name="twitter:description"\s+content="[^"]*">/i,
     `<meta name="twitter:description" content="${esc(descTag)}">`);
   html = html.replace(/<meta\s+name="twitter:image"\s+content="[^"]*">/i,
     `<meta name="twitter:image" content="${esc(cover)}">`);
+  html = html.replace(/<meta\s+name="twitter:image:alt"\s+content="[^"]*">/i,
+    `<meta name="twitter:image:alt" content="${esc(beat.title + ' cover art')}">`);
 
   // Insert per-beat JSON-LD right before </head>
   const jsonLd = beatJsonLd(beat, slug);
