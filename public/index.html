@@ -184,8 +184,14 @@ header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-fi
 .feat-card.sz-near{width:260px;opacity:.82;transform:scale(.92)}
 .feat-card.sz-near.pos-left{transform:scale(.92) rotateY(20deg)}
 .feat-card.sz-near.pos-right{transform:scale(.92) rotateY(-20deg)}
-.feat-card.sz-center{width:360px;opacity:1;transform:scale(1) translateZ(40px);z-index:5;box-shadow:0 30px 80px rgba(230,57,70,.38),0 0 0 1px rgba(230,57,70,.45),0 0 60px rgba(230,57,70,.25);animation:centerFloat 4s ease-in-out infinite}
-@keyframes centerFloat{0%,100%{transform:scale(1) translateZ(40px) translateY(0)}50%{transform:scale(1) translateZ(40px) translateY(-6px)}}
+.feat-card.sz-center{width:360px;opacity:1;transform:scale(1) translateZ(40px);z-index:5;box-shadow:0 30px 80px rgba(230,57,70,.38),0 0 0 1px rgba(230,57,70,.45),0 0 60px rgba(230,57,70,.25);animation:centerFloat 5s ease-in-out infinite}
+/* 2026-05-07 — bounce amplitude reduced from -6px to -2px (1/3 the visual
+   motion); duration extended 4s → 5s. Producer flagged the previous bounce as
+   visually distracting on the homepage hero. Subtle float so the centered
+   card still feels alive without dominating attention. Honors OS-level
+   prefers-reduced-motion for accessibility. */
+@keyframes centerFloat{0%,100%{transform:scale(1) translateZ(40px) translateY(0)}50%{transform:scale(1) translateZ(40px) translateY(-2px)}}
+@media (prefers-reduced-motion: reduce){.feat-card.sz-center{animation:none}}
 .feat-cover{width:100%;aspect-ratio:1;object-fit:cover;background:var(--surface2);display:block}
 .feat-cover-ph{width:100%;aspect-ratio:1;background:linear-gradient(135deg,var(--surface2),var(--surface3));display:flex;align-items:center;justify-content:center}
 /* Gloss sweep across center cover */
