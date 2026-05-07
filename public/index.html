@@ -566,6 +566,47 @@ header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-fi
 .p-add-cart{background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;transition:opacity .15s;flex-shrink:0}
 .p-add-cart:hover{opacity:.85}
 
+/* Chevron-up indicator on mobile mini-player — signals tap-to-expand */
+.p-expand-hint{display:none;align-items:center;justify-content:center;width:24px;height:24px;color:var(--dim);flex-shrink:0;opacity:.65}
+
+/* ── Expanded Player (full-screen modal, mirrors the mobile app's player) ──
+   Activated by tapping the mini bar on mobile, or "expand" affordance on
+   desktop. Genre-color border + glow on cover. Big waveform scrubber. License
+   tier buttons inline. Close X collapses back to mini bar. */
+#expanded-player{position:fixed;inset:0;background:rgba(6,6,10,.985);backdrop-filter:blur(40px);z-index:500;display:flex;flex-direction:column;align-items:center;padding:20px 22px 28px;opacity:0;pointer-events:none;transition:opacity .25s ease}
+#expanded-player.open{opacity:1;pointer-events:auto}
+.xp-top-row{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:520px;margin-bottom:12px}
+.xp-top-eyebrow{font-size:10px;letter-spacing:2.5px;font-weight:800;color:var(--dim);text-transform:uppercase}
+.xp-close{width:38px;height:38px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.xp-close:hover{background:var(--surface3)}
+.xp-cover-wrap{width:min(72vw,360px);aspect-ratio:1;margin:8px auto 18px;position:relative;border-radius:18px;overflow:hidden;border:2px solid var(--xp-accent,var(--accent));box-shadow:0 0 36px var(--xp-accent-shadow,rgba(230,57,70,.45))}
+.xp-cover-img{width:100%;height:100%;object-fit:cover;background:var(--surface2)}
+.xp-cover-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:900;color:#fff;background:linear-gradient(135deg,var(--xp-accent,var(--accent)) 0%,#000 100%)}
+.xp-meta{text-align:center;width:100%;max-width:520px;margin-bottom:18px}
+.xp-title{font-size:22px;font-weight:900;color:var(--text);margin-bottom:6px;line-height:1.25;padding:0 12px}
+.xp-sub{font-size:12px;color:var(--dim);font-weight:600;letter-spacing:.5px}
+.xp-genre-pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;background:var(--xp-accent,var(--accent));color:#000;font-size:10px;font-weight:900;letter-spacing:1.2px;margin-right:8px}
+.xp-progress-wrap{width:100%;max-width:520px;margin-bottom:8px}
+.xp-progress-track{width:100%;height:6px;background:var(--surface3);border-radius:3px;cursor:pointer;position:relative}
+.xp-progress-fill{height:100%;background:var(--xp-accent,var(--accent));border-radius:3px;width:0%;transition:width .1s linear;pointer-events:none}
+.xp-progress-thumb{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);left:0%;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.xp-time-row{display:flex;justify-content:space-between;width:100%;max-width:520px;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums;margin-bottom:22px}
+.xp-controls{display:flex;align-items:center;justify-content:center;gap:24px;margin-bottom:24px}
+.xp-ctrl-btn{width:54px;height:54px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,transform .15s}
+.xp-ctrl-btn:hover{background:var(--surface3)}
+.xp-ctrl-btn:active{transform:scale(.92)}
+.xp-play-btn{width:72px;height:72px;border-radius:50%;background:var(--xp-accent,var(--accent));border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;box-shadow:0 6px 22px var(--xp-accent-shadow,rgba(230,57,70,.55))}
+.xp-play-btn:hover{transform:scale(1.04)}
+.xp-play-btn:active{transform:scale(.95)}
+.xp-licenses{display:flex;gap:8px;width:100%;max-width:520px;margin-top:auto}
+.xp-license-btn{flex:1;padding:12px 8px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:inherit;transition:border-color .15s,background .15s}
+.xp-license-btn:hover{border-color:var(--xp-accent,var(--accent));background:var(--surface3)}
+.xp-license-label{font-size:10px;font-weight:800;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase}
+.xp-license-price{font-size:14px;font-weight:900;color:var(--text)}
+.xp-buy-now{width:100%;max-width:520px;margin-top:10px;padding:14px 16px;border-radius:14px;background:var(--xp-accent,var(--accent));color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:900;letter-spacing:1px;cursor:pointer;text-transform:uppercase;transition:opacity .15s,transform .15s}
+.xp-buy-now:hover{opacity:.92}
+.xp-buy-now:active{transform:scale(.98)}
+
 .toast{position:fixed;bottom:calc(var(--player-h) + 20px);left:50%;transform:translateX(-50%) translateY(16px);background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 20px;font-size:13px;font-weight:600;z-index:1000;opacity:0;pointer-events:none;white-space:nowrap;transition:all .25s;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.success{border-color:var(--green);color:var(--green)}
@@ -622,7 +663,19 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
   .beat-info{padding:10px}
   .detail-top{flex-direction:column}
   .detail-cover,.detail-cover-ph{width:100%;height:180px;border-radius:var(--radius)}
-  .p-add-cart,.p-controls .progress-wrap{display:none}
+  /* Mobile player redesign — compact mini bar that opens the expanded
+     full-screen player on tap. Cover + title/meta on left, play + chevron
+     on right. The whole bar (minus the play button itself) is the tap
+     target. */
+  #player-bar{height:64px;padding:0 14px;gap:10px;cursor:pointer}
+  .p-cover{width:44px;height:44px;border-radius:6px}
+  .p-info{max-width:none;flex:1}
+  .p-title{font-size:13px}
+  .p-meta{font-size:10px}
+  .p-controls{flex:0 0 auto;gap:6px}
+  .p-controls .progress-wrap{display:none}
+  .p-add-cart{display:none}
+  .p-expand-hint{display:flex}
   .footer-grid{grid-template-columns:1fr 1fr;gap:20px}
 }
 @media(max-width:480px){
@@ -630,6 +683,11 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
   .footer-grid{grid-template-columns:1fr}
   .email-form{flex-direction:column}
   .mini-stats{display:none}
+  .xp-cover-wrap{width:74vw}
+  .xp-title{font-size:19px}
+  .xp-controls{gap:18px}
+  .xp-ctrl-btn{width:48px;height:48px}
+  .xp-play-btn{width:64px;height:64px}
 }
 </style>
 </head>
@@ -1178,24 +1236,97 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
   </div>
 </div>
 
-<!-- Player -->
-<div id="player-bar" role="complementary" aria-label="Audio player">
-  <img class="p-cover" id="p-cover" src="" alt="" style="display:none" onclick="if(currentBeat)openDetail(currentBeat.id)" title="Open beat details">
-  <div class="p-info" onclick="if(currentBeat)openDetail(currentBeat.id)" style="cursor:pointer" title="Open beat details"><div class="p-title" id="p-title">—</div><div class="p-meta" id="p-meta">—</div></div>
+<!-- Player (mini bar). On mobile, tapping anywhere except the play button
+     opens the full-screen #expanded-player. On desktop, only the cover/info
+     opens detail (existing behavior preserved). -->
+<div id="player-bar" role="complementary" aria-label="Audio player" onclick="onPlayerBarTap(event)">
+  <img class="p-cover" id="p-cover" src="" alt="" style="display:none" title="Open beat details">
+  <div class="p-info" title="Open beat details"><div class="p-title" id="p-title">—</div><div class="p-meta" id="p-meta">—</div></div>
   <div class="p-controls">
-    <button class="p-play-btn" id="p-play-btn" onclick="togglePlay()" aria-label="Play/Pause">
+    <button class="p-play-btn" id="p-play-btn" onclick="event.stopPropagation();togglePlay()" aria-label="Play/Pause">
       <svg id="play-icon" width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       <svg id="pause-icon" width="16" height="16" viewBox="0 0 24 24" fill="white" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
     </button>
     <div class="progress-wrap">
-      <div class="waveform" id="waveform" onclick="seekWaveform(event)" role="slider" aria-label="Playback progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
-      <div class="progress-track" id="progress-track" onclick="seekAudio(event)" role="presentation" style="display:none">
+      <div class="waveform" id="waveform" onclick="event.stopPropagation();seekWaveform(event)" role="slider" aria-label="Playback progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+      <div class="progress-track" id="progress-track" onclick="event.stopPropagation();seekAudio(event)" role="presentation" style="display:none">
         <div class="progress-fill" id="progress-fill"></div>
       </div>
       <div class="time-row"><span class="time-lbl" id="t-cur">0:00</span><span class="time-lbl" id="t-tot">0:00</span></div>
     </div>
   </div>
-  <button class="p-add-cart" onclick="if(currentBeat)openDetail(currentBeat.id)">Buy This Beat</button>
+  <button class="p-add-cart" onclick="event.stopPropagation();if(currentBeat)openDetail(currentBeat.id)">Buy This Beat</button>
+  <!-- Mobile-only: chevron-up indicator hinting tap-to-expand -->
+  <div class="p-expand-hint" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+  </div>
+</div>
+
+<!-- Full-screen expanded player (modal). Mirrors the mobile app's full-screen
+     player aesthetic: big cover, genre-colored border + glow, title/meta,
+     waveform scrubber, transport controls, and the three license-tier
+     buttons (Lease/Premium/Stems) inline. Opens on mini-bar tap on mobile,
+     or via the expand affordance on desktop. -->
+<div id="expanded-player" role="dialog" aria-label="Now playing" aria-modal="true">
+  <div class="xp-top-row">
+    <div class="xp-top-eyebrow" id="xp-eyebrow">Now Playing</div>
+    <button class="xp-close" onclick="closeExpandedPlayer()" aria-label="Close player">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </button>
+  </div>
+
+  <div class="xp-cover-wrap" id="xp-cover-wrap">
+    <img class="xp-cover-img" id="xp-cover-img" src="" alt="" style="display:none">
+    <div class="xp-cover-fallback" id="xp-cover-fallback" style="display:none">?</div>
+  </div>
+
+  <div class="xp-meta">
+    <div class="xp-title" id="xp-title">—</div>
+    <div class="xp-sub">
+      <span class="xp-genre-pill" id="xp-genre-pill" style="display:none"></span>
+      <span id="xp-bpm-key">—</span>
+    </div>
+  </div>
+
+  <div class="xp-progress-wrap">
+    <div class="xp-progress-track" id="xp-progress-track" onclick="seekExpanded(event)" role="slider" aria-label="Playback progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="xp-progress-fill" id="xp-progress-fill"></div>
+      <div class="xp-progress-thumb" id="xp-progress-thumb"></div>
+    </div>
+  </div>
+  <div class="xp-time-row">
+    <span id="xp-t-cur">0:00</span>
+    <span id="xp-t-tot">0:00</span>
+  </div>
+
+  <div class="xp-controls">
+    <button class="xp-ctrl-btn" onclick="prevBeat()" aria-label="Previous beat">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><rect x="5" y="4" width="2" height="16"/></svg>
+    </button>
+    <button class="xp-play-btn" id="xp-play-btn" onclick="togglePlay()" aria-label="Play/Pause">
+      <svg id="xp-play-icon" width="26" height="26" viewBox="0 0 24 24" fill="#000"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <svg id="xp-pause-icon" width="26" height="26" viewBox="0 0 24 24" fill="#000" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+    </button>
+    <button class="xp-ctrl-btn" onclick="nextBeat()" aria-label="Next beat">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><rect x="17" y="4" width="2" height="16"/></svg>
+    </button>
+  </div>
+
+  <div class="xp-licenses" id="xp-licenses">
+    <button class="xp-license-btn" onclick="if(currentBeat)openDetail(currentBeat.id)">
+      <span class="xp-license-label">Lease</span>
+      <span class="xp-license-price" id="xp-price-lease">—</span>
+    </button>
+    <button class="xp-license-btn" onclick="if(currentBeat)openDetail(currentBeat.id)">
+      <span class="xp-license-label">Premium</span>
+      <span class="xp-license-price" id="xp-price-premium">—</span>
+    </button>
+    <button class="xp-license-btn" onclick="if(currentBeat)openDetail(currentBeat.id)">
+      <span class="xp-license-label">Stems</span>
+      <span class="xp-license-price" id="xp-price-stems">—</span>
+    </button>
+  </div>
+  <button class="xp-buy-now" onclick="if(currentBeat)openDetail(currentBeat.id)">Buy This Beat</button>
 </div>
 
 <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
@@ -1806,16 +1937,142 @@ function togglePlay() {
   if (isPlaying) { audio.pause(); isPlaying=false; } else { audio.play().catch(()=>{}); isPlaying=true; }
   updatePlayerUI(); renderGrid();
 }
+// Genre → accent color map for the expanded player. Mirrors the app's
+// GENRE_COLORS palette so tile, hero, and full-screen player share visual
+// language across surfaces.
+const PLAYER_GENRE_COLORS = {
+  'reggaeton':'#e63946','reggaetón':'#e63946','perreo':'#e63946',
+  'trap':'#f4c542','latin trap':'#f4c542','trap latino':'#f4c542',
+  'hip hop':'#a78bfa','hip-hop':'#a78bfa','boom bap':'#a78bfa','rap':'#a78bfa',
+  'drill':'#19f0ff','ny drill':'#19f0ff','uk drill':'#19f0ff',
+  'dancehall':'#34d399','afrobeats':'#fb923c','r&b':'#ec4899','latin pop':'#f97316','phonk':'#94a3b8',
+};
+function genreAccentColor(genre){
+  if (!genre) return '#e63946';
+  return PLAYER_GENRE_COLORS[String(genre).toLowerCase()] || '#e63946';
+}
+// Convert hex (#RRGGBB) → rgba w/ alpha for shadow halo.
+function hexToRgba(hex, a){
+  if (!hex) return `rgba(230,57,70,${a})`;
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
 function updatePlayerUI() {
   if (!currentBeat) return;
+  // Mini bar
   document.getElementById('p-title').textContent = currentBeat.title;
   document.getElementById('p-meta').textContent = [currentBeat.genre, currentBeat.bpm?currentBeat.bpm+' BPM':null, currentBeat.key].filter(Boolean).join(' · ');
   const cover = document.getElementById('p-cover');
   if (currentBeat.cover_url) { cover.src=currentBeat.cover_url; cover.style.display='block'; } else { cover.style.display='none'; }
   document.getElementById('play-icon').style.display = isPlaying?'none':'block';
   document.getElementById('pause-icon').style.display = isPlaying?'block':'none';
+
+  // Expanded player — keep both surfaces in sync
+  const accent = genreAccentColor(currentBeat.genre);
+  const xp = document.getElementById('expanded-player');
+  if (xp) {
+    xp.style.setProperty('--xp-accent', accent);
+    xp.style.setProperty('--xp-accent-shadow', hexToRgba(accent, 0.45));
+  }
+  const xpEyebrow = document.getElementById('xp-eyebrow');
+  if (xpEyebrow) xpEyebrow.textContent = isPlaying ? 'Now Playing' : 'Paused';
+  const xpTitle = document.getElementById('xp-title');
+  if (xpTitle) xpTitle.textContent = currentBeat.title || '—';
+  const xpBpmKey = document.getElementById('xp-bpm-key');
+  if (xpBpmKey) xpBpmKey.textContent = [currentBeat.bpm?currentBeat.bpm+' BPM':null, currentBeat.key].filter(Boolean).join(' · ') || '—';
+  const xpGenrePill = document.getElementById('xp-genre-pill');
+  if (xpGenrePill) {
+    if (currentBeat.genre) { xpGenrePill.textContent = String(currentBeat.genre).toUpperCase(); xpGenrePill.style.display = 'inline-flex'; }
+    else { xpGenrePill.style.display = 'none'; }
+  }
+  const xpImg = document.getElementById('xp-cover-img');
+  const xpFallback = document.getElementById('xp-cover-fallback');
+  if (currentBeat.cover_url) {
+    if (xpImg) { xpImg.src = currentBeat.cover_url; xpImg.style.display = 'block'; }
+    if (xpFallback) xpFallback.style.display = 'none';
+  } else {
+    if (xpImg) xpImg.style.display = 'none';
+    if (xpFallback) {
+      xpFallback.style.display = 'flex';
+      xpFallback.textContent = (currentBeat.title || '?')[0].toUpperCase();
+    }
+  }
+  const xpPlayIcon = document.getElementById('xp-play-icon');
+  const xpPauseIcon = document.getElementById('xp-pause-icon');
+  if (xpPlayIcon) xpPlayIcon.style.display = isPlaying ? 'none' : 'block';
+  if (xpPauseIcon) xpPauseIcon.style.display = isPlaying ? 'block' : 'none';
+
+  // License prices (use whatever fields the catalog uses — fall back gracefully)
+  const fmt = (v) => v == null ? '—' : '$' + Number(v).toFixed(2).replace(/\.00$/,'');
+  const pl = document.getElementById('xp-price-lease');
+  const pp = document.getElementById('xp-price-premium');
+  const ps = document.getElementById('xp-price-stems');
+  if (pl) pl.textContent = fmt(currentBeat.lease_price);
+  if (pp) pp.textContent = fmt(currentBeat.premium_price);
+  if (ps) ps.textContent = fmt(currentBeat.stems_price ?? currentBeat.stem_price);
 }
 function showPlayer() { document.getElementById('player-bar').classList.add('visible'); }
+
+// ── Expanded full-screen player wiring ──
+// Tap mini-bar → open. Close button or Escape → collapse. The expand affordance
+// is gated on a non-interactive target so taps on play/seek/buy don't open it.
+function onPlayerBarTap(event) {
+  if (!currentBeat) return;
+  // Ignore taps on interactive controls inside the bar — they handle their own
+  // event.stopPropagation in the markup, but be defensive in case of new ones.
+  const t = event.target;
+  if (t.closest('.p-play-btn,.p-add-cart,.progress-track,.waveform,#progress-track')) return;
+  // Cover/info: on desktop, fall back to existing "open detail" behavior; on
+  // mobile the whole bar opens the expanded player instead.
+  if (window.innerWidth > 768) {
+    if (t.closest('.p-cover,.p-info')) { openDetail(currentBeat.id); return; }
+    return;
+  }
+  openExpandedPlayer();
+}
+function openExpandedPlayer() {
+  if (!currentBeat) return;
+  const xp = document.getElementById('expanded-player');
+  if (!xp) return;
+  updatePlayerUI();
+  updateExpandedProgress();
+  xp.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeExpandedPlayer() {
+  const xp = document.getElementById('expanded-player');
+  if (!xp) return;
+  xp.classList.remove('open');
+  document.body.style.overflow = '';
+}
+function updateExpandedProgress() {
+  if (!audio || !audio.duration || !isFinite(audio.duration)) return;
+  const pct = (audio.currentTime / audio.duration) * 100;
+  const fill = document.getElementById('xp-progress-fill');
+  const thumb = document.getElementById('xp-progress-thumb');
+  if (fill) fill.style.width = pct + '%';
+  if (thumb) thumb.style.left = pct + '%';
+  const cur = document.getElementById('xp-t-cur');
+  const tot = document.getElementById('xp-t-tot');
+  const fmtT = (s) => { if (!isFinite(s)) return '0:00'; const m = Math.floor(s/60); const r = Math.floor(s%60); return m+':'+String(r).padStart(2,'0'); };
+  if (cur) cur.textContent = fmtT(audio.currentTime);
+  if (tot) tot.textContent = fmtT(audio.duration);
+  const track = document.getElementById('xp-progress-track');
+  if (track) track.setAttribute('aria-valuenow', Math.round(pct));
+}
+function seekExpanded(event) {
+  if (!audio.duration) return;
+  const track = document.getElementById('xp-progress-track');
+  const rect = track.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+  audio.currentTime = pct * audio.duration;
+  updateExpandedProgress();
+}
+// Aliases used by expanded-player markup — delegate to existing prev/next logic.
+function prevBeat(){ playPrevBeat(); }
+function nextBeat(){ playNextBeat(); }
 const WF_BARS = 60;
 function buildWaveform(seed) {
   const wf = document.getElementById('waveform');
@@ -1874,6 +2131,9 @@ document.addEventListener('keydown', (e) => {
     if (!currentBeat || !audio.duration) return;
     audio.currentTime = Math.max(0, audio.currentTime - 5);
   } else if (e.key === 'Escape') {
+    // Priority: expanded player > detail overlay > nothing
+    const xp = document.getElementById('expanded-player');
+    if (xp && xp.classList.contains('open')) { closeExpandedPlayer(); return; }
     const d = document.getElementById('detail-overlay');
     if (d && d.classList.contains('open')) closeDetail();
   }
@@ -1886,7 +2146,7 @@ function seekWaveform(e) {
   audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration;
 }
 buildWaveform();
-audio.addEventListener('timeupdate',()=>{ if(!audio.duration)return; const p=(audio.currentTime/audio.duration)*100; document.getElementById('progress-fill').style.width=p+'%'; document.getElementById('t-cur').textContent=fmtT(audio.currentTime); document.getElementById('t-tot').textContent=fmtT(audio.duration); updateWaveformProgress(); });
+audio.addEventListener('timeupdate',()=>{ if(!audio.duration)return; const p=(audio.currentTime/audio.duration)*100; document.getElementById('progress-fill').style.width=p+'%'; document.getElementById('t-cur').textContent=fmtT(audio.currentTime); document.getElementById('t-tot').textContent=fmtT(audio.duration); updateWaveformProgress(); updateExpandedProgress(); });
 audio.addEventListener('ended',()=>{ isPlaying=false; updatePlayerUI(); renderGrid(); });
 audio.addEventListener('pause',()=>{ isPlaying=false; updatePlayerUI(); });
 audio.addEventListener('play',()=>{ isPlaying=true; updatePlayerUI(); });
