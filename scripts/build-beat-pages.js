@@ -1081,6 +1081,32 @@ const TYPE_BEAT_ARTISTS = [
     filter: (b) => b.genre === 'Reggaeton' && (b.subgenre === 'Old School Reggaeton' || /smooth|romantic/i.test(b.mood || '')) },
   { artist: 'Peso Pluma',      slug: 'peso-pluma-type-beat',     intro: 'Peso Pluma brought corridos tumbados to global rotation. While we focus on reggaeton/trap, similar melodic Latin-trap energy works for that style.',
     filter: (b) => b.subgenre === 'Latin Trap' || (b.genre === 'Reggaeton' && /romantic|smooth/i.test(b.mood || '')) },
+  // 2026-05-07 — Latin US gap fill. These three artists drive heavy 2025-2026
+  // search volume in our target audience but were missing from the catalog.
+  { artist: 'Young Miko',      slug: 'young-miko-type-beat',     intro: 'Young Miko brought a confident, melodic perreo flow with reggaeton-pop sensibilities to global stages. These beats match her lane — modern reggaeton with sticky hooks and bouncy mid-tempo dembow.',
+    filter: (b) => b.genre === 'Reggaeton' && (b.subgenre === 'Modern Reggaeton' || b.subgenre === 'Reggaeton Pop' || b.subgenre === 'Perreo' || /bouncy|smooth|sensual|romantic/i.test(b.mood || '')),
+    body: `<h2>The Young Miko sound, broken down</h2>
+<p>Young Miko's catalog is built on a specific signature: confident, conversational vocal delivery sitting forward in the mix, modern dembow that leans more melodic-pop than old-school perreo, and chord progressions that feel airy rather than dark. Tempos run 90-95 BPM with a slight half-time feel. Keys lean minor (A minor, F minor, C# minor are most common). The drums pop with crisp, almost pop-radio-clean transient detail — this is one of the cleanest mix aesthetics in modern reggaeton.</p>
+<h2>Writing in the Young Miko lane</h2>
+<p>Young Miko writes hooks that you sing-along on first listen. The trick: lean melodic. Even your verses should have a clear contour — almost half-sung, half-spoken. Stay in your real range. The auto-tune is light polish, not a crutch. Lyrically, write what you'd actually say to someone — bravado works only if it's specific. Spanish, English, or Spanglish all work; she crosses freely.</p>
+<h2>Best license tier for a Young Miko-style release</h2>
+<p>Because the sound depends on the mix breathing, push for the Premium Lease ($99.99) — you get the WAV, which preserves the soft top-end of the synth pads and the crisp drum transient. If you're mixing yourself, the stems package ($199.99) lets you ride the perreo backbone separately from the melodic layer. <a href="/blog/lease-vs-exclusive-beat-license-guide">Full license breakdown</a>.</p>
+<h2>Related lanes</h2>
+<p>If the Young Miko lane fits your voice, also explore <a href="/perreo-beats">perreo beats</a>, <a href="/feid-type-beat">Feid type beats</a> (similar melodic palette), <a href="/karol-g-type-beat">Karol G type beats</a> (more vocal power, same energy), and <a href="/modern-reggaeton-beats">modern reggaeton</a>. For Spanish queries, see <a href="/comprar-beats-de-reggaeton">Comprar beats de reggaeton</a>.</p>` },
+  { artist: 'Quevedo',         slug: 'quevedo-type-beat',        intro: 'Quevedo (Spain) blends melodic reggaeton, Latin trap, and conversational hooks into globally-scaled records. Pick smooth modern reggaeton or melodic Latin trap to match his tone.',
+    filter: (b) => (b.genre === 'Reggaeton' && (b.subgenre === 'Modern Reggaeton' || /smooth|romantic|chill/i.test(b.mood || ''))) || b.subgenre === 'Latin Trap',
+    body: `<h2>Quevedo's lane: Spain's melodic reggaeton crossover</h2>
+<p>Quevedo's BZRP Music Sessions #52 was one of the most-streamed Spanish-language tracks of all time, and his solo catalog continues that lane: melodic reggaeton at 90-95 BPM with sparse, atmospheric production, half-sung half-rapped delivery, and emotional chord progressions in minor keys. The mix sits the vocal close — like he's whispering the chorus into your ear. That intimacy is the production trick.</p>
+<h2>Writing in the Quevedo lane</h2>
+<p>Lean conversational. Quevedo's biggest hits feel like a voice memo to a specific person — observational, restrained, emotionally direct. Don't out-sing the beat; ride on top of it. Your hook should be one melodic phrase you can repeat 3-4 times without it feeling repetitive. The verses can stretch into longer 16-bar passages of mostly-spoken cadence with occasional melodic turns.</p>
+<h2>Mix and license recommendation</h2>
+<p>Atmospheric reggaeton lives or dies on the dynamic range — the quiet parts have to feel quiet so the drops feel huge. Premium Lease ($99.99) for the WAV is the floor; stems ($199.99) if you want to push the spaciousness yourself. <a href="/blog/lease-vs-exclusive-beat-license-guide">License tier breakdown</a>.</p>
+<h2>Related</h2>
+<p>If you're chasing this sound, also check <a href="/feid-type-beat">Feid type beats</a> (very close palette), <a href="/bizarrap-type-beat">Bizarrap-style sessions</a>, <a href="/smooth-reggaeton-beats">smooth reggaeton</a>, and <a href="/modern-reggaeton-beats">modern reggaeton</a>. Spain + Latin US audiences overlap heavily — see <a href="/comprar-beats-de-reggaeton">Comprar beats de reggaeton</a>.</p>` },
+  { artist: 'Bizarrap',        slug: 'bizarrap-type-beat',       intro: 'Bizarrap (Argentina) built BZRP Music Sessions into a global format — high-energy tracks pairing trap drums, signature synth basses, and electronic elements with Latin artists. Pick high-energy trap with synthwave-inflected bass for this lane.',
+    filter: (b) => b.genre === 'Trap' || b.subgenre === 'Latin Trap' || (b.genre === 'Reggaeton' && /energetic|hard|bouncy/i.test(b.mood || '')) },
+  { artist: 'Anitta',          slug: 'anitta-type-beat',         intro: 'Anitta brings Brazilian funk-meets-reggaeton crossover energy to global stages. Pick energetic perreo, modern reggaeton, or reggaeton-pop for the high-energy bilingual hit lane.',
+    filter: (b) => b.genre === 'Reggaeton' && (b.subgenre === 'Perreo' || b.subgenre === 'Reggaeton Pop' || b.subgenre === 'Modern Reggaeton' || /energetic|bouncy|powerful/i.test(b.mood || '')) },
   // ── Trap / Hip-Hop ──
   { artist: 'Future',          slug: 'future-type-beat',         intro: 'Future popularized dark, atmospheric trap with auto-tuned melodies over hard 808s. Dark trap with moody, atmospheric production matches.',
     filter: (b) => b.genre === 'Trap' && (b.subgenre === 'Dark Trap' || /dark|moody|atmospheric/i.test(b.mood || '')),
