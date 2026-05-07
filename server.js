@@ -2185,7 +2185,11 @@ app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
           const { data: subs } = await supabase.from('email_subscribers')
             .select('email, token').is('unsubscribed_at', null);
           const recipients = (subs || []).filter(s => s.email);
-          if (!recipients.length) return; // No subscribers yet, skip silently.
+          // 2026-05-07 — DON'T early-return on zero subscribers. We still
+          // want to email the producer a summary so they have a Gmail-side
+          // record of every publish (and can build their filter rule even
+          // before the first real subscriber exists). The `recipients.length
+          // === 0` branch lower in this block handles the summary email.
           const PUBLIC_BASE = process.env.PUBLIC_BASE_URL || 'https://oneilbeats.store';
           const beatLandingUrl = `${PUBLIC_BASE}/beat/${beatId}`;
           const taggedUrl = audio_url;
@@ -2220,13 +2224,53 @@ app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
               await mailer.sendMail({
                 from: `"O'Neil Beats" <${process.env.EMAIL_FROM}>`,
                 to: sub.email,
+                // 2026-05-07 — BCC the producer (configurable via env) so they
+                // have a permanent Gmail-side record of every blast that went
+                // out. Combined with a one-time Gmail filter that auto-labels
+                // any incoming message with subject "🔥 New Drop:" → label
+                // "OB Beats - New Drops", every send lands in a clean folder
+                // for retro analysis. Falls back silently if env unset.
+                ...(process.env.NEW_BEAT_EMAIL_ARCHIVE_BCC ? { bcc: process.env.NEW_BEAT_EMAIL_ARCHIVE_BCC } : {}),
                 subject,
                 html,
+                // X-headers are picked up by Gmail's "matches:" filter syntax
+                // so the user can also filter by header instead of subject if
+                // they ever change the subject pattern.
+                headers: {
+                  'X-OB-Email-Type': 'new-beat-drop',
+                  'X-OB-Beat-Id': String(beatId),
+                  'X-OB-Beat-Title': title || '',
+                },
               });
               sent++;
             } catch (e) {
               failed++;
               console.warn('[new-beat-email] failed for', sub.email, ':', e.message);
+            }
+          }
+          // 2026-05-07 — additionally email the producer a single SUMMARY
+          // message even if no subscribers exist yet (so they can verify the
+          // blast pipeline is working without needing real subscribers, and
+          // can build the Gmail filter rule against the summary message
+          // immediately on first publish). Subject deliberately matches the
+          // same "🔥 New Drop:" pattern so the same Gmail filter labels both.
+          const archiveTo = process.env.NEW_BEAT_EMAIL_ARCHIVE_BCC || process.env.EMAIL_FROM;
+          if (archiveTo && recipients.length === 0) {
+            try {
+              await mailer.sendMail({
+                from: `"O'Neil Beats" <${process.env.EMAIL_FROM}>`,
+                to: archiveTo,
+                subject: `🔥 New Drop: ${title} — (no subscribers yet, summary only)`,
+                html: `<div style="font-family:system-ui;max-width:560px;margin:0 auto;padding:24px;background:#06060a;color:#e2e8f0;border-radius:12px"><h2 style="color:#d4af37">📊 Blast pipeline test fire</h2><p>Beat <strong style="color:#fff">${title}</strong> was published, but the email_subscribers table is empty so no fans received the drop email yet.</p><p>Beat ID: <code>${beatId}</code> · Genre: ${genre || '—'} · BPM: ${bpm || '—'}</p><p style="color:#aaa;font-size:13px">Once you have subscribers, this same template (without this notice) goes out to all of them automatically.</p></div>`,
+                headers: {
+                  'X-OB-Email-Type': 'new-beat-drop-archive',
+                  'X-OB-Beat-Id': String(beatId),
+                  'X-OB-Beat-Title': title || '',
+                },
+              });
+              console.log(`[new-beat-email] archive-summary sent to ${archiveTo} (no subscribers yet)`);
+            } catch (e) {
+              console.warn('[new-beat-email] archive-summary failed:', e.message);
             }
           }
           console.log(`[new-beat-email] sent ${sent}/${recipients.length} for "${title}" (${failed} failed)`);
