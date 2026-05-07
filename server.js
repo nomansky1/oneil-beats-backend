@@ -2169,6 +2169,73 @@ app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
       }
     }
 
+    // 2026-05-07 — auto-email broadcast on new-beat publish. Same mailer as
+    // /admin/send-free-beat, but fires for EVERY beat upload (subject framed
+    // as "new drop" instead of "free beat of the week"). Uses the tagged
+    // preview URL — clean untagged audio stays paid-only. Fully best-effort:
+    // mailer/SMTP failures must never block the upload route. Honors
+    // announce:false (uploader can opt out for re-uploads / test runs) AND
+    // the broadcast_email flag (uploader can disable email-only without
+    // disabling push, e.g. when shipping a quick fix).
+    if (announce !== false && req.body.broadcast_email !== false) {
+      // Fire and forget — never block the response.
+      (async () => {
+        try {
+          const supabase = getSupabaseClient();
+          const { data: subs } = await supabase.from('email_subscribers')
+            .select('email, token').is('unsubscribed_at', null);
+          const recipients = (subs || []).filter(s => s.email);
+          if (!recipients.length) return; // No subscribers yet, skip silently.
+          const PUBLIC_BASE = process.env.PUBLIC_BASE_URL || 'https://oneilbeats.store';
+          const beatLandingUrl = `${PUBLIC_BASE}/beat/${beatId}`;
+          const taggedUrl = audio_url;
+          const cover = cover_url || `${PUBLIC_BASE}/og-image.jpg`;
+          const subject = `🔥 New Drop: ${title} — ${genre || "O'Neil Beats"}${bpm ? ' · ' + bpm + ' BPM' : ''}`;
+          let sent = 0, failed = 0;
+          for (const sub of recipients) {
+            const unsubUrl = `${process.env.PUBLIC_BASE_URL || 'https://oneil-beats-backend.vercel.app'}/unsubscribe?email=${encodeURIComponent(sub.email)}&token=${sub.token}`;
+            const html = `
+              <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;background:#06060a;color:#e2e8f0;padding:32px;border-radius:12px">
+                <div style="text-align:center;margin-bottom:24px">
+                  <div style="color:#e63946;font-size:11px;font-weight:900;letter-spacing:2px">🔥 NEW BEAT JUST DROPPED</div>
+                  <h1 style="color:#fff;margin:8px 0 0;font-size:26px">${title}</h1>
+                  <p style="color:#aaa;font-size:13px;margin-top:6px">${genre || ''}${bpm ? ' · ' + bpm + ' BPM' : ''}${key ? ' · ' + key : ''}${mood ? ' · ' + mood : ''}</p>
+                </div>
+                ${cover ? `<img src="${cover}" alt="cover" style="width:100%;max-width:400px;border-radius:12px;display:block;margin:0 auto 24px">` : ''}
+                <div style="text-align:center;margin:24px 0">
+                  <a href="${beatLandingUrl}" style="display:inline-block;background:linear-gradient(135deg,#d4af37 0%,#e63946 100%);color:#000;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:900;font-size:14px;letter-spacing:0.5px;margin:0 6px 8px 0">🎧 LISTEN + LICENSE</a>
+                  <a href="${taggedUrl}" style="display:inline-block;background:#1a1a26;color:#e2e8f0;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;border:1px solid #333;margin:0 6px 8px 0">⬇ Free Tagged Preview</a>
+                </div>
+                <p style="color:#aaa;font-size:13px;line-height:1.6;text-align:center;margin-top:16px">
+                  Lease from $29.99 · Premium $99.99 · Stems $199.99 · Exclusive available<br>
+                  Use code <strong style="color:#fbbf24">FIRST10</strong> for 10% off your first beat.
+                </p>
+                <hr style="border:none;border-top:1px solid #222;margin:28px 0 20px">
+                <p style="color:#555;font-size:11px;text-align:center">
+                  You're receiving this because you subscribed to O'Neil Beats updates.<br>
+                  <a href="${unsubUrl}" style="color:#888">Unsubscribe</a> · <a href="${PUBLIC_BASE}" style="color:#888">oneilbeats.store</a>
+                </p>
+              </div>`;
+            try {
+              await mailer.sendMail({
+                from: `"O'Neil Beats" <${process.env.EMAIL_FROM}>`,
+                to: sub.email,
+                subject,
+                html,
+              });
+              sent++;
+            } catch (e) {
+              failed++;
+              console.warn('[new-beat-email] failed for', sub.email, ':', e.message);
+            }
+          }
+          console.log(`[new-beat-email] sent ${sent}/${recipients.length} for "${title}" (${failed} failed)`);
+        } catch (err) {
+          console.error('[new-beat-email] broadcast error:', err.message);
+        }
+      })();
+    }
+
     res.json({ success: true, beatId, message: `Beat "${title}" is live!` });
   } catch (err) {
     console.error('beat-metadata error:', err);
