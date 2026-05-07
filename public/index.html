@@ -1625,7 +1625,26 @@ function openDetail(id) {
     ...(b.stems_price?[{id:'stems',cls:'lic-stems',name:'Stems / Track Out',price:b.stems_price,feats:['All stems separated','Full DAW control','Unlimited streams','Non-exclusive rights','Credit required']}]:[]),
   ];
   const tags = b.tags ? (typeof b.tags==='string' ? b.tags.split(',').map(t=>t.trim()).filter(Boolean) : b.tags) : [];
+  // 2026-05-07 — Free Beat of the Week download CTA. When this beat is the
+  // currently-featured free weekly drop (b.is_free_weekly === true), show a
+  // prominent download card at the top of the detail modal so fans can grab
+  // the tagged MP3 directly. Clicks fire-and-forget POST to /beats/:id/download
+  // for analytics, then trigger the browser download. This was working on the
+  // mobile apps but missing from the website detail modal — now matches.
+  const freeDownloadHTML = (b.is_free_weekly && b.audio_url) ? `
+    <div style="background:linear-gradient(135deg,rgba(251,191,36,.18),rgba(239,68,68,.14));border:1.5px solid rgba(251,191,36,.55);border-radius:16px;padding:18px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:10px;font-weight:900;letter-spacing:2px;color:#fbbf24;margin-bottom:4px">★ FREE BEAT OF THE WEEK</div>
+        <div style="color:var(--text);font-weight:800;font-size:15px;line-height:1.3">Download tagged preview MP3 — free, non-commercial use</div>
+        <div style="color:var(--dim);font-size:11px;margin-top:4px">Producer-tagged version. License Lease/Premium/Stems below for the clean untagged file.</div>
+      </div>
+      <a href="${esc(b.audio_url)}" download="${esc((b.title || 'oneil-beats-free').replace(/[^a-z0-9]+/gi, '-'))}-tagged.mp3" target="_blank" rel="noopener" onclick="trackFreeDownload('${esc(b.id)}')" style="display:inline-flex;align-items:center;gap:8px;background:#fbbf24;color:#000;padding:14px 22px;border-radius:12px;text-decoration:none;font-weight:900;font-size:13px;letter-spacing:0.5px;cursor:pointer;white-space:nowrap;border:none">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        DOWNLOAD FREE
+      </a>
+    </div>` : '';
   document.getElementById('detail-body').innerHTML = `
+    ${freeDownloadHTML}
     <div class="license-section-title">Choose Your License</div>
     <div class="license-cards">
       ${licCards.map(l=>{const inCart=cartIds.includes(b.id+'_'+l.id);return `
@@ -2246,6 +2265,19 @@ function toggleMobileNav() { document.getElementById('header-nav').classList.tog
 function closeMobileNav() { document.getElementById('header-nav').classList.remove('mobile-open'); }
 
 // ───────────── FREE BEAT OF THE WEEK ─────────────
+// Fire-and-forget analytics ping when a fan clicks the download button on
+// the featured free beat. Doesn't block the actual download — the <a download>
+// triggers the file save in parallel. Failures are silently swallowed so a
+// bad-network user still gets the file.
+function trackFreeDownload(beatId) {
+  try {
+    fetch(`${API}/beats/${beatId}/download`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: (currentUser && currentUser.id) || null }),
+    }).catch(() => {});
+  } catch (_) {}
+}
 async function loadFeaturedFree() {
   try {
     const r = await fetch(`${API}/featured-free`);
