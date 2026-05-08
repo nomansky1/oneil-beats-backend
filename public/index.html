@@ -51,11 +51,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <!-- Structured Data: Organization / MusicStore -->
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"MusicStore","name":"O'Neil Beats","url":"https://oneilbeats.store","description":"Buy reggaeton beats, trap beats, hip-hop instrumentals, drill and rap type beats online. Instant MP3/WAV delivery.","email":"produceroneil@gmail.com","priceRange":"$29.99 - $499.99","currenciesAccepted":"USD","paymentAccepted":"Credit Card, Visa, Mastercard, American Express, Apple Pay, Google Pay","areaServed":"Worldwide","sameAs":["https://www.instagram.com/","https://www.youtube.com/","https://twitter.com/"],"genre":["Reggaeton","Modern Reggaeton","Old School Reggaeton","Perreo","Dembow","Trap","Latin Trap","Dark Trap","Melodic Trap","Hip-Hop","Boom Bap","Lo-Fi Hip Hop","East Coast Hip Hop","West Coast Hip Hop","90s Hip Hop","Drill","UK Drill","NY Drill","Chicago Drill","R&B","Trap Soul","Afrobeats","Jazz Rap"]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"MusicStore","name":"O'Neil Beats","url":"https://oneilbeats.store","logo":"https://oneilbeats.store/icon.png","image":"https://oneilbeats.store/og-image.jpg","description":"Buy reggaeton beats, trap beats, hip-hop instrumentals, drill and rap type beats online. Instant MP3/WAV delivery.","email":"produceroneil@gmail.com","priceRange":"$29.99 - $499.99","currenciesAccepted":"USD","paymentAccepted":"Credit Card, Visa, Mastercard, American Express, Apple Pay, Google Pay","areaServed":"Worldwide","founder":{"@type":"Person","name":"Nelson Rios","alternateName":"O'Neil"},"sameAs":["https://www.instagram.com/oneilbeats","https://www.youtube.com/@obreggeatonbeats","https://www.beatstars.com/oneilbeats","https://www.facebook.com/333777486725867","https://twitter.com/oneilbeats","https://apps.apple.com/app/id6763227699"],"genre":["Reggaeton","Modern Reggaeton","Old School Reggaeton","Perreo","Dembow","Trap","Latin Trap","Dark Trap","Melodic Trap","Hip-Hop","Boom Bap","Lo-Fi Hip Hop","East Coast Hip Hop","West Coast Hip Hop","90s Hip Hop","Drill","UK Drill","NY Drill","Chicago Drill","R&B","Trap Soul","Afrobeats","Jazz Rap"]}</script>
 <!-- Structured Data: WebSite SearchAction -->
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"O'Neil Beats","alternateName":"OB Beats","url":"https://oneilbeats.store","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://oneilbeats.store/?search={search_term_string}"},"query-input":"required name=search_term_string"}}</script>
 <!-- Structured Data: MusicGroup -->
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"MusicGroup","name":"O'Neil","alternateName":"Prod. by O'Neil","url":"https://oneilbeats.store","genre":["Reggaeton","Trap","Drill","Latin Trap","Hip-Hop"],"sameAs":["https://oneilbeats.store"]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"MusicGroup","name":"O'Neil","alternateName":["Prod. by O'Neil","O'Neil Beats","ProdONeil"],"url":"https://oneilbeats.store","image":"https://oneilbeats.store/producer-avatar.jpg","logo":"https://oneilbeats.store/icon.png","genre":["Reggaeton","Trap","Drill","Latin Trap","Hip-Hop"],"member":{"@type":"Person","name":"Nelson Rios","alternateName":"O'Neil"},"sameAs":["https://www.youtube.com/@obreggeatonbeats","https://www.instagram.com/oneilbeats","https://www.beatstars.com/oneilbeats","https://www.facebook.com/333777486725867"]}</script>
 <!-- Structured Data: BreadcrumbList -->
 <script type="application/ld+json" id="ld-breadcrumbs">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://oneilbeats.store/"},{"@type":"ListItem","position":2,"name":"Beats","item":"https://oneilbeats.store/#catalog"}]}</script>
 <!-- Structured Data: MobileApplication (links to native app once published) -->
@@ -617,6 +617,25 @@ header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-fi
 .xp-heart:hover{background:rgba(0,0,0,.75);transform:scale(1.06)}
 .xp-heart.fav{color:#ff5577}
 .xp-heart.fav svg{fill:#ff5577}
+/* Share button — sibling of heart, sits to its left. Same chrome so they read
+   as a paired action set. Web Share API on mobile, popover fallback on desktop. */
+.xp-share{position:absolute;top:10px;right:58px;width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;transition:transform .15s,background .15s}
+.xp-share:hover{background:rgba(0,0,0,.75);transform:scale(1.06)}
+/* Share popover (desktop fallback when Web Share API isn't available) */
+.share-pop-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:none;align-items:center;justify-content:center;padding:18px}
+.share-pop-backdrop.open{display:flex}
+.share-pop{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+.share-pop h3{margin:0 0 4px;font-size:18px;font-weight:900;letter-spacing:-.01em;color:var(--text)}
+.share-pop .share-sub{margin:0 0 16px;font-size:12px;color:var(--dim)}
+.share-pop .share-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.share-pop .share-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);cursor:pointer;text-decoration:none;font-size:11px;font-weight:600;transition:transform .15s,border-color .15s,background .15s}
+.share-pop .share-btn:hover{transform:translateY(-2px);border-color:var(--accent);background:var(--surface3)}
+.share-pop .share-btn svg{width:22px;height:22px}
+.share-pop .share-link{display:flex;align-items:center;gap:8px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px}
+.share-pop .share-link input{flex:1;background:transparent;border:none;color:var(--text);font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;outline:none}
+.share-pop .share-link button{padding:6px 10px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer}
+.share-pop .share-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:transparent;border:none;color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.share-pop .share-close:hover{color:var(--text);background:var(--surface2)}
 
 /* Mini-bar heart — visible on desktop (next to play), hidden on mobile to keep
    the mini bar uncluttered (it lives inside the expanded player on mobile). */
@@ -1335,6 +1354,10 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
     <button class="xp-heart" id="xp-heart" onclick="event.stopPropagation();toggleFavoriteCurrent()" aria-label="Favorite this beat" aria-pressed="false">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
     </button>
+    <!-- Share — left of heart. Web Share API on mobile, popover on desktop. -->
+    <button class="xp-share" id="xp-share" onclick="event.stopPropagation();shareCurrentBeat()" aria-label="Share this beat">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+    </button>
   </div>
 
   <div class="xp-meta">
@@ -1410,6 +1433,42 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
 </div>
 
 <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+<!-- Social share popover — opens when shareBeat() runs and the Web Share API
+     isn't available (e.g. desktop). Renders X / WhatsApp / Facebook / copy-link
+     options plus a one-click copy of the canonical beat URL. -->
+<div class="share-pop-backdrop" id="share-pop-backdrop" onclick="if(event.target===this)closeSharePop()" role="dialog" aria-modal="true" aria-label="Share this beat">
+  <div class="share-pop" style="position:relative">
+    <button class="share-close" onclick="closeSharePop()" aria-label="Close share menu">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h3 id="share-pop-title">Share this beat</h3>
+    <p class="share-sub" id="share-pop-sub">Send the link to anyone who needs a beat.</p>
+    <div class="share-row">
+      <a class="share-btn" id="share-x" target="_blank" rel="noopener" href="#" aria-label="Share on X / Twitter">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        X / Twitter
+      </a>
+      <a class="share-btn" id="share-wa" target="_blank" rel="noopener" href="#" aria-label="Share on WhatsApp">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.498 14.382c-.301-.15-1.767-.867-2.04-.966-.273-.101-.473-.15-.673.15-.197.295-.771.964-.944 1.162-.175.195-.349.21-.646.075-.3-.15-1.263-.465-2.403-1.485-.888-.795-1.484-1.77-1.66-2.07-.174-.3-.019-.465.13-.615.136-.135.301-.345.451-.523.146-.181.194-.301.297-.496.1-.21.049-.375-.025-.524-.075-.15-.672-1.62-.922-2.206-.24-.584-.487-.51-.672-.51-.172-.015-.371-.015-.571-.015s-.523.074-.797.359c-.273.3-1.045 1.02-1.045 2.475s1.07 2.865 1.219 3.075c.149.195 2.105 3.195 5.1 4.485.714.3 1.27.48 1.704.629.714.227 1.365.195 1.88.121.574-.091 1.767-.721 2.016-1.426.255-.705.255-1.29.18-1.425-.074-.135-.27-.21-.57-.345m-5.446 7.443h-.016c-1.77 0-3.524-.48-5.055-1.38l-.36-.214-3.75.975 1.005-3.645-.239-.375a9.86 9.86 0 0 1-1.516-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885M20.52 3.449C18.24 1.245 15.24 0 12.045 0 5.463 0 .104 5.334.101 11.893c0 2.096.549 4.14 1.595 5.945L0 24l6.335-1.652a12 12 0 0 0 5.71 1.447h.006c6.585 0 11.946-5.336 11.949-11.896 0-3.176-1.24-6.165-3.495-8.411"/></svg>
+        WhatsApp
+      </a>
+      <a class="share-btn" id="share-fb" target="_blank" rel="noopener" href="#" aria-label="Share on Facebook">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073"/></svg>
+        Facebook
+      </a>
+      <button class="share-btn" id="share-copy" onclick="copyShareLink()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy link
+      </button>
+    </div>
+    <div class="share-link">
+      <input type="text" id="share-link-input" readonly value="" aria-label="Beat URL">
+      <button onclick="copyShareLink()" id="share-link-copy-btn">Copy</button>
+    </div>
+  </div>
+</div>
+
 <audio id="audio-el" preload="none" crossorigin="anonymous"></audio>
 
 <script>
@@ -1828,6 +1887,9 @@ function openDetail(id) {
           ${isNowPlaying&&isPlaying ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>` : `<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>`}
         </button>
         <span class="detail-play-label">${isNowPlaying&&isPlaying?'Now Playing — tap to pause':'Preview beat'}</span>
+        <button class="detail-share-btn" onclick="shareBeat('${b.id}');event.stopPropagation();" aria-label="Share this beat" title="Share this beat" style="margin-left:auto;width:38px;height:38px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .15s,border-color .15s,background .15s">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </button>
       </div>
     </div>`;
   const licCards = [
@@ -2242,6 +2304,99 @@ function updateFavoriteUI(){
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SOCIAL SHARE — uses the Web Share API on devices that have it (modern
+// mobile browsers), and falls back to a per-network popover (X, WhatsApp,
+// Facebook, copy-link) on desktop. The shared URL is the canonical per-beat
+// landing (/beat/{slug}) so unfurls hit the SEO page with full meta tags.
+// ─────────────────────────────────────────────────────────────────────────────
+function _buildShareForBeat(b) {
+  const path = (typeof beatPath === 'function' && b) ? beatPath(b) : '/';
+  const url = location.origin + path;
+  const title = b ? `${b.title} — ${b.genre || 'beat'} on O'Neil Beats` : "O'Neil Beats";
+  const tech = [b?.bpm ? `${b.bpm} BPM` : null, b?.key].filter(Boolean).join(' · ');
+  const text = b
+    ? `Listen to "${b.title}"${b?.genre ? ` (${b.genre}${tech ? ', ' + tech : ''})` : ''} on O'Neil Beats — ${url}`
+    : `Check out O'Neil Beats — ${url}`;
+  return { url, title, text };
+}
+function shareBeat(id) {
+  const b = (typeof allBeats !== 'undefined' && Array.isArray(allBeats)) ? allBeats.find(x => x.id === id) : null;
+  const payload = _buildShareForBeat(b);
+  // Prefer the native share sheet when available — gets system-level apps
+  // (Messages, Mail, Threads, Snapchat, etc.) that we can't link to from web.
+  if (navigator.share) {
+    navigator.share(payload).catch(() => {/* user cancelled */});
+    track('share_native', { beatId: id, surface: 'native' });
+    return;
+  }
+  // Desktop fallback: render the network popover.
+  _openSharePop(payload, b);
+  track('share_popover', { beatId: id, surface: 'popover' });
+}
+function shareCurrentBeat() {
+  if (!currentBeat) return;
+  shareBeat(currentBeat.id);
+}
+function _openSharePop(payload, b) {
+  const bd = document.getElementById('share-pop-backdrop');
+  if (!bd) return;
+  document.getElementById('share-pop-title').textContent = b ? `Share "${b.title}"` : 'Share this beat';
+  document.getElementById('share-pop-sub').textContent = b
+    ? `${b.genre || 'Beat'}${b.bpm ? ' · ' + b.bpm + ' BPM' : ''}${b.key ? ' · ' + b.key : ''}`
+    : 'Send the link to anyone who needs a beat.';
+  document.getElementById('share-link-input').value = payload.url;
+  const enc = encodeURIComponent;
+  document.getElementById('share-x').href  = `https://twitter.com/intent/tweet?text=${enc(payload.text)}`;
+  document.getElementById('share-wa').href = `https://wa.me/?text=${enc(payload.text)}`;
+  document.getElementById('share-fb').href = `https://www.facebook.com/sharer/sharer.php?u=${enc(payload.url)}`;
+  bd.classList.add('open');
+  // Save target on backdrop so the X/WA/FB buttons can fire analytics on click
+  bd._lastShare = payload;
+  bd._lastBeatId = b?.id || null;
+  // Light analytics on outbound clicks
+  ['share-x','share-wa','share-fb'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el._wired) {
+      el._wired = true;
+      el.addEventListener('click', () => {
+        const channel = id.replace('share-','');
+        try { track('share_click', { beatId: bd._lastBeatId, channel }); } catch(_){}
+      });
+    }
+  });
+}
+function closeSharePop() {
+  const bd = document.getElementById('share-pop-backdrop');
+  if (bd) bd.classList.remove('open');
+}
+function copyShareLink() {
+  const input = document.getElementById('share-link-input');
+  if (!input) return;
+  const url = input.value;
+  const onCopied = () => {
+    showToast('Link copied','success');
+    const btn = document.getElementById('share-link-copy-btn');
+    if (btn) { const old = btn.textContent; btn.textContent = '✓ Copied'; setTimeout(()=>{ btn.textContent = old; }, 1400); }
+    try { track('share_copy_link', { beatId: document.getElementById('share-pop-backdrop')._lastBeatId }); } catch(_){}
+  };
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(url).then(onCopied).catch(() => {
+      input.select(); document.execCommand && document.execCommand('copy'); onCopied();
+    });
+  } else {
+    input.select(); try { document.execCommand('copy'); } catch(_){}
+    onCopied();
+  }
+}
+// Escape closes the popover (matches the modal pattern elsewhere on the page).
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const bd = document.getElementById('share-pop-backdrop');
+    if (bd && bd.classList.contains('open')) closeSharePop();
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // LYRICS / NOTES — per-beat free-form text. Saved per-device in localStorage
 // keyed by beat id. Auto-saves on input (debounced 600ms) and on blur.
 // Storage key: ob_lyrics → JSON object { "<beatId>": "<text>" }
@@ -2317,12 +2472,21 @@ function _wireNotesTextarea(){
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AUDIO VISUALIZER — Web Audio API analyser → canvas overlay on the cover.
-// Bars react to live frequency data, colored with the genre accent. Created
-// lazily on first play (AudioContext requires a user gesture). Falls back to
-// a calm static animation if Web Audio fails (e.g. CORS on the audio source).
+// Reactive bars driven by live FFT data, colored with the genre accent. Three
+// "reactor" enhancements over the v1 implementation:
+//   • Log-scale frequency mapping so bass + mids look distinct (linear maps
+//     squashed all musical energy into the left third of the canvas)
+//   • Per-bar peak-hold marker — a 2px line that holds at recent max for ~250ms
+//     then falls (gives the eye something to track on each transient)
+//   • Bass-driven cover-glow scale — sub/low band drives a subtle scale + halo
+//     on the cover image so kicks visibly "punch"
+// Created lazily on first play (AudioContext requires a user gesture). Falls
+// back to a calm static animation if Web Audio fails (e.g. CORS on the source).
 // ─────────────────────────────────────────────────────────────────────────────
 let _audioCtx = null, _analyser = null, _audioSource = null, _vizRafId = 0;
-const _vizBins = 48;
+const _vizBins = 56;                    // up from 48 — more visual resolution
+let _vizPeaks = null;                   // peak-hold per bar (0..1, decays each frame)
+let _vizPeakAge = null;                 // frames since each peak set (for hold timing)
 function initVisualizer(){
   if (_analyser) return true;
   try {
@@ -2331,8 +2495,8 @@ function initVisualizer(){
     _audioCtx = new AC();
     _audioSource = _audioCtx.createMediaElementSource(audio);
     _analyser = _audioCtx.createAnalyser();
-    _analyser.fftSize = 128;        // → 64 bins, we use 48
-    _analyser.smoothingTimeConstant = 0.78;
+    _analyser.fftSize = 256;            // 128 bins (was 64) → finer resolution
+    _analyser.smoothingTimeConstant = 0.62;  // was 0.78 — snappier transients
     _audioSource.connect(_analyser);
     _analyser.connect(_audioCtx.destination);
     return true;
@@ -2360,6 +2524,12 @@ function startVisualizer(){
   }
   resizeCanvas();
   const data = new Uint8Array(_analyser.frequencyBinCount);
+  if (!_vizPeaks || _vizPeaks.length !== _vizBins) {
+    _vizPeaks = new Float32Array(_vizBins);
+    _vizPeakAge = new Uint16Array(_vizBins);
+  }
+  const cover = document.getElementById('xp-cover-img');
+  let _coverScale = 1, _coverScaleTarget = 1;
   function tick(){
     const xp2 = document.getElementById('expanded-player');
     if (!xp2 || !xp2.classList.contains('open')) { _vizRafId = 0; return; }
@@ -2371,19 +2541,46 @@ function startVisualizer(){
     const bars = _vizBins;
     const gap = Math.max(1, Math.floor(2 * dpr));
     const barW = Math.max(2, (w - gap * (bars - 1)) / bars);
+    // Sub-bass average → drives cover glow scale (bins 1..6 covers ~40-260Hz)
+    let bass = 0;
+    for (let k = 1; k < 7 && k < data.length; k++) bass += data[k];
+    bass = bass / 6 / 255; // 0..1
+    _coverScaleTarget = 1 + bass * 0.018; // up to ~+1.8% on heavy kicks
+    _coverScale += (_coverScaleTarget - _coverScale) * 0.18; // ease toward target
+    if (cover) cover.style.transform = `scale(${_coverScale.toFixed(4)})`;
+    // Log-scale frequency mapping: each bar samples a band that grows wider
+    // toward the highs. Bass + mids get more visual real estate this way.
+    const useable = Math.floor(data.length * 0.78);
     for (let i = 0; i < bars; i++) {
-      // Sample lower-mid frequencies more densely (where most musical energy lives).
-      const idx = Math.min(data.length - 1, Math.floor((i / bars) * data.length * 0.7));
-      const v = data[idx] / 255;          // 0..1
+      // Map bar index to log-scaled bin range
+      const t0 = i / bars, t1 = (i + 1) / bars;
+      const f0 = Math.floor(Math.pow(t0, 1.6) * useable);
+      const f1 = Math.max(f0 + 1, Math.floor(Math.pow(t1, 1.6) * useable));
+      let sum = 0, n = 0;
+      for (let k = f0; k < f1 && k < data.length; k++) { sum += data[k]; n++; }
+      const v = (n ? sum / n : 0) / 255; // 0..1
+      // Peak hold logic — keep the recent max for ~14 frames (~230ms @ 60fps),
+      // then decay 1.5%/frame so it falls naturally if the bar stays low.
+      if (v > _vizPeaks[i]) { _vizPeaks[i] = v; _vizPeakAge[i] = 0; }
+      else if (++_vizPeakAge[i] > 14) { _vizPeaks[i] = Math.max(0, _vizPeaks[i] - 0.015); }
       const barH = Math.max(2 * dpr, v * h * 0.92);
       const x = i * (barW + gap);
       const y = h - barH;
-      // Gradient: darker at base → bright accent at the top.
+      // Brighter hot tip on transients — when v is close to its peak, paint the
+      // top 4px of the bar with a near-white wash, so loud hits visibly "punch".
       const grad = ctx.createLinearGradient(0, y, 0, h);
       grad.addColorStop(0, accent);
       grad.addColorStop(1, hexToRgba(accent, 0.15));
       ctx.fillStyle = grad;
       ctx.fillRect(x, y, barW, barH);
+      if (v > 0.55) {
+        ctx.fillStyle = `rgba(255,255,255,${Math.min(0.6, (v - 0.55) * 1.6)})`;
+        ctx.fillRect(x, y, barW, Math.max(2 * dpr, 4 * dpr));
+      }
+      // Peak-hold marker — 2px line at the recent max, slightly translucent
+      const peakY = h - Math.max(2 * dpr, _vizPeaks[i] * h * 0.92);
+      ctx.fillStyle = hexToRgba(accent, 0.85);
+      ctx.fillRect(x, peakY - 2 * dpr, barW, 2 * dpr);
     }
   }
   tick();
@@ -2396,6 +2593,11 @@ function stopVisualizer(){
     const ctx = canvas.getContext('2d');
     if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
+  // Reset cover scale so the close-then-reopen flow doesn't get stuck zoomed.
+  const cover = document.getElementById('xp-cover-img');
+  if (cover) cover.style.transform = '';
+  // Decay all peaks so they don't carry over if user reopens later.
+  if (_vizPeaks) { for (let i = 0; i < _vizPeaks.length; i++) _vizPeaks[i] = 0; }
 }
 function _drawStaticVisualizer(){
   // Fallback when Web Audio API is unavailable. Soft pulsing bars driven by

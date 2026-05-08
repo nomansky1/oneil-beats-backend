@@ -237,6 +237,27 @@ function renderBeatPage(template, beat, slug, allBeats = []) {
   html = html.replace(/<meta\s+property="og:type"\s+content="website">/i,
     `<meta property="og:type" content="music.song">`);
 
+  // 2026-05-08 — og:audio cluster lets FB / Threads / X build playable unfurls
+  // for the beat's tagged preview MP3 (where supported). The audio_url field
+  // is the Supabase-hosted tagged preview; preview/{id} would also work but
+  // hits our backend on every render and adds latency vs the direct URL.
+  // Use the existing canonical audio_url; skip the cluster if the beat has no
+  // playable preview (rare, but keeps Facebook's scraper from failing).
+  const audioUrl = beat.audio_url || beat.mp3_url || null;
+  if (audioUrl) {
+    const audioBlock = [
+      `<meta property="og:audio" content="${esc(audioUrl)}">`,
+      `<meta property="og:audio:secure_url" content="${esc(audioUrl)}">`,
+      `<meta property="og:audio:type" content="audio/mpeg">`,
+      // music.song extension — Facebook's spec uses these to label the unfurl
+      // with proper artist + duration metadata. Duration is best-effort
+      // (only emit when we know it from the beat record).
+      `<meta property="music:musician" content="${SITE_URL}/about">`,
+      ...(beat.duration_seconds ? [`<meta property="music:duration" content="${Number(beat.duration_seconds).toFixed(0)}">`] : []),
+    ].join('\n');
+    html = html.replace(/(<meta\s+property="og:type"\s+content="music\.song">)/i, `$1\n${audioBlock}`);
+  }
+
   // twitter:title, twitter:description, twitter:image (+ alt for accessibility / parser)
   html = html.replace(/<meta\s+name="twitter:title"\s+content="[^"]*">/i,
     `<meta name="twitter:title" content="${esc(ogTitle)}">`);
