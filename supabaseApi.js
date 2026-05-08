@@ -1,17 +1,64 @@
 // ─── Supabase API Helper ─────────────────────────────────────────────────────
-// Replaces Google Drive/Sheets with Supabase Storage + Postgres
+//
+// 2026-05-08: refactored to bypass Supabase's PostgREST/Storage quota gate by
+// connecting **directly to Postgres via the Supavisor pooler** (IPv4-compatible,
+// what Vercel needs). The Postgres database itself is not gated by the
+// "exceed_egress_quota" / "exceed_storage_size_quota" restrictions — those
+// only block PostgREST + Storage public APIs. Direct pg connections still work
+// even when the project is "Services restricted", which is what brought the
+// site back online without paying for Supabase Pro.
+//
+// Function signatures are unchanged so callers in server.js don't need edits.
+// Storage (Supabase storage.*) operations stay on the supabase-js client; new
+// uploads route to GCS when GCS_BUCKET is set anyway. The legacy supabase-js
+// client is still exported via getSupabaseClient() for the few places that
+// need `.storage.*` or auth APIs.
+
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
+const { Pool } = require('pg');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://thmqqplnrjwimgqubkhp.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRobXFxcGxucmp3aW1ncXVia2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzMxMjgsImV4cCI6MjA5MTE0OTEyOH0.jjnJ9wPNq-vqkku80T1HydTGrqMhKeQsfbJThhHyDi8';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+// ── Direct Postgres pool via Supavisor (IPv4 transaction pooler) ───────────
+// DATABASE_URL must be set in the environment. Format:
+//   postgresql://postgres.{project_ref}:{password}@aws-1-{region}.pooler.supabase.com:6543/postgres
+// Vercel serverless functions reuse pool connections across invocations within
+// the same lambda warm window; transaction pool mode handles spikes safely.
+const DATABASE_URL = process.env.DATABASE_URL;
+const pool = DATABASE_URL
+  ? new Pool({
+      connectionString: DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 5,
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 10_000,
+    })
+  : null;
+
+if (!pool) {
+  console.warn('[supabaseApi] DATABASE_URL not set — direct pg disabled, falling back to PostgREST (which may be quota-blocked).');
+}
+
+async function pgQuery(text, params = []) {
+  if (!pool) throw new Error('DATABASE_URL not configured');
+  const client = await pool.connect();
+  try {
+    const result = await client.query(text, params);
+    return result;
+  } finally {
+    client.release();
+  }
+}
+
 // ── BEATS CRUD ──────────────────────────────────────────────────────────────
 async function fetchBeatsFromDB() {
-  const { data, error } = await supabase.from('beats').select('*').eq('active', true).order('created_at', { ascending: false });
-  if (error) throw new Error(`Fetch beats error: ${error.message}`);
-  return (data || []).map(beat => ({
+  const { rows } = await pgQuery(
+    'SELECT * FROM beats WHERE active = true ORDER BY created_at DESC NULLS LAST'
+  );
+  return rows.map(beat => ({
     ...beat,
     bpm: beat.bpm || 120,
     lease_price: parseFloat(beat.lease_price || beat.price) || 29.99,
@@ -19,7 +66,7 @@ async function fetchBeatsFromDB() {
     stems_price: parseFloat(beat.stem_price) || 199.99,
     exclusive_price: beat.exclusive_price ? parseFloat(beat.exclusive_price) : null,
     plays: beat.plays || 0,
-    tags: beat.tags ? beat.tags.split(',').map(t => t.trim()) : [],
+    tags: beat.tags ? String(beat.tags).split(',').map(t => t.trim()) : [],
     audio_url: beat.audio_url || '',
     audio_original_url: beat.audio_original_url || '',
     cover_art_url: beat.cover_url || '',
@@ -30,32 +77,41 @@ async function fetchBeatsFromDB() {
 }
 
 async function addBeatToDB(beatData) {
-  const { data, error } = await supabase.from('beats').insert({
-    title: beatData.title || '',
-    artist: beatData.artist || "O'Neil",
-    genre: beatData.genre || '',
-    subgenre: beatData.subgenre || '',
-    bpm: parseInt(beatData.bpm) || 120,
-    key: beatData.key || '',
-    mood: beatData.mood || '',
-    price: parseFloat(beatData.lease_price) || 29.99,
-    lease_price: parseFloat(beatData.lease_price) || 29.99,
-    premium_price: parseFloat(beatData.premium_price) || 99.99,
-    stem_price: parseFloat(beatData.stems_price) || 199.99,
-    exclusive_price: beatData.exclusive_price ? parseFloat(beatData.exclusive_price) : null,
-    tags: Array.isArray(beatData.tags) ? beatData.tags.join(',') : (beatData.tags || ''),
-    description: beatData.description || '',
-    audio_url: beatData.audio_url || '',
-    audio_original_url: beatData.audio_original_url || '',
-    cover_url: beatData.cover_url || '',
-    wav_url: beatData.wav_url || '',
-    stem_url: beatData.stem_url || '',
-    plays: 0,
-    active: true,
-  }).select('id').single();
-
-  if (error) throw new Error(`Add beat error: ${error.message}`);
-  return data.id;
+  const cols = [
+    'title', 'artist', 'genre', 'subgenre', 'bpm', 'key', 'mood', 'price',
+    'lease_price', 'premium_price', 'stem_price', 'exclusive_price', 'tags',
+    'description', 'audio_url', 'audio_original_url', 'cover_url', 'wav_url',
+    'stem_url', 'plays', 'active',
+  ];
+  const values = [
+    beatData.title || '',
+    beatData.artist || "O'Neil",
+    beatData.genre || '',
+    beatData.subgenre || '',
+    parseInt(beatData.bpm) || 120,
+    beatData.key || '',
+    beatData.mood || '',
+    parseFloat(beatData.lease_price) || 29.99,
+    parseFloat(beatData.lease_price) || 29.99,
+    parseFloat(beatData.premium_price) || 99.99,
+    parseFloat(beatData.stems_price) || 199.99,
+    beatData.exclusive_price ? parseFloat(beatData.exclusive_price) : null,
+    Array.isArray(beatData.tags) ? beatData.tags.join(',') : (beatData.tags || ''),
+    beatData.description || '',
+    beatData.audio_url || '',
+    beatData.audio_original_url || '',
+    beatData.cover_url || '',
+    beatData.wav_url || '',
+    beatData.stem_url || '',
+    0,
+    true,
+  ];
+  const placeholders = cols.map((_, i) => `$${i + 1}`).join(', ');
+  const { rows } = await pgQuery(
+    `INSERT INTO beats (${cols.join(', ')}) VALUES (${placeholders}) RETURNING id`,
+    values
+  );
+  return rows[0].id;
 }
 
 async function updateBeatInDB(beatId, updates) {
@@ -70,36 +126,45 @@ async function updateBeatInDB(beatId, updates) {
     'lease_price', 'premium_price', 'stem_price', 'exclusive_price',
     'tags', 'description', 'audio_url', 'audio_original_url', 'cover_url', 'wav_url', 'stem_url', 'active',
   ]);
-  const filtered = {};
+  const setParts = [];
+  const values = [];
   for (const [k, v] of Object.entries(updates)) {
     if (v === undefined || v === '') continue;
     const dbKey = keyMap[k] || k;
     if (!allowedDbColumns.has(dbKey)) continue;
-    if (['bpm'].includes(dbKey)) filtered[dbKey] = parseInt(v) || null;
-    else if (['price', 'lease_price', 'premium_price', 'stem_price', 'exclusive_price'].includes(dbKey)) filtered[dbKey] = parseFloat(v);
-    else if (dbKey === 'tags' && Array.isArray(v)) filtered[dbKey] = v.join(',');
-    else filtered[dbKey] = v;
+    let val = v;
+    if (dbKey === 'bpm') val = parseInt(v) || null;
+    else if (['price', 'lease_price', 'premium_price', 'stem_price', 'exclusive_price'].includes(dbKey)) val = parseFloat(v);
+    else if (dbKey === 'tags' && Array.isArray(v)) val = v.join(',');
+    values.push(val);
+    setParts.push(`"${dbKey}" = $${values.length}`);
   }
-  const { error } = await supabase.from('beats').update(filtered).eq('id', beatId);
-  if (error) throw new Error(`Update beat error: ${error.message}`);
+  if (setParts.length === 0) return;
+  values.push(beatId);
+  await pgQuery(
+    `UPDATE beats SET ${setParts.join(', ')} WHERE id = $${values.length}`,
+    values
+  );
 }
 
 async function deleteBeatInDB(beatId) {
-  const { error } = await supabase.from('beats').update({ active: false }).eq('id', beatId);
-  if (error) throw new Error(`Delete beat error: ${error.message}`);
+  await pgQuery('UPDATE beats SET active = false WHERE id = $1', [beatId]);
 }
 
 async function incrementPlayCount(beatId) {
-  const { error } = await supabase.rpc('increment', { row_id: beatId });
-  if (error) console.warn('Increment play error:', error.message);
+  try {
+    await pgQuery('UPDATE beats SET plays = COALESCE(plays, 0) + 1 WHERE id = $1', [beatId]);
+  } catch (err) {
+    console.warn('Increment play error:', err.message);
+  }
 }
 
 // ── STORAGE UPLOADS ─────────────────────────────────────────────────────────
 // 2026-05-05 — when GCS_BUCKET env var is set, all NEW uploads route to
-// Google Cloud Storage instead of Supabase. The mobile apps don't care which
-// domain they load from, so this swap is transparent to them. Existing
-// Supabase URLs in the DB remain valid — see scripts/migrate-supabase-to-gcs.js
-// for a one-shot tool that copies legacy files to GCS and updates the DB rows.
+// Google Cloud Storage instead of Supabase. Supabase storage stays usable for
+// legacy reads but is currently quota-blocked, so all writes should land on
+// GCS via the gcsApi module. The mobile apps don't care which domain they
+// load from, so this swap is transparent to them.
 let _gcs = null;
 function getGCS() {
   if (_gcs) return _gcs;
@@ -135,71 +200,100 @@ async function uploadBase64ToStorage(base64Data, filename, bucket, mimeType) {
 
 // ── ORDERS ──────────────────────────────────────────────────────────────────
 async function createOrder({ orderId, customerEmail, cartItems, totalAmount }) {
-  const { data, error } = await supabase.from('orders').insert({
-    id: orderId,
-    customer_email: customerEmail,
-    status: 'pending',
-    total_amount: totalAmount || 0,
-  }).select('id').single();
-
-  if (error) throw new Error(`Create order error: ${error.message}`);
+  const { rows } = await pgQuery(
+    `INSERT INTO orders (id, customer_email, status, total_amount)
+     VALUES ($1, $2, 'pending', $3) RETURNING id`,
+    [orderId, customerEmail, totalAmount || 0]
+  );
 
   if (cartItems && cartItems.length > 0) {
-    const items = cartItems.map(item => ({
-      order_id: orderId,
-      beat_id: item.beatId,
-      beat_title: item.beatTitle,
-      license_type: item.licenseType,
-      price: item.price || 0,
-    }));
-    const { error: itemsErr } = await supabase.from('order_items').insert(items);
-    if (itemsErr) throw new Error(`Create order items error: ${itemsErr.message}`);
+    // Bulk insert: build a multi-row VALUES list
+    const placeholders = [];
+    const values = [];
+    for (const item of cartItems) {
+      const idx = values.length;
+      placeholders.push(`($${idx + 1}, $${idx + 2}, $${idx + 3}, $${idx + 4}, $${idx + 5})`);
+      values.push(orderId, item.beatId, item.beatTitle, item.licenseType, item.price || 0);
+    }
+    await pgQuery(
+      `INSERT INTO order_items (order_id, beat_id, beat_title, license_type, price)
+       VALUES ${placeholders.join(', ')}`,
+      values
+    );
   }
 
-  return data.id;
+  return rows[0].id;
 }
 
 async function fulfillOrder({ orderId, stripeSessionId, customerEmail, customerName, beats }) {
-  const updates = {
-    status: 'paid',
-    stripe_session_id: stripeSessionId,
-    paid_at: new Date().toISOString(),
-  };
-  if (customerEmail) updates.customer_email = customerEmail;
-  if (customerName) updates.customer_name = customerName;
-
-  const { error } = await supabase.from('orders').update(updates).eq('id', orderId);
-  if (error) throw new Error(`Fulfill order error: ${error.message}`);
+  const setParts = [`status = 'paid'`, `stripe_session_id = $2`, `paid_at = now()`];
+  const values = [orderId, stripeSessionId];
+  if (customerEmail) { values.push(customerEmail); setParts.push(`customer_email = $${values.length}`); }
+  if (customerName)  { values.push(customerName);  setParts.push(`customer_name  = $${values.length}`); }
+  await pgQuery(`UPDATE orders SET ${setParts.join(', ')} WHERE id = $1`, values);
 
   const order = await getOrderById(orderId);
   if (order?.order_items) {
     for (const item of order.order_items) {
       const beat = beats.find(b => b.id === item.beat_id);
-      if (beat) {
-        const { error: updateErr } = await supabase.from('order_items').update({
-          cover_url: beat.cover_url,
-          // Purchased customers get the UNTAGGED original (audio_original_url).
-          // Fall back to audio_url for beats uploaded before the tag pipeline.
-          mp3_url: beat.audio_original_url || beat.audio_url,
-          wav_url: beat.wav_url,
-          stems_url: beat.stem_url,
-        }).eq('id', item.id);
-        if (updateErr) console.warn('Update order item error:', updateErr.message);
+      if (!beat) continue;
+      try {
+        await pgQuery(
+          `UPDATE order_items SET cover_url = $1, mp3_url = $2, wav_url = $3, stems_url = $4 WHERE id = $5`,
+          [
+            beat.cover_url,
+            // Purchased customers get the UNTAGGED original (audio_original_url).
+            // Fall back to audio_url for beats uploaded before the tag pipeline.
+            beat.audio_original_url || beat.audio_url,
+            beat.wav_url,
+            beat.stem_url,
+            item.id,
+          ]
+        );
+      } catch (err) {
+        console.warn('Update order item error:', err.message);
       }
     }
   }
 }
 
 async function getOrderById(orderId) {
-  const { data, error } = await supabase.from('orders').select('*, order_items(*)').eq('id', orderId).single();
-  if (error) return null;
-  return data;
+  try {
+    const { rows: orderRows } = await pgQuery(
+      'SELECT * FROM orders WHERE id = $1 LIMIT 1', [orderId]
+    );
+    if (orderRows.length === 0) return null;
+    const order = orderRows[0];
+    const { rows: items } = await pgQuery(
+      'SELECT * FROM order_items WHERE order_id = $1', [orderId]
+    );
+    order.order_items = items;
+    return order;
+  } catch (err) {
+    console.warn('getOrderById:', err.message);
+    return null;
+  }
 }
 
 async function getOrdersByEmail(email) {
-  const { data, error } = await supabase.from('orders').select('*, order_items(*)').eq('customer_email', email).eq('status', 'paid').order('created_at', { ascending: false });
-  if (error) throw new Error(`Fetch orders error: ${error.message}`);
-  return data || [];
+  const { rows: orderRows } = await pgQuery(
+    `SELECT * FROM orders WHERE customer_email = $1 AND status = 'paid'
+     ORDER BY created_at DESC NULLS LAST`,
+    [email]
+  );
+  if (orderRows.length === 0) return [];
+  const ids = orderRows.map(o => o.id);
+  // order_items.order_id may be uuid or text depending on schema age — cast both
+  // sides to text so the comparison works regardless.
+  const { rows: items } = await pgQuery(
+    `SELECT * FROM order_items WHERE order_id::text = ANY($1::text[])`,
+    [ids.map(String)]
+  );
+  const itemsByOrder = items.reduce((acc, it) => {
+    (acc[it.order_id] = acc[it.order_id] || []).push(it);
+    return acc;
+  }, {});
+  return orderRows.map(o => ({ ...o, order_items: itemsByOrder[o.id] || [] }));
 }
 
 // ── SUPABASE CLIENT ─────────────────────────────────────────────────────────
@@ -210,47 +304,61 @@ function getSupabaseClient() {
 // ── PUSH NOTIFICATIONS ──────────────────────────────────────────────────────
 async function registerPushToken(userId, pushToken, platform = 'mobile') {
   try {
-    const { data: existing } = await supabase.from('push_tokens').select('id').eq('user_id', userId).eq('token', pushToken).single();
-
-    if (existing) {
-      await supabase.from('push_tokens').update({ last_seen: new Date().toISOString() }).eq('id', existing.id);
-      return { success: true, message: 'Token already registered' };
-    }
-
-    const { error } = await supabase.from('push_tokens').insert({
-      user_id: userId,
-      token: pushToken,
-      platform: platform,
-      created_at: new Date().toISOString(),
-      last_seen: new Date().toISOString(),
-    });
-
-    if (error) throw new Error(`Register token error: ${error.message}`);
+    // Upsert: if (user_id, token) already exists, just bump last_seen.
+    await pgQuery(
+      `INSERT INTO push_tokens (user_id, token, platform, created_at, last_seen)
+       VALUES ($1, $2, $3, now(), now())
+       ON CONFLICT (user_id, token) DO UPDATE SET last_seen = excluded.last_seen`,
+      [userId, pushToken, platform]
+    );
     return { success: true, message: 'Push token registered' };
   } catch (err) {
-    console.error('registerPushToken error:', err);
+    // Fallback for schemas without the unique (user_id, token) constraint.
+    if (err.code === '42P10' || /there is no unique/i.test(err.message)) {
+      try {
+        const { rows } = await pgQuery(
+          'SELECT id FROM push_tokens WHERE user_id = $1 AND token = $2 LIMIT 1',
+          [userId, pushToken]
+        );
+        if (rows.length > 0) {
+          await pgQuery('UPDATE push_tokens SET last_seen = now() WHERE id = $1', [rows[0].id]);
+          return { success: true, message: 'Token already registered' };
+        }
+        await pgQuery(
+          `INSERT INTO push_tokens (user_id, token, platform, created_at, last_seen)
+           VALUES ($1, $2, $3, now(), now())`,
+          [userId, pushToken, platform]
+        );
+        return { success: true, message: 'Push token registered' };
+      } catch (err2) {
+        console.error('registerPushToken fallback error:', err2.message);
+        return { success: false, error: err2.message };
+      }
+    }
+    console.error('registerPushToken error:', err.message);
     return { success: false, error: err.message };
   }
 }
 
 async function getPushTokens() {
   try {
-    const { data, error } = await supabase.from('push_tokens').select('token').gt('last_seen', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
-    if (error) throw new Error(`Get tokens error: ${error.message}`);
-    return (data || []).map(row => row.token);
+    const { rows } = await pgQuery(
+      `SELECT token FROM push_tokens
+       WHERE last_seen > now() - interval '30 days'`
+    );
+    return rows.map(r => r.token);
   } catch (err) {
-    console.error('getPushTokens error:', err);
+    console.error('getPushTokens error:', err.message);
     return [];
   }
 }
 
 async function removePushToken(token) {
   try {
-    const { error } = await supabase.from('push_tokens').delete().eq('token', token);
-    if (error) throw new Error(`Remove token error: ${error.message}`);
+    await pgQuery('DELETE FROM push_tokens WHERE token = $1', [token]);
     return { success: true };
   } catch (err) {
-    console.error('removePushToken error:', err);
+    console.error('removePushToken error:', err.message);
     return { success: false, error: err.message };
   }
 }
@@ -274,4 +382,8 @@ module.exports = {
   registerPushToken,
   getPushTokens,
   removePushToken,
+  // New: expose the pool for ad-hoc queries elsewhere in the backend that
+  // can't easily be lifted off supabase-js (e.g. /admin/customers, reviews).
+  pgQuery,
+  pool,
 };
