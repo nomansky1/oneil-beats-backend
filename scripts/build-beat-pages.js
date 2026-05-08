@@ -200,29 +200,21 @@ function buildOgSvg(beat, hasCover) {
   <text x="${TEXT_X}" y="600" fill="#64748b" font-family="sans-serif" font-weight="500" font-size="16" letter-spacing="2">ONEILBEATS.STORE  ·  INSTANT MP3 / WAV</text>
 </svg>`;
 }
-async function generateOgImage(beat, slug) {
+// Pure buffer producer — used at runtime by server.js's /og/:slug.png route.
+// Returns a Buffer (never writes to disk) so it works in serverless / read-only
+// environments (Vercel lambda) where the build-time disk-write strategy can't
+// land files in the deployed lambda. Vercel CDN caches the response by URL.
+async function buildOgPngBuffer(beat) {
   if (!sharp) return null;
-  const outFile = path.join(OG_DIR, slug + '.png');
-  const cacheKey = ogCacheKey(beat);
-  // Check manifest — skip if existing PNG already matches the cache key.
-  let manifest = {};
-  try { manifest = JSON.parse(fs.readFileSync(OG_MANIFEST, 'utf8')); } catch (_) { manifest = {}; }
-  if (manifest[slug] === cacheKey && fs.existsSync(outFile)) {
-    return outFile;
-  }
-  if (!fs.existsSync(OG_DIR)) fs.mkdirSync(OG_DIR, { recursive: true });
   const coverUrl = beat.cover_url || beat.cover_art_url || null;
   let coverBuf = null;
   if (coverUrl) coverBuf = await fetchImageBuffer(coverUrl);
-  // Build the base PNG from SVG — this includes the gradient bg + all text.
   const svgString = buildOgSvg(beat, !!coverBuf);
   let img = sharp(Buffer.from(svgString)).png();
-  // Composite the resized cover into the placeholder area (60, 45, 540×540).
   if (coverBuf) {
     try {
       const coverPng = await sharp(coverBuf)
         .resize(540, 540, { fit: 'cover', position: 'centre' })
-        // Round the corners by clipping to a rounded mask
         .composite([{
           input: Buffer.from('<svg width="540" height="540"><rect x="0" y="0" width="540" height="540" rx="20" ry="20" fill="white"/></svg>'),
           blend: 'dest-in',
@@ -234,7 +226,19 @@ async function generateOgImage(beat, slug) {
       // Cover composite failed — keep base SVG (which already has a fallback letter tile).
     }
   }
-  await img.toFile(outFile);
+  return await img.toBuffer();
+}
+async function generateOgImage(beat, slug) {
+  if (!sharp) return null;
+  const outFile = path.join(OG_DIR, slug + '.png');
+  const cacheKey = ogCacheKey(beat);
+  let manifest = {};
+  try { manifest = JSON.parse(fs.readFileSync(OG_MANIFEST, 'utf8')); } catch (_) { manifest = {}; }
+  if (manifest[slug] === cacheKey && fs.existsSync(outFile)) return outFile;
+  if (!fs.existsSync(OG_DIR)) fs.mkdirSync(OG_DIR, { recursive: true });
+  const buf = await buildOgPngBuffer(beat);
+  if (!buf) return null;
+  fs.writeFileSync(outFile, buf);
   manifest[slug] = cacheKey;
   fs.writeFileSync(OG_MANIFEST, JSON.stringify(manifest, null, 2));
   return outFile;
@@ -2096,38 +2100,20 @@ async function main() {
     }
   }
 
-  // Generate OG banners (1200×630 landscape per beat). Run with concurrency 4
-  // so cover fetches overlap but we don't hammer Supabase. Failures fall back
-  // to the square cover at render time — never block the build.
-  let ogGenerated = 0, ogSkipped = 0, ogFailed = 0;
-  if (sharp) {
-    const CONCURRENCY = 4;
-    const queue = beats.slice();
-    async function worker() {
-      while (queue.length) {
-        const b = queue.shift();
-        if (!b) break;
-        try {
-          const out = await generateOgImage(b, beatSlug(b));
-          if (!out) ogFailed++;
-          else if (fs.statSync(out).mtimeMs > Date.now() - 5000) ogGenerated++;
-          else ogSkipped++;
-        } catch (e) {
-          ogFailed++;
-        }
-      }
-    }
-    await Promise.all(Array.from({ length: CONCURRENCY }, worker));
-    console.log(`[build-beat-pages] OG images: ${ogGenerated} new, ${ogSkipped} cached, ${ogFailed} fallback to square cover`);
-  }
-
+  // OG banners are generated ON-DEMAND by server.js's /og/:slug.png route at
+  // request time (sharp produces ~150-300 ms; Vercel CDN caches the response).
+  // The build script does NOT pre-generate them anymore — Vercel's static
+  // builders match files at deploy-prep, before vercel-build runs, so files
+  // generated here would never make it into the deployed CDN. Each per-beat
+  // page still references /og/{slug}.png in its <meta og:image> tags; the
+  // first share/scrape per beat triggers generation, then everything else
+  // hits the cache.
   const template = fs.readFileSync(TEMPLATE_PATH, 'utf8');
   let written = 0;
   for (const beat of beats) {
     const slug = beatSlug(beat);
-    const ogPath = sharp && fs.existsSync(path.join(OG_DIR, slug + '.png')) ? slug : null;
-    // Pass the full beats array so each page can compute its 4 related beats.
-    const html = renderBeatPage(template, beat, slug, beats, ogPath);
+    // Pass true to opt the per-beat page into the on-demand /og/{slug}.png URL.
+    const html = renderBeatPage(template, beat, slug, beats, slug);
     const outPath = path.join(OUT_DIR, slug + '.html');
     fs.writeFileSync(outPath, html, 'utf8');
     written++;
@@ -2188,4 +2174,4 @@ if (require.main === module) {
   main().catch(e => { console.error('[build-beat-pages] FATAL', e); process.exit(0); /* don't fail build */ });
 }
 
-module.exports = { slugify, shortId, beatSlug, renderBeatPage, beatJsonLd, renderLandingPage, getAllLandingPages, TYPE_BEAT_ARTISTS, FEATURED_PAGES, BLOG_POSTS, renderBlogPost, renderBlogIndex, SPANISH_LANDING_PAGES, renderSpanishLandingPage };
+module.exports = { slugify, shortId, beatSlug, renderBeatPage, beatJsonLd, renderLandingPage, getAllLandingPages, TYPE_BEAT_ARTISTS, FEATURED_PAGES, BLOG_POSTS, renderBlogPost, renderBlogIndex, SPANISH_LANDING_PAGES, renderSpanishLandingPage, buildOgPngBuffer };
