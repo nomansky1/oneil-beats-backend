@@ -607,6 +607,50 @@ header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-fi
 .xp-buy-now:hover{opacity:.92}
 .xp-buy-now:active{transform:scale(.98)}
 
+/* Audio visualizer — canvas overlaid INSIDE the cover wrap, blend-mode lifts
+   bars over the cover art with the genre accent. Mirrors the mobile app's
+   "mood-reactive player" feel. Pointer-events none so cover stays clickable. */
+.xp-visualizer{position:absolute;left:0;right:0;bottom:0;height:38%;width:100%;pointer-events:none;mix-blend-mode:screen;opacity:.85}
+
+/* Heart (favorite) button — top-left corner of the cover, mirrors the app */
+.xp-heart{position:absolute;top:10px;right:10px;width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;transition:transform .15s,background .15s}
+.xp-heart:hover{background:rgba(0,0,0,.75);transform:scale(1.06)}
+.xp-heart.fav{color:#ff5577}
+.xp-heart.fav svg{fill:#ff5577}
+
+/* Mini-bar heart — visible on desktop (next to play), hidden on mobile to keep
+   the mini bar uncluttered (it lives inside the expanded player on mobile). */
+.p-heart-btn{width:34px;height:34px;border-radius:50%;background:transparent;border:none;color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:color .15s,transform .15s}
+.p-heart-btn:hover{color:var(--text);transform:scale(1.1)}
+.p-heart-btn.fav{color:#ff5577}
+.p-heart-btn.fav svg{fill:#ff5577}
+
+/* Repeat button — same visual rhythm as prev/next ctrl buttons. Active state
+   uses the genre accent so it's obviously "on". Two modes: off, repeat-one. */
+.xp-ctrl-btn.active{background:var(--xp-accent,var(--accent));color:#000;border-color:var(--xp-accent,var(--accent))}
+.xp-ctrl-btn.active svg{stroke:#000;fill:#000}
+.xp-repeat-badge{position:absolute;top:6px;right:6px;font-size:8px;font-weight:900;color:#000;letter-spacing:0;line-height:1}
+
+/* Lyrics / notes section — collapsed pill that expands to a textarea. Saved
+   per-beat in localStorage so producers/artists can jot lyrics during preview
+   and keep them across sessions. Shown on both mobile (compact) and desktop
+   (full width inside the expanded player). */
+.xp-notes-wrap{width:100%;max-width:520px;margin-top:14px}
+.xp-notes-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.5px;transition:border-color .15s,background .15s}
+.xp-notes-toggle:hover{border-color:var(--xp-accent,var(--accent));background:var(--surface3)}
+.xp-notes-toggle .xp-notes-chev{transition:transform .2s ease}
+.xp-notes-wrap.open .xp-notes-toggle .xp-notes-chev{transform:rotate(180deg)}
+.xp-notes-body{display:none;margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px}
+.xp-notes-wrap.open .xp-notes-body{display:block}
+.xp-notes-textarea{width:100%;min-height:90px;max-height:240px;background:transparent;border:none;outline:none;color:var(--text);font-family:inherit;font-size:13px;line-height:1.55;resize:vertical;padding:6px 4px}
+.xp-notes-textarea::placeholder{color:var(--dim)}
+.xp-notes-row{display:flex;align-items:center;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--dim)}
+.xp-notes-status{font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.xp-notes-status.saved{color:var(--green)}
+.xp-notes-status.saving{color:var(--gold)}
+.xp-notes-clear{background:none;border:none;color:var(--dim);font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;padding:0}
+.xp-notes-clear:hover{color:var(--accent)}
+
 .toast{position:fixed;bottom:calc(var(--player-h) + 20px);left:50%;transform:translateX(-50%) translateY(16px);background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 20px;font-size:13px;font-weight:600;z-index:1000;opacity:0;pointer-events:none;white-space:nowrap;transition:all .25s;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.success{border-color:var(--green);color:var(--green)}
@@ -675,6 +719,7 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
   .p-controls{flex:0 0 auto;gap:6px}
   .p-controls .progress-wrap{display:none}
   .p-add-cart{display:none}
+  .p-heart-btn{display:none}
   .p-expand-hint{display:flex}
   .footer-grid{grid-template-columns:1fr 1fr;gap:20px}
 }
@@ -1255,6 +1300,12 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
       <div class="time-row"><span class="time-lbl" id="t-cur">0:00</span><span class="time-lbl" id="t-tot">0:00</span></div>
     </div>
   </div>
+  <!-- Heart (favorite) — visible on the desktop mini bar. Hidden on mobile so
+       the compact bar stays uncluttered (the heart lives inside the expanded
+       player on mobile via #xp-heart). -->
+  <button class="p-heart-btn" id="p-heart-btn" onclick="event.stopPropagation();toggleFavoriteCurrent()" aria-label="Favorite this beat" aria-pressed="false">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+  </button>
   <button class="p-add-cart" onclick="event.stopPropagation();if(currentBeat)openDetail(currentBeat.id)">Buy This Beat</button>
   <!-- Mobile-only: chevron-up indicator hinting tap-to-expand -->
   <div class="p-expand-hint" aria-hidden="true">
@@ -1278,6 +1329,12 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
   <div class="xp-cover-wrap" id="xp-cover-wrap">
     <img class="xp-cover-img" id="xp-cover-img" src="" alt="" style="display:none">
     <div class="xp-cover-fallback" id="xp-cover-fallback" style="display:none">?</div>
+    <!-- Web Audio API visualizer overlay — bars react to live frequency data. -->
+    <canvas class="xp-visualizer" id="xp-visualizer" aria-hidden="true"></canvas>
+    <!-- Favorite heart on the cover — Spotify-style top-right -->
+    <button class="xp-heart" id="xp-heart" onclick="event.stopPropagation();toggleFavoriteCurrent()" aria-label="Favorite this beat" aria-pressed="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    </button>
   </div>
 
   <div class="xp-meta">
@@ -1310,6 +1367,10 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
     <button class="xp-ctrl-btn" onclick="nextBeat()" aria-label="Next beat">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><rect x="17" y="4" width="2" height="16"/></svg>
     </button>
+    <button class="xp-ctrl-btn" id="xp-repeat-btn" onclick="toggleRepeat()" aria-label="Repeat" style="position:relative">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      <span class="xp-repeat-badge" id="xp-repeat-badge" style="display:none">1</span>
+    </button>
   </div>
 
   <div class="xp-licenses" id="xp-licenses">
@@ -1326,6 +1387,25 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
       <span class="xp-license-price" id="xp-price-stems">—</span>
     </button>
   </div>
+  <!-- Lyrics / notes — collapsed pill, expands to a textarea. Saved per-beat
+       in localStorage so an artist can jot lyrics during preview and have
+       them on hand next session. Future: sync to user profile when signed in. -->
+  <div class="xp-notes-wrap" id="xp-notes-wrap">
+    <button class="xp-notes-toggle" onclick="toggleNotesOpen()" aria-expanded="false" aria-controls="xp-notes-body">
+      <span>✏️ Lyrics &amp; notes</span>
+      <span class="xp-notes-chev">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </span>
+    </button>
+    <div class="xp-notes-body" id="xp-notes-body">
+      <textarea class="xp-notes-textarea" id="xp-notes-textarea" placeholder="Write lyrics, hooks, or production notes for this beat. Saved on this device."></textarea>
+      <div class="xp-notes-row">
+        <span class="xp-notes-status" id="xp-notes-status">Saved on this device</span>
+        <button class="xp-notes-clear" onclick="clearCurrentNotes()">Clear</button>
+      </div>
+    </div>
+  </div>
+
   <button class="xp-buy-now" onclick="if(currentBeat)openDetail(currentBeat.id)">Buy This Beat</button>
 </div>
 
@@ -2012,6 +2092,11 @@ function updatePlayerUI() {
   if (pl) pl.textContent = fmt(currentBeat.lease_price);
   if (pp) pp.textContent = fmt(currentBeat.premium_price);
   if (ps) ps.textContent = fmt(currentBeat.stems_price ?? currentBeat.stem_price);
+
+  // Sync favorite state + lyrics notes textarea to the new track. Cheap because
+  // we read from in-memory _favorites and a single localStorage entry.
+  updateFavoriteUI();
+  if (document.getElementById('xp-notes-textarea')) loadNotesIntoExpanded();
 }
 function showPlayer() { document.getElementById('player-bar').classList.add('visible'); }
 
@@ -2038,14 +2123,21 @@ function openExpandedPlayer() {
   if (!xp) return;
   updatePlayerUI();
   updateExpandedProgress();
+  updateFavoriteUI();
+  loadNotesIntoExpanded();
+  _wireNotesTextarea();
   xp.classList.add('open');
   document.body.style.overflow = 'hidden';
+  // Kick the visualizer off — needs the canvas to be on-screen so it can size
+  // correctly. Tries Web Audio first, falls back to static if unavailable.
+  startVisualizer();
 }
 function closeExpandedPlayer() {
   const xp = document.getElementById('expanded-player');
   if (!xp) return;
   xp.classList.remove('open');
   document.body.style.overflow = '';
+  stopVisualizer();
 }
 function updateExpandedProgress() {
   if (!audio || !audio.duration || !isFinite(audio.duration)) return;
@@ -2073,6 +2165,258 @@ function seekExpanded(event) {
 // Aliases used by expanded-player markup — delegate to existing prev/next logic.
 function prevBeat(){ playPrevBeat(); }
 function nextBeat(){ playNextBeat(); }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REPEAT MODE — two states: 'off' (default) and 'one' (loops the current beat
+// indefinitely). Toggled via the repeat button in the expanded player. Hooked
+// into audio.ended later in this file so the natural-end behavior changes.
+// ─────────────────────────────────────────────────────────────────────────────
+let repeatMode = 'off'; // 'off' | 'one'
+function toggleRepeat(){
+  repeatMode = repeatMode === 'off' ? 'one' : 'off';
+  const btn = document.getElementById('xp-repeat-btn');
+  const badge = document.getElementById('xp-repeat-badge');
+  if (btn) btn.classList.toggle('active', repeatMode === 'one');
+  if (badge) badge.style.display = repeatMode === 'one' ? 'block' : 'none';
+  if (btn) btn.setAttribute('aria-label', repeatMode === 'one' ? 'Repeat one (on)' : 'Repeat (off)');
+  showToast(repeatMode === 'one' ? 'Repeat: on' : 'Repeat: off', 'success');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FAVORITES — localStorage-backed Set of beat IDs. Visible to guests; will
+// later sync to the backend /favorites endpoint when a user is signed in.
+// Storage key: ob_favorites → JSON array.
+// ─────────────────────────────────────────────────────────────────────────────
+function loadFavorites(){
+  try { return new Set(JSON.parse(localStorage.getItem('ob_favorites') || '[]')); }
+  catch (_) { return new Set(); }
+}
+function saveFavorites(set){
+  try { localStorage.setItem('ob_favorites', JSON.stringify([...set])); } catch (_) {}
+}
+let _favorites = loadFavorites();
+function isFavorited(id){ return id && _favorites.has(id); }
+function toggleFavoriteCurrent(){
+  if (!currentBeat) return;
+  const id = currentBeat.id;
+  if (_favorites.has(id)) { _favorites.delete(id); showToast('Removed from favorites'); }
+  else { _favorites.add(id); showToast('Added to favorites','success'); }
+  saveFavorites(_favorites);
+  updateFavoriteUI();
+  // Best-effort backend sync — only if a logged-in user is in scope. Silently
+  // skip otherwise; localStorage is the source of truth either way.
+  try {
+    const u = window.currentUser || window.user;
+    if (u && u.id) {
+      fetch(`${API}/favorites`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: u.id, beatId: id, favorited: _favorites.has(id) }),
+      }).catch(() => {});
+    }
+  } catch (_) {}
+}
+function updateFavoriteUI(){
+  if (!currentBeat) return;
+  const fav = isFavorited(currentBeat.id);
+  const xpHeart = document.getElementById('xp-heart');
+  if (xpHeart) {
+    xpHeart.classList.toggle('fav', fav);
+    xpHeart.setAttribute('aria-pressed', String(fav));
+  }
+  const pHeart = document.getElementById('p-heart-btn');
+  if (pHeart) {
+    pHeart.classList.toggle('fav', fav);
+    pHeart.setAttribute('aria-pressed', String(fav));
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LYRICS / NOTES — per-beat free-form text. Saved per-device in localStorage
+// keyed by beat id. Auto-saves on input (debounced 600ms) and on blur.
+// Storage key: ob_lyrics → JSON object { "<beatId>": "<text>" }
+// ─────────────────────────────────────────────────────────────────────────────
+function loadAllNotes(){
+  try { return JSON.parse(localStorage.getItem('ob_lyrics') || '{}'); }
+  catch (_) { return {}; }
+}
+function saveAllNotes(obj){
+  try { localStorage.setItem('ob_lyrics', JSON.stringify(obj)); } catch (_) {}
+}
+function getNotesFor(id){ if (!id) return ''; const all = loadAllNotes(); return all[id] || ''; }
+function setNotesFor(id, text){
+  if (!id) return;
+  const all = loadAllNotes();
+  if (!text || !text.trim()) delete all[id]; else all[id] = text;
+  saveAllNotes(all);
+}
+function setNotesStatus(state){
+  const el = document.getElementById('xp-notes-status');
+  if (!el) return;
+  el.classList.remove('saved','saving');
+  if (state === 'saving') { el.classList.add('saving'); el.textContent = 'Saving…'; }
+  else if (state === 'saved') { el.classList.add('saved'); el.textContent = 'Saved on this device'; }
+  else el.textContent = 'Saved on this device';
+}
+function loadNotesIntoExpanded(){
+  if (!currentBeat) return;
+  const ta = document.getElementById('xp-notes-textarea');
+  if (!ta) return;
+  ta.value = getNotesFor(currentBeat.id);
+  setNotesStatus('saved');
+}
+function toggleNotesOpen(){
+  const wrap = document.getElementById('xp-notes-wrap');
+  if (!wrap) return;
+  const open = !wrap.classList.contains('open');
+  wrap.classList.toggle('open', open);
+  const tog = wrap.querySelector('.xp-notes-toggle');
+  if (tog) tog.setAttribute('aria-expanded', String(open));
+  if (open) {
+    loadNotesIntoExpanded();
+    setTimeout(() => { const ta = document.getElementById('xp-notes-textarea'); if (ta) ta.focus(); }, 80);
+  }
+}
+function clearCurrentNotes(){
+  if (!currentBeat) return;
+  const ta = document.getElementById('xp-notes-textarea');
+  if (ta) ta.value = '';
+  setNotesFor(currentBeat.id, '');
+  setNotesStatus('saved');
+  showToast('Notes cleared');
+}
+let _notesSaveTimer = null;
+function _wireNotesTextarea(){
+  const ta = document.getElementById('xp-notes-textarea');
+  if (!ta || ta._wired) return;
+  ta._wired = true;
+  ta.addEventListener('input', () => {
+    setNotesStatus('saving');
+    clearTimeout(_notesSaveTimer);
+    _notesSaveTimer = setTimeout(() => {
+      if (currentBeat) setNotesFor(currentBeat.id, ta.value);
+      setNotesStatus('saved');
+    }, 600);
+  });
+  ta.addEventListener('blur', () => {
+    clearTimeout(_notesSaveTimer);
+    if (currentBeat) setNotesFor(currentBeat.id, ta.value);
+    setNotesStatus('saved');
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUDIO VISUALIZER — Web Audio API analyser → canvas overlay on the cover.
+// Bars react to live frequency data, colored with the genre accent. Created
+// lazily on first play (AudioContext requires a user gesture). Falls back to
+// a calm static animation if Web Audio fails (e.g. CORS on the audio source).
+// ─────────────────────────────────────────────────────────────────────────────
+let _audioCtx = null, _analyser = null, _audioSource = null, _vizRafId = 0;
+const _vizBins = 48;
+function initVisualizer(){
+  if (_analyser) return true;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    _audioCtx = new AC();
+    _audioSource = _audioCtx.createMediaElementSource(audio);
+    _analyser = _audioCtx.createAnalyser();
+    _analyser.fftSize = 128;        // → 64 bins, we use 48
+    _analyser.smoothingTimeConstant = 0.78;
+    _audioSource.connect(_analyser);
+    _analyser.connect(_audioCtx.destination);
+    return true;
+  } catch (e) {
+    console.warn('Visualizer init failed:', e.message);
+    _analyser = null;
+    return false;
+  }
+}
+function startVisualizer(){
+  // Safari / Chrome require the AudioContext to be resumed inside a gesture.
+  if (_audioCtx && _audioCtx.state === 'suspended') { _audioCtx.resume().catch(() => {}); }
+  const xp = document.getElementById('expanded-player');
+  if (!xp || !xp.classList.contains('open')) return; // only animate when visible
+  if (!initVisualizer()) { _drawStaticVisualizer(); return; }
+  cancelAnimationFrame(_vizRafId);
+  const canvas = document.getElementById('xp-visualizer');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  function resizeCanvas(){
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  }
+  resizeCanvas();
+  const data = new Uint8Array(_analyser.frequencyBinCount);
+  function tick(){
+    const xp2 = document.getElementById('expanded-player');
+    if (!xp2 || !xp2.classList.contains('open')) { _vizRafId = 0; return; }
+    _vizRafId = requestAnimationFrame(tick);
+    _analyser.getByteFrequencyData(data);
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    const accent = (currentBeat && genreAccentColor(currentBeat.genre)) || '#e63946';
+    const bars = _vizBins;
+    const gap = Math.max(1, Math.floor(2 * dpr));
+    const barW = Math.max(2, (w - gap * (bars - 1)) / bars);
+    for (let i = 0; i < bars; i++) {
+      // Sample lower-mid frequencies more densely (where most musical energy lives).
+      const idx = Math.min(data.length - 1, Math.floor((i / bars) * data.length * 0.7));
+      const v = data[idx] / 255;          // 0..1
+      const barH = Math.max(2 * dpr, v * h * 0.92);
+      const x = i * (barW + gap);
+      const y = h - barH;
+      // Gradient: darker at base → bright accent at the top.
+      const grad = ctx.createLinearGradient(0, y, 0, h);
+      grad.addColorStop(0, accent);
+      grad.addColorStop(1, hexToRgba(accent, 0.15));
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, y, barW, barH);
+    }
+  }
+  tick();
+}
+function stopVisualizer(){
+  cancelAnimationFrame(_vizRafId);
+  _vizRafId = 0;
+  const canvas = document.getElementById('xp-visualizer');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+}
+function _drawStaticVisualizer(){
+  // Fallback when Web Audio API is unavailable. Soft pulsing bars driven by
+  // the audio's currentTime so it still feels alive.
+  cancelAnimationFrame(_vizRafId);
+  const canvas = document.getElementById('xp-visualizer');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  function tick(){
+    const xp2 = document.getElementById('expanded-player');
+    if (!xp2 || !xp2.classList.contains('open')) { _vizRafId = 0; return; }
+    _vizRafId = requestAnimationFrame(tick);
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    const accent = (currentBeat && genreAccentColor(currentBeat.genre)) || '#e63946';
+    const t = (audio.currentTime || 0);
+    const bars = _vizBins;
+    const gap = Math.max(1, Math.floor(2 * dpr));
+    const barW = Math.max(2, (w - gap * (bars - 1)) / bars);
+    for (let i = 0; i < bars; i++) {
+      const v = (Math.sin(i * 0.5 + t * 5) * 0.4 + 0.55) * (isPlaying ? 1 : 0.35);
+      const barH = Math.max(2 * dpr, v * h * 0.85);
+      ctx.fillStyle = hexToRgba(accent, isPlaying ? 0.85 : 0.4);
+      ctx.fillRect(i * (barW + gap), h - barH, barW, barH);
+    }
+  }
+  tick();
+}
 const WF_BARS = 60;
 function buildWaveform(seed) {
   const wf = document.getElementById('waveform');
@@ -2147,7 +2491,14 @@ function seekWaveform(e) {
 }
 buildWaveform();
 audio.addEventListener('timeupdate',()=>{ if(!audio.duration)return; const p=(audio.currentTime/audio.duration)*100; document.getElementById('progress-fill').style.width=p+'%'; document.getElementById('t-cur').textContent=fmtT(audio.currentTime); document.getElementById('t-tot').textContent=fmtT(audio.duration); updateWaveformProgress(); updateExpandedProgress(); });
-audio.addEventListener('ended',()=>{ isPlaying=false; updatePlayerUI(); renderGrid(); });
+audio.addEventListener('ended',()=>{
+  // Repeat-one: rewind and replay the same track without flipping isPlaying off
+  // (avoids a play→pause→play UI flicker on the player buttons).
+  if (repeatMode === 'one' && currentBeat) {
+    try { audio.currentTime = 0; audio.play().catch(()=>{}); return; } catch (_) {}
+  }
+  isPlaying=false; updatePlayerUI(); renderGrid();
+});
 audio.addEventListener('pause',()=>{ isPlaying=false; updatePlayerUI(); });
 audio.addEventListener('play',()=>{ isPlaying=true; updatePlayerUI(); });
 audio.addEventListener('error',()=>{ showToast('Audio error — preview unavailable','err'); isPlaying=false; updatePlayerUI(); });
