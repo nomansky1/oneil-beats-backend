@@ -2007,7 +2007,16 @@ function playBeat(id) {
   audio.src = `${API}/preview/${id}`;
   audio.play().then(()=>{
     isPlaying=true; showPlayer(); updatePlayerUI(); track('play',{beatId:id}); renderGrid();
+    // On mobile, surface the full expanded player (cover + visualizer + lyrics
+    // notes + repeat + favorite) immediately so the producer's "open the player
+    // with the beat" ask is honored. Desktop keeps the mini-bar-first UX.
+    if (window.innerWidth <= 768) {
+      try { openExpandedPlayer(); } catch (_) {}
+    }
   }).catch(err=>{
+    // AbortError fires when src changes mid-load (rapid taps). That's not a
+    // user-facing failure — the next play() call wins. Only toast for real errors.
+    if (err && err.name === 'AbortError') return;
     console.error('Playback error', err);
     showToast('Could not load preview — try another beat','err');
   });
@@ -2186,22 +2195,24 @@ function toggleRepeat(){
 // FAVORITES — localStorage-backed Set of beat IDs. Visible to guests; will
 // later sync to the backend /favorites endpoint when a user is signed in.
 // Storage key: ob_favorites → JSON array.
+// NOTE: named loadLocalFavorites/saveLocalFavorites to avoid colliding with
+// the existing async loadFavorites() (line ~2820) used for logged-in sync.
 // ─────────────────────────────────────────────────────────────────────────────
-function loadFavorites(){
+function loadLocalFavorites(){
   try { return new Set(JSON.parse(localStorage.getItem('ob_favorites') || '[]')); }
   catch (_) { return new Set(); }
 }
-function saveFavorites(set){
+function saveLocalFavorites(set){
   try { localStorage.setItem('ob_favorites', JSON.stringify([...set])); } catch (_) {}
 }
-let _favorites = loadFavorites();
+let _favorites = loadLocalFavorites();
 function isFavorited(id){ return id && _favorites.has(id); }
 function toggleFavoriteCurrent(){
   if (!currentBeat) return;
   const id = currentBeat.id;
   if (_favorites.has(id)) { _favorites.delete(id); showToast('Removed from favorites'); }
   else { _favorites.add(id); showToast('Added to favorites','success'); }
-  saveFavorites(_favorites);
+  saveLocalFavorites(_favorites);
   updateFavoriteUI();
   // Best-effort backend sync — only if a logged-in user is in scope. Silently
   // skip otherwise; localStorage is the source of truth either way.
