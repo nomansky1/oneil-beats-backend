@@ -1,58 +1,28 @@
 // ─── License PDF Generator ────────────────────────────────────────────────────
-// Generates a PDF license agreement after purchase, matching BeatStars style
+// Generates a PDF license agreement after purchase, matching BeatStars style.
+// License terms (streams / sales / broadcasts / etc.) are sourced from the
+// canonical licenseTerms.js so the PDF, the app, and the IAP screenshots all
+// agree. Do NOT hard-code license values here — edit licenseTerms.js instead.
 
 const PDFDocument = require('pdfkit');
+const { LICENSE_TERMS: CANON } = require('./licenseTerms');
 
-const LICENSE_TERMS = {
-  lease: {
-    name: 'Basic Lease License',
-    streams: '500,000',
-    sales: '2,500',
-    broadcasts: '1',
-    musicVideos: '1',
-    nonProfit: true,
-    exclusive: false,
-    mp3Only: true,
-    color: '#f59e0b',
-    description: 'Non-exclusive license for independent releases with limited distribution.',
-  },
-  premium: {
-    name: 'Premium Lease License',
-    streams: '1,000,000',
-    sales: '5,000',
-    broadcasts: '2',
-    musicVideos: '2',
-    nonProfit: true,
-    exclusive: false,
-    mp3Only: false, // includes wav
-    color: '#8b5cf6',
-    description: 'Non-exclusive license for commercial releases with wider distribution rights.',
-  },
-  stems: {
-    name: 'Unlimited License (Stems)',
-    streams: 'Unlimited',
-    sales: 'Unlimited',
-    broadcasts: 'Unlimited',
-    musicVideos: 'Unlimited',
-    nonProfit: true,
-    exclusive: false,
-    mp3Only: false, // includes stems
-    color: '#10b981',
-    description: 'Full stems + unlimited distribution. Maximum creative control.',
-  },
-  exclusive: {
-    name: 'Exclusive Rights License',
-    streams: 'Unlimited',
-    sales: 'Unlimited',
-    broadcasts: 'Unlimited',
-    musicVideos: 'Unlimited',
-    nonProfit: true,
-    exclusive: true,
-    mp3Only: false,
-    color: '#ef4444',
-    description: 'Exclusive ownership. Beat removed from store after purchase.',
-  },
-};
+// Map canonical fields to the field names this generator originally used,
+// preserving legacy callers that read terms.name / terms.description.
+const LICENSE_TERMS = Object.fromEntries(
+  Object.entries(CANON).map(([k, t]) => [k, {
+    name: t.pdfName,
+    streams: t.streams,
+    sales: t.sales,
+    broadcasts: t.broadcasts,
+    musicVideos: t.musicVideos,
+    nonProfit: t.nonProfit,
+    exclusive: t.exclusive,
+    mp3Only: t.mp3Only,
+    color: t.color,
+    description: t.descriptionLong,
+  }])
+);
 
 function generateLicensePDF(orderData) {
   return new Promise((resolve, reject) => {

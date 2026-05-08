@@ -68,6 +68,27 @@ function registerRoutes(app) {
       res.status(400).json({ ok: false, error: e.message });
     }
   });
+
+  // Read-only queue listing for the OB Uploader mobile app's queue panel.
+  // GET /admin/auto-upload/list?platform=youtube&limit=25
+  // Auth: x-admin-key (matches the rest of /admin/* routes elsewhere in the
+  // backend) so the mobile uploader can use its existing setup credentials.
+  app.get('/admin/auto-upload/list', (req, res, next) => {
+    const expectedKey = process.env.ADMIN_KEY;
+    if (expectedKey && req.get('x-admin-key') !== expectedKey) {
+      return res.status(401).json({ success: false, error: 'unauthorized' });
+    }
+    next();
+  }, async (req, res) => {
+    try {
+      const platform = String(req.query.platform || 'youtube').toLowerCase();
+      const limit = Math.min(100, parseInt(req.query.limit, 10) || 25);
+      const jobs = await q.listJobs({ platform, limit });
+      res.json({ success: true, platform, jobs });
+    } catch (e) {
+      res.status(400).json({ success: false, error: e.message });
+    }
+  });
 }
 
 function startWorker() {

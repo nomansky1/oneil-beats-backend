@@ -2170,7 +2170,14 @@ app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
     // Enqueue auto-upload (YouTube/IG/TikTok). Non-blocking — if this throws
     // we still want the beat itself to be "live" for the customer app, so
     // failures here log-and-move-on. The cron worker retries pending jobs.
-    if (autoUpload && audio_url) {
+    //
+    // Gated on the `auto_publish` field in the request body. The desktop EXE
+    // sends this explicitly via its "Auto-publish to YouTube / Meta / IG"
+    // toggle — when OFF the producer drives publishing from the Beat → Video
+    // modal instead. When the field is undefined (older clients, mobile
+    // uploader), we default to TRUE to preserve previous behavior.
+    const shouldAutoPublish = (req.body.auto_publish === undefined) ? true : !!req.body.auto_publish;
+    if (autoUpload && audio_url && shouldAutoPublish) {
       autoUpload.enqueueBeat({
         id: beatId,
         title,
@@ -2182,6 +2189,8 @@ app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
         audioUrl: audio_url,
         coverUrl: cover_url || null,
       }).catch(err => console.warn('[auto-upload] enqueue failed:', err.message));
+    } else if (autoUpload && audio_url && !shouldAutoPublish) {
+      console.log(`[auto-upload] skipped for "${title}" — auto_publish=false (producer will publish manually)`);
     }
 
     // Push broadcast on new beat — opt-in. Uploader sends announce:false to skip
