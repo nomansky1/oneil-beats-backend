@@ -1434,6 +1434,32 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
 
 <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
 
+<!-- Free Beat email gate — replaces the previous one-click download. Captures
+     an email + opt-in consent, posts to /subscribe/free-beat, then fires the
+     actual download. Email is cached in localStorage so repeat visitors skip
+     the modal. Goal: every free-beat download → email subscriber. -->
+<div class="share-pop-backdrop" id="free-gate-backdrop" onclick="if(event.target===this)closeFreeGate()" role="dialog" aria-modal="true" aria-labelledby="free-gate-title">
+  <div class="share-pop" style="position:relative">
+    <button class="share-close" onclick="closeFreeGate()" aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h3 id="free-gate-title" style="display:flex;align-items:center;gap:8px"><span style="color:#fbbf24">★</span> Free beat — almost yours</h3>
+    <p class="share-sub" id="free-gate-sub">Drop your email and we'll send you the link + ping you on next week's drop. No spam, unsubscribe one click.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+      <input type="email" id="free-gate-email" placeholder="you@email.com" autocomplete="email" style="width:100%;padding:14px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:15px;font-family:inherit;outline:none">
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--dim);cursor:pointer;line-height:1.45">
+        <input type="checkbox" id="free-gate-consent" style="margin-top:2px;flex-shrink:0;accent-color:#fbbf24">
+        <span>Yes, send me the Free Beat of the Week + new drop alerts.</span>
+      </label>
+      <div id="free-gate-msg" style="font-size:12px;min-height:16px;line-height:1.4"></div>
+      <button id="free-gate-submit" onclick="submitFreeGate()" style="width:100%;padding:14px;background:#fbbf24;color:#000;border:none;border-radius:12px;font-weight:900;font-size:14px;letter-spacing:1px;cursor:pointer;transition:transform .15s,background .15s">⬇ DOWNLOAD FREE BEAT</button>
+    </div>
+    <div style="text-align:center;font-size:11px;color:var(--dim);line-height:1.5">
+      Tagged preview MP3 · non-commercial use · <a href="#" onclick="event.preventDefault();freeGateLicenseRedirect()" style="color:var(--accent);text-decoration:underline">License the clean version →</a>
+    </div>
+  </div>
+</div>
+
 <!-- Social share popover — opens when shareBeat() runs and the Web Share API
      isn't available (e.g. desktop). Renders X / WhatsApp / Facebook / copy-link
      options plus a one-click copy of the canonical beat URL. -->
@@ -1904,6 +1930,12 @@ function openDetail(id) {
   // the tagged MP3 directly. Clicks fire-and-forget POST to /beats/:id/download
   // for analytics, then trigger the browser download. This was working on the
   // mobile apps but missing from the website detail modal — now matches.
+  // 2026-05-08 — email-gated free download. Replaces the direct <a download>
+  // with a button that opens the free-beat email gate. After consent, the gate
+  // POSTs to /subscribe/free-beat with source attribution then fires the actual
+  // download via _doFreeBeatDownload. Repeat visitors who already gated in the
+  // last 30 days bypass the modal so it stays one-click.
+  const freeDownloadFileName = ((b.title || 'oneil-beats-free').replace(/[^a-z0-9]+/gi, '-')) + '-tagged.mp3';
   const freeDownloadHTML = (b.is_free_weekly && b.audio_url) ? `
     <div style="background:linear-gradient(135deg,rgba(251,191,36,.18),rgba(239,68,68,.14));border:1.5px solid rgba(251,191,36,.55);border-radius:16px;padding:18px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <div style="flex:1;min-width:200px">
@@ -1911,10 +1943,10 @@ function openDetail(id) {
         <div style="color:var(--text);font-weight:800;font-size:15px;line-height:1.3">Download tagged preview MP3 — free, non-commercial use</div>
         <div style="color:var(--dim);font-size:11px;margin-top:4px">Producer-tagged version. License Lease/Premium/Stems below for the clean untagged file.</div>
       </div>
-      <a href="${esc(b.audio_url)}" download="${esc((b.title || 'oneil-beats-free').replace(/[^a-z0-9]+/gi, '-'))}-tagged.mp3" target="_blank" rel="noopener" onclick="trackFreeDownload('${esc(b.id)}')" style="display:inline-flex;align-items:center;gap:8px;background:#fbbf24;color:#000;padding:14px 22px;border-radius:12px;text-decoration:none;font-weight:900;font-size:13px;letter-spacing:0.5px;cursor:pointer;white-space:nowrap;border:none">
+      <button type="button" onclick="freeBeatGate('${esc(b.id)}','${esc(b.audio_url)}','${esc(freeDownloadFileName)}')" style="display:inline-flex;align-items:center;gap:8px;background:#fbbf24;color:#000;padding:14px 22px;border-radius:12px;text-decoration:none;font-weight:900;font-size:13px;letter-spacing:0.5px;cursor:pointer;white-space:nowrap;border:none;font-family:inherit">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         DOWNLOAD FREE
-      </a>
+      </button>
     </div>` : '';
   document.getElementById('detail-body').innerHTML = `
     ${freeDownloadHTML}
@@ -2393,8 +2425,125 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     const bd = document.getElementById('share-pop-backdrop');
     if (bd && bd.classList.contains('open')) closeSharePop();
+    const fg = document.getElementById('free-gate-backdrop');
+    if (fg && fg.classList.contains('open')) closeFreeGate();
   }
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FREE BEAT EMAIL GATE — captures the visitor's email before the free MP3
+// downloads. Every download → list subscriber. Repeat visitors who already
+// gave consent are auto-passed through (localStorage flag). Storage keys:
+//   ob_free_beat_email    — last email submitted
+//   ob_free_beat_gated_at — ISO timestamp of consent (used to skip the gate
+//                           for the next 30 days; after that, ask again so a
+//                           shared device doesn't permanently leak the email)
+// ─────────────────────────────────────────────────────────────────────────────
+const FREE_GATE_TTL_DAYS = 30;
+function _freeGatePassed() {
+  try {
+    const ts = localStorage.getItem('ob_free_beat_gated_at');
+    const email = localStorage.getItem('ob_free_beat_email');
+    if (!ts || !email) return false;
+    const ageDays = (Date.now() - new Date(ts).getTime()) / 86400000;
+    return ageDays < FREE_GATE_TTL_DAYS;
+  } catch (_) { return false; }
+}
+function _doFreeBeatDownload(beatId, audioUrl, fileName) {
+  if (!audioUrl) { showToast('Preview not available — try another beat', 'err'); return; }
+  // Fire-and-forget analytics ping (matches the existing trackFreeDownload helper).
+  try { if (typeof trackFreeDownload === 'function') trackFreeDownload(beatId); } catch (_) {}
+  try { track('free_beat_download', { beatId, gate: _freeGatePassed() ? 'cached' : 'fresh' }); } catch (_) {}
+  // Trigger the browser download via a programmatic <a download>.
+  const a = document.createElement('a');
+  a.href = audioUrl;
+  a.download = fileName || 'oneil-beats-free-tagged.mp3';
+  a.target = '_blank';
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { try { a.remove(); } catch (_) {} }, 0);
+}
+// Public entry — called from the gold "DOWNLOAD FREE" button on the detail
+// modal (and any other surface that wants to gate a free beat). If the visitor
+// has already submitted consent in the last 30 days, we skip the modal so the
+// flow stays one-click for repeat fans.
+function freeBeatGate(beatId, audioUrl, fileName) {
+  if (_freeGatePassed()) {
+    _doFreeBeatDownload(beatId, audioUrl, fileName);
+    return;
+  }
+  const bd = document.getElementById('free-gate-backdrop');
+  if (!bd) { _doFreeBeatDownload(beatId, audioUrl, fileName); return; } // graceful fallback
+  bd._pending = { beatId, audioUrl, fileName };
+  // Pre-fill from any previously stored email even if expired — saves a retype.
+  try {
+    const cachedEmail = localStorage.getItem('ob_free_beat_email');
+    if (cachedEmail) document.getElementById('free-gate-email').value = cachedEmail;
+  } catch (_) {}
+  document.getElementById('free-gate-msg').textContent = '';
+  bd.classList.add('open');
+  setTimeout(() => { document.getElementById('free-gate-email')?.focus(); }, 60);
+  try { track('free_beat_gate_open', { beatId }); } catch (_) {}
+}
+function closeFreeGate() {
+  const bd = document.getElementById('free-gate-backdrop');
+  if (bd) bd.classList.remove('open');
+}
+function freeGateLicenseRedirect() {
+  // User wants the clean (non-tagged) license tier instead of the free tagged
+  // preview. Close the gate, then jump to the detail modal's License section.
+  const bd = document.getElementById('free-gate-backdrop');
+  const beatId = bd?._pending?.beatId;
+  closeFreeGate();
+  if (beatId && typeof openDetail === 'function') openDetail(beatId);
+}
+async function submitFreeGate() {
+  const bd = document.getElementById('free-gate-backdrop');
+  const emailEl = document.getElementById('free-gate-email');
+  const consentEl = document.getElementById('free-gate-consent');
+  const btn = document.getElementById('free-gate-submit');
+  const msg = document.getElementById('free-gate-msg');
+  const email = (emailEl?.value || '').trim();
+  const beatId = bd?._pending?.beatId;
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    msg.style.color = '#ef4444'; msg.textContent = 'Please enter a valid email.'; return;
+  }
+  if (!consentEl?.checked) {
+    msg.style.color = '#ef4444'; msg.textContent = 'Please confirm consent so we can email you the beat.'; return;
+  }
+  btn.disabled = true; btn.textContent = 'GETTING YOUR BEAT…'; msg.textContent = '';
+  try {
+    const r = await fetch(`${API}/subscribe/free-beat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // source carries beat-level attribution for the Free Beat Leads dashboard.
+      body: JSON.stringify({ email, consent: true, source: beatId ? `free_beat_download_${beatId}` : 'free_beat_download' }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    // Cache consent so repeat visitors don't re-encounter the gate.
+    try {
+      localStorage.setItem('ob_free_beat_email', email);
+      localStorage.setItem('ob_free_beat_gated_at', new Date().toISOString());
+    } catch (_) {}
+    msg.style.color = '#10b981';
+    msg.textContent = d.alreadySubscribed ? "Welcome back — your beat is downloading." : "You're in. Beat downloading now.";
+    try { track('free_beat_gate_submit', { beatId, alreadySubscribed: !!d.alreadySubscribed }); } catch (_) {}
+    // Fire the actual download + close the gate after a brief moment so the
+    // user sees the success state.
+    const pending = bd?._pending || {};
+    setTimeout(() => {
+      _doFreeBeatDownload(pending.beatId, pending.audioUrl, pending.fileName);
+      closeFreeGate();
+    }, 700);
+  } catch (e) {
+    msg.style.color = '#ef4444';
+    msg.textContent = 'Error: ' + (e.message || 'Could not subscribe — try again');
+  } finally {
+    btn.disabled = false; btn.textContent = '⬇ DOWNLOAD FREE BEAT';
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LYRICS / NOTES — per-beat free-form text. Saved per-device in localStorage
