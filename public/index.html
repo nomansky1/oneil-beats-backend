@@ -917,6 +917,9 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
         <div class="cat-rows">
           <div class="cat-row"><span class="cat-row-label">Genre</span><div id="genre-chips" style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center"></div></div>
           <div class="cat-row"><span class="cat-row-label">Mood</span><div id="mood-chips" style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center"></div></div>
+          <div class="cat-row"><span class="cat-row-label">BPM</span><div id="bpm-chips" style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center"></div></div>
+          <div class="cat-row"><span class="cat-row-label">Key</span><div id="key-chips" style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center"></div></div>
+          <div class="cat-row" id="cat-clear-row" style="display:none"><button class="chip" onclick="clearAllFilters()" style="background:transparent;border:1px dashed var(--border);color:var(--dim)">✕ Clear all</button></div>
         </div>
       </div>
     </div>
@@ -1521,6 +1524,17 @@ function applySort(arr) {
   }
 }
 let activeGenre = null, activeMood = null;
+// Filter chips for BPM range + key mode (major/minor). Both are nullable
+// single-selects; toggling re-clicks clears them.
+let activeBpmRange = null;        // [min, max] inclusive, e.g. [90,110]
+let activeKeyMode = null;         // 'major' | 'minor'
+const BPM_RANGES = [
+  { id: '60-90',   label: '60–90',   min: 60,  max: 90 },
+  { id: '90-110',  label: '90–110',  min: 90,  max: 110 },
+  { id: '110-130', label: '110–130', min: 110, max: 130 },
+  { id: '130-150', label: '130–150', min: 130, max: 150 },
+  { id: '150+',    label: '150+',    min: 150, max: 999 },
+];
 let viewMode = localStorage.getItem('ob_view') || 'grid';
 let currentUser = null;
 let favorites = new Set();
@@ -1596,6 +1610,10 @@ function handleUrlParams() {
   if (p.get('beat')) { const b = allBeats.find(x => x.id === p.get('beat')); if (b) openDetail(b.id); }
   if (p.get('search')) { document.getElementById('search-input').value = p.get('search'); filterBeats(); }
   if (p.get('genre')) { setGenreFilter(p.get('genre')); }
+  // 2026-05-08 — chips support deep-link via ?bpm=90-110 / ?key=minor / ?mood=Hard
+  if (p.get('bpm') && BPM_RANGES.some(r => r.id === p.get('bpm'))) toggleBpm(p.get('bpm'));
+  if (p.get('key') && (p.get('key') === 'major' || p.get('key') === 'minor')) toggleKeyMode(p.get('key'));
+  if (p.get('mood')) toggleMood(p.get('mood'));
 }
 
 // ── Carousel state ──
@@ -1758,8 +1776,26 @@ function buildFilterChips() {
   const moods  = [...new Set(allBeats.map(b=>b.mood).filter(Boolean))].sort();
   document.getElementById('genre-chips').innerHTML = genres.map(g=>`<button class="chip" onclick="toggleGenre('${g}')" data-genre="${g}">${g}</button>`).join('');
   document.getElementById('mood-chips').innerHTML  = moods.map(m=>`<button class="chip" onclick="toggleMood('${m}')" data-mood="${m}">${m}</button>`).join('');
+  // BPM range chips — only show ranges that have at least one matching beat
+  // so we don't dangle dead options. Each chip carries its range bounds via
+  // data-bpm so syncBpmUI/filterBeats can read it back.
+  const bpmHtml = BPM_RANGES.map(r => {
+    const count = allBeats.filter(b => b.bpm && Number(b.bpm) >= r.min && Number(b.bpm) < r.max + 1).length;
+    if (!count) return '';
+    return `<button class="chip" onclick="toggleBpm('${r.id}')" data-bpm="${r.id}" title="${count} beat${count>1?'s':''}">${r.label}</button>`;
+  }).join('');
+  document.getElementById('bpm-chips').innerHTML = bpmHtml;
+  // Key mode chips — split the catalog into Major / Minor based on whether
+  // each beat's key string contains "Major" / "Minor". Most catalog keys are
+  // shaped like "B Minor" or "F# Major" so this is a clean binary split.
+  const majorN = allBeats.filter(b => /major/i.test(String(b.key||''))).length;
+  const minorN = allBeats.filter(b => /minor/i.test(String(b.key||''))).length;
+  document.getElementById('key-chips').innerHTML = [
+    majorN ? `<button class="chip" onclick="toggleKeyMode('major')" data-keymode="major" title="${majorN} beat${majorN>1?'s':''}">Major</button>` : '',
+    minorN ? `<button class="chip" onclick="toggleKeyMode('minor')" data-keymode="minor" title="${minorN} beat${minorN>1?'s':''}">Minor</button>` : '',
+  ].join('');
   const cc = document.getElementById('cat-count');
-  if (cc) cc.textContent = genres.length + moods.length;
+  if (cc) cc.textContent = genres.length + moods.length + BPM_RANGES.length + (majorN ? 1 : 0) + (minorN ? 1 : 0);
 }
 
 function toggleCategories() {
@@ -1789,6 +1825,23 @@ function syncGenreUI() {
 function toggleMood(m) {
   activeMood = activeMood===m ? null : m;
   document.querySelectorAll('[data-mood]').forEach(el=>el.classList.toggle('active',el.dataset.mood===activeMood));
+  filterBeats();
+}
+function toggleBpm(rangeId) {
+  activeBpmRange = activeBpmRange === rangeId ? null : rangeId;
+  document.querySelectorAll('[data-bpm]').forEach(el=>el.classList.toggle('active',el.dataset.bpm===activeBpmRange));
+  filterBeats();
+}
+function toggleKeyMode(mode) {
+  activeKeyMode = activeKeyMode === mode ? null : mode;
+  document.querySelectorAll('[data-keymode]').forEach(el=>el.classList.toggle('active',el.dataset.keymode===activeKeyMode));
+  filterBeats();
+}
+function clearAllFilters() {
+  activeGenre = null; activeMood = null; activeBpmRange = null; activeKeyMode = null;
+  document.getElementById('search-input').value = '';
+  document.querySelectorAll('[data-genre],[data-mood],[data-bpm],[data-keymode]').forEach(el=>el.classList.remove('active'));
+  updateHeadingForGenre(null);
   filterBeats();
 }
 function setKeyword(k) {
@@ -1821,9 +1874,20 @@ function updateHeadingForGenre(g) {
 
 function filterBeats() {
   const q = document.getElementById('search-input').value.toLowerCase().trim();
+  // Resolve active BPM range to {min,max} once per call instead of per-beat.
+  const bpmR = activeBpmRange ? BPM_RANGES.find(r => r.id === activeBpmRange) : null;
   filteredBeats = allBeats.filter(b => {
     if (activeGenre && b.genre !== activeGenre) return false;
     if (activeMood && b.mood !== activeMood) return false;
+    if (bpmR) {
+      const bpm = Number(b.bpm);
+      if (!bpm || bpm < bpmR.min || bpm > bpmR.max) return false;
+    }
+    if (activeKeyMode) {
+      const k = String(b.key || '');
+      if (activeKeyMode === 'major' && !/major/i.test(k)) return false;
+      if (activeKeyMode === 'minor' && !/minor/i.test(k)) return false;
+    }
     if (q) {
       const tagStr = Array.isArray(b.tags) ? b.tags.join(' ') : (b.tags||'');
       const hay = `${b.title} ${b.genre} ${b.subgenre||''} ${b.mood} ${tagStr} ${b.key||''} ${b.bpm||''}`.toLowerCase();
@@ -1833,6 +1897,12 @@ function filterBeats() {
   });
   filteredBeats = applySort(filteredBeats);
   document.getElementById('beat-count').textContent = `${filteredBeats.length} beat${filteredBeats.length!==1?'s':''}`;
+  // Toggle "Clear all" row visibility based on whether any filter is engaged.
+  const clearRow = document.getElementById('cat-clear-row');
+  if (clearRow) {
+    const anyActive = !!(activeGenre || activeMood || activeBpmRange || activeKeyMode || q);
+    clearRow.style.display = anyActive ? 'flex' : 'none';
+  }
   renderGrid();
 }
 
