@@ -242,6 +242,42 @@ app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] })
 // beat-specific OG tags), so unfurls showed only the bare URL with no beat
 // title or cover art. UUID guard now falls through to the UUID handler.
 const _UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// ── /og/{slug}.png — per-beat 1200×630 OG banner, generated on demand ───────
+// Square cover art looks bad in FB/Threads/X/WhatsApp feeds; this route
+// produces a landscape banner with cover + title + tech + brand. First hit
+// per beat takes ~200-400 ms (sharp + cover fetch); Vercel's CDN caches the
+// response, so subsequent hits are instant. Small in-process Map cache so a
+// warm lambda doesn't regenerate within its own lifetime either.
+const _ogCache = new Map(); // slug -> Buffer (capped at 50 entries)
+app.get('/og/:slug.png', async (req, res) => {
+  const slug = req.params.slug;
+  if (!slug || !/^[a-z0-9-]+$/.test(slug)) return res.status(404).end();
+  try {
+    const cached = _ogCache.get(slug);
+    if (cached) {
+      res.set('Cache-Control', 'public, max-age=31536000, s-maxage=31536000, immutable');
+      res.set('Content-Type', 'image/png');
+      return res.send(cached);
+    }
+    const { beatSlug, buildOgPngBuffer } = require('./scripts/build-beat-pages');
+    const beats = await fetchBeatsFromDB().catch(() => []);
+    const beat = (beats || []).find(b => b && b.title && beatSlug(b) === slug);
+    if (!beat) return res.status(404).end();
+    const buf = await buildOgPngBuffer(beat);
+    if (!buf) return res.status(500).end();
+    // LRU-ish eviction — oldest first so hot beats stay warm.
+    if (_ogCache.size >= 50) _ogCache.delete(_ogCache.keys().next().value);
+    _ogCache.set(slug, buf);
+    res.set('Cache-Control', 'public, max-age=31536000, s-maxage=31536000, immutable');
+    res.set('Content-Type', 'image/png');
+    return res.send(buf);
+  } catch (e) {
+    console.error('/og/:slug error:', e.message);
+    return res.status(500).end();
+  }
+});
+
 app.get('/beat/:slug', async (req, res, next) => {
   const slug = req.params.slug;
   if (!slug || /[^a-z0-9-]/i.test(slug)) return next();
