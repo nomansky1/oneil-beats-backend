@@ -28,3 +28,7 @@ public/comprar-*.html
 public/beats-de-*.html
 public/beats-tipo-*.html
 public/instrumentales-*.html
+# OG image banners (1200×630 PNG per beat) — generated on every Vercel deploy
+# from scripts/build-beat-pages.js. ~600 KB × 46+ beats; never committed so the
+# repo stays lean. The build step regenerates them with the canonical layout.
+public/og/

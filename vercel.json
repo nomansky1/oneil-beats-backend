@@ -4,21 +4,21 @@
     {
       "src": "server.js",
       "use": "@vercel/node",
-      "config": { "maxLambdaSize": "50mb", "maxDuration": 60 }
+      "config": {
+        "maxLambdaSize": "50mb",
+        "maxDuration": 60,
+        "excludeFiles": "public/og/**"
+      }
+    },
+    {
+      "src": "public/og/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
-    {
-      "src": "/admin",
-      "dest": "/server.js"
-    },
-    {
-      "src": "/webhook",
-      "dest": "/server.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/server.js"
-    }
+    { "src": "/admin", "dest": "/server.js" },
+    { "src": "/webhook", "dest": "/server.js" },
+    { "src": "/og/(.+)", "dest": "/public/og/$1" },
+    { "src": "/(.*)", "dest": "/server.js" }
   ]
 }

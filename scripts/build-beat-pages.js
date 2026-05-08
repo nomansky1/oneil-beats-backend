@@ -23,12 +23,42 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
+let sharp = null;
+try { sharp = require('sharp'); } catch (e) { console.warn('[build-beat-pages] sharp not installed — OG image generation disabled'); }
 
 const ROOT = path.resolve(__dirname, '..');
 const TEMPLATE_PATH = path.join(ROOT, 'public', 'index.html');
 const OUT_DIR = path.join(ROOT, 'public', 'beat');
+const OG_DIR = path.join(ROOT, 'public', 'og');
+const OG_MANIFEST = path.join(OG_DIR, '.manifest.json');
 const SITE_URL = 'https://oneilbeats.store';
+
+// Genre → accent color (mirrors PLAYER_GENRE_COLORS in public/index.html so
+// the OG banner uses the same visual language as the in-app expanded player).
+const GENRE_OG_COLORS = {
+  'reggaeton':'#e63946','reggaetón':'#e63946','perreo':'#e63946',
+  'trap':'#f4c542','latin trap':'#f4c542','trap latino':'#f4c542',
+  'hip hop':'#a78bfa','hip-hop':'#a78bfa','boom bap':'#a78bfa','rap':'#a78bfa',
+  'drill':'#19f0ff','ny drill':'#19f0ff','uk drill':'#19f0ff',
+  'dancehall':'#34d399','afrobeats':'#fb923c','r&b':'#ec4899','latin pop':'#f97316','phonk':'#94a3b8',
+};
+function ogAccent(genre) {
+  if (!genre) return '#e63946';
+  return GENRE_OG_COLORS[String(genre).toLowerCase()] || '#e63946';
+}
+// XML-escape for SVG text nodes (different rules than HTML — apostrophes are
+// fine in attribute-context but we still escape <, >, &, " so the SVG parses).
+function svgEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+function truncate(s, n) {
+  s = String(s || '');
+  return s.length <= n ? s : s.slice(0, n - 1).trimEnd() + '…';
+}
 
 // ── Slug helpers ────────────────────────────────────────────────────────────
 function slugify(s) {
@@ -78,6 +108,136 @@ function findRelatedBeats(beat, allBeats, n = 4) {
     .sort((a, b) => b.s - a.s)
     .slice(0, n)
     .map(x => x.b);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OG IMAGE GENERATOR — 1200×630 landscape banner per beat.
+//
+// Square cover art looks bad in FB / Threads / X / WhatsApp feeds (cropped or
+// letterboxed). A 1200×630 landscape with the cover on the left + title +
+// tech specs + brand on the right gives every share a custom unfurl that
+// reads like the artist's own marketing card.
+//
+// Build pipeline:
+//   1. Hash {coverUrl, title, genre, bpm, key} → cache key
+//   2. If public/og/{slug}.png exists with matching hash in the manifest, skip
+//   3. Otherwise: fetch cover bytes, resize to 540×540, composite onto a
+//      1200×630 SVG (genre-tinted gradient bg + text right column + brand row)
+//   4. Write PNG + update manifest
+//
+// Falls back gracefully — any beat whose OG generation fails keeps using the
+// raw square cover_url for og:image (existing behavior). The build never fails
+// the deploy because of an OG render error.
+// ─────────────────────────────────────────────────────────────────────────────
+async function fetchImageBuffer(url) {
+  if (!url) return null;
+  try {
+    const res = await fetch(url, { redirect: 'follow' });
+    if (!res.ok) return null;
+    const arr = new Uint8Array(await res.arrayBuffer());
+    return Buffer.from(arr);
+  } catch (e) {
+    return null;
+  }
+}
+function ogCacheKey(beat) {
+  const payload = JSON.stringify({
+    cover: beat.cover_url || beat.cover_art_url || '',
+    title: beat.title || '',
+    genre: beat.genre || '',
+    bpm: beat.bpm || '',
+    key: beat.key || '',
+    v: 1,                            // bump to invalidate all OG images at once
+  });
+  return crypto.createHash('sha1').update(payload).digest('hex').slice(0, 12);
+}
+function buildOgSvg(beat, hasCover) {
+  const accent = ogAccent(beat.genre);
+  const title = truncate(beat.title || 'Beat', 32);
+  const meta = [
+    beat.genre ? String(beat.genre).toUpperCase() : null,
+    beat.bpm ? `${beat.bpm} BPM` : null,
+    beat.key || null,
+  ].filter(Boolean).join('  ·  ');
+  // Layout — cover lives at x=60..600, text column at x=640..1140
+  const COVER_X = 60, COVER_SIZE = 540;
+  const TEXT_X = 640;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="${accent}" stop-opacity="0.42"/>
+      <stop offset="0.55" stop-color="#06060a"/>
+      <stop offset="1" stop-color="#000"/>
+    </linearGradient>
+    <linearGradient id="accentBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="${accent}" stop-opacity="0"/>
+      <stop offset="0.2" stop-color="${accent}" stop-opacity="1"/>
+      <stop offset="1" stop-color="${accent}" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1200" height="630" fill="#06060a"/>
+  <rect x="0" y="0" width="1200" height="630" fill="url(#bg)"/>
+  <!-- Cover placeholder rect (gets composited over by the actual image) -->
+  ${hasCover
+    ? `<rect x="${COVER_X}" y="45" width="${COVER_SIZE}" height="${COVER_SIZE}" rx="20" fill="#0e0e16"/>`
+    : `<rect x="${COVER_X}" y="45" width="${COVER_SIZE}" height="${COVER_SIZE}" rx="20" fill="#14141f" stroke="${accent}" stroke-width="2" stroke-opacity="0.6"/>
+       <text x="${COVER_X + COVER_SIZE/2}" y="${45 + COVER_SIZE/2 + 20}" text-anchor="middle" fill="${accent}" font-family="sans-serif" font-weight="900" font-size="180" opacity="0.6">${svgEsc((beat.title||'?').charAt(0).toUpperCase())}</text>`
+  }
+  <!-- Brand eyebrow -->
+  <text x="${TEXT_X}" y="115" fill="${accent}" font-family="sans-serif" font-weight="900" font-size="22" letter-spacing="6">O'NEIL BEATS</text>
+  <rect x="${TEXT_X}" y="128" width="80" height="3" fill="${accent}"/>
+  <!-- Title -->
+  <text x="${TEXT_X}" y="220" fill="#ffffff" font-family="sans-serif" font-weight="900" font-size="76" letter-spacing="-2">${svgEsc(title)}</text>
+  <!-- Meta line -->
+  <text x="${TEXT_X}" y="290" fill="#cbd5e1" font-family="sans-serif" font-weight="700" font-size="28" letter-spacing="2">${svgEsc(meta)}</text>
+  <!-- License pill -->
+  <rect x="${TEXT_X}" y="340" width="220" height="56" rx="12" fill="${accent}"/>
+  <text x="${TEXT_X + 110}" y="376" fill="#000000" font-family="sans-serif" font-weight="900" font-size="22" text-anchor="middle" letter-spacing="1">LICENSE FROM $${(Number(beat.lease_price)||29.99).toFixed(0)}</text>
+  <!-- Bottom brand strip -->
+  <rect x="${TEXT_X}" y="535" width="500" height="2" fill="url(#accentBar)"/>
+  <text x="${TEXT_X}" y="575" fill="#94a3b8" font-family="sans-serif" font-weight="700" font-size="20" letter-spacing="3">PROD. BY O'NEIL</text>
+  <text x="${TEXT_X}" y="600" fill="#64748b" font-family="sans-serif" font-weight="500" font-size="16" letter-spacing="2">ONEILBEATS.STORE  ·  INSTANT MP3 / WAV</text>
+</svg>`;
+}
+async function generateOgImage(beat, slug) {
+  if (!sharp) return null;
+  const outFile = path.join(OG_DIR, slug + '.png');
+  const cacheKey = ogCacheKey(beat);
+  // Check manifest — skip if existing PNG already matches the cache key.
+  let manifest = {};
+  try { manifest = JSON.parse(fs.readFileSync(OG_MANIFEST, 'utf8')); } catch (_) { manifest = {}; }
+  if (manifest[slug] === cacheKey && fs.existsSync(outFile)) {
+    return outFile;
+  }
+  if (!fs.existsSync(OG_DIR)) fs.mkdirSync(OG_DIR, { recursive: true });
+  const coverUrl = beat.cover_url || beat.cover_art_url || null;
+  let coverBuf = null;
+  if (coverUrl) coverBuf = await fetchImageBuffer(coverUrl);
+  // Build the base PNG from SVG — this includes the gradient bg + all text.
+  const svgString = buildOgSvg(beat, !!coverBuf);
+  let img = sharp(Buffer.from(svgString)).png();
+  // Composite the resized cover into the placeholder area (60, 45, 540×540).
+  if (coverBuf) {
+    try {
+      const coverPng = await sharp(coverBuf)
+        .resize(540, 540, { fit: 'cover', position: 'centre' })
+        // Round the corners by clipping to a rounded mask
+        .composite([{
+          input: Buffer.from('<svg width="540" height="540"><rect x="0" y="0" width="540" height="540" rx="20" ry="20" fill="white"/></svg>'),
+          blend: 'dest-in',
+        }])
+        .png()
+        .toBuffer();
+      img = img.composite([{ input: coverPng, top: 45, left: 60 }]);
+    } catch (e) {
+      // Cover composite failed — keep base SVG (which already has a fallback letter tile).
+    }
+  }
+  await img.toFile(outFile);
+  manifest[slug] = cacheKey;
+  fs.writeFileSync(OG_MANIFEST, JSON.stringify(manifest, null, 2));
+  return outFile;
 }
 
 // ── Build per-beat <title>, description, schema ────────────────────────────
@@ -186,11 +346,15 @@ function beatJsonLd(beat, slug) {
 // ── Template injection ──────────────────────────────────────────────────────
 // Replace the homepage's SEO-critical <head> tags with beat-specific values.
 // Uses anchored regex matches so the rest of index.html is preserved verbatim.
-function renderBeatPage(template, beat, slug, allBeats = []) {
+function renderBeatPage(template, beat, slug, allBeats = [], ogImagePath = null) {
   const url = `${SITE_URL}/beat/${slug}`;
   const titleTag = beatTitleTag(beat);
   const descTag  = beatDescription(beat);
-  const cover    = beat.cover_art_url || beat.cover_url || `${SITE_URL}/og-image.jpg`;
+  const squareCover = beat.cover_art_url || beat.cover_url || `${SITE_URL}/og-image.jpg`;
+  // Prefer the generated 1200×630 landscape OG banner (per-beat) when available;
+  // fall back to the square cover. Landscape unfurls render properly in FB /
+  // Threads / X / WhatsApp feeds; square covers get cropped weirdly.
+  const cover = ogImagePath ? `${SITE_URL}/og/${slug}.png` : squareCover;
   const ogTitle  = `${beat.title} — ${beat.genre || 'Rap'} Type Beat | O'Neil Beats`;
 
   let html = template;
@@ -223,12 +387,15 @@ function renderBeatPage(template, beat, slug, allBeats = []) {
   // page body for the link preview. Now declares 1200x1200 (matches AI-generated
   // square covers) and gives FB a beat-specific alt + secure_url so it has zero
   // ambiguity about which image to render in the unfurl.
+  // Dimensions match whichever image we ended up using: the generated 1200×630
+  // landscape banner if it built, or the original 1200×1200 square cover.
+  const ogIsLandscape = !!ogImagePath;
   html = html.replace(/<meta\s+property="og:image:width"\s+content="[^"]*">/i,
     `<meta property="og:image:width" content="1200">`);
   html = html.replace(/<meta\s+property="og:image:height"\s+content="[^"]*">/i,
-    `<meta property="og:image:height" content="1200">`);
+    `<meta property="og:image:height" content="${ogIsLandscape ? 630 : 1200}">`);
   html = html.replace(/<meta\s+property="og:image:alt"\s+content="[^"]*">/i,
-    `<meta property="og:image:alt" content="${esc(beat.title + ' cover art')}">`);
+    `<meta property="og:image:alt" content="${esc(beat.title + ' — ' + (beat.genre || 'beat') + " on O'Neil Beats")}">`);
   // Add og:image:secure_url (HTTPS-only platforms prefer this) + og:image type.
   // Inject right after og:image so the cluster stays together for FB's parser.
   html = html.replace(/(<meta\s+property="og:image"\s+content="[^"]*">)/i,
@@ -1929,12 +2096,38 @@ async function main() {
     }
   }
 
+  // Generate OG banners (1200×630 landscape per beat). Run with concurrency 4
+  // so cover fetches overlap but we don't hammer Supabase. Failures fall back
+  // to the square cover at render time — never block the build.
+  let ogGenerated = 0, ogSkipped = 0, ogFailed = 0;
+  if (sharp) {
+    const CONCURRENCY = 4;
+    const queue = beats.slice();
+    async function worker() {
+      while (queue.length) {
+        const b = queue.shift();
+        if (!b) break;
+        try {
+          const out = await generateOgImage(b, beatSlug(b));
+          if (!out) ogFailed++;
+          else if (fs.statSync(out).mtimeMs > Date.now() - 5000) ogGenerated++;
+          else ogSkipped++;
+        } catch (e) {
+          ogFailed++;
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+    console.log(`[build-beat-pages] OG images: ${ogGenerated} new, ${ogSkipped} cached, ${ogFailed} fallback to square cover`);
+  }
+
   const template = fs.readFileSync(TEMPLATE_PATH, 'utf8');
   let written = 0;
   for (const beat of beats) {
     const slug = beatSlug(beat);
+    const ogPath = sharp && fs.existsSync(path.join(OG_DIR, slug + '.png')) ? slug : null;
     // Pass the full beats array so each page can compute its 4 related beats.
-    const html = renderBeatPage(template, beat, slug, beats);
+    const html = renderBeatPage(template, beat, slug, beats, ogPath);
     const outPath = path.join(OUT_DIR, slug + '.html');
     fs.writeFileSync(outPath, html, 'utf8');
     written++;
