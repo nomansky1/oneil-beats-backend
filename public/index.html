@@ -2196,10 +2196,20 @@ function playBeat(id) {
   if (!b.audio_url && !b.mp3_url) { showToast('No preview available'); return; }
   if (currentBeat?.id===id) { togglePlay(); renderGrid(); return; }
   currentBeat = b;
+  isPlaying = false;
+  // Surface the mini bar + populate it with the new beat's data IMMEDIATELY,
+  // before the network round-trip. Audio metadata can take 1-2 sec to load
+  // and audio.play() can reject with AbortError when src changes mid-load
+  // (rapid tile clicks); waiting for .then() left users staring at silence
+  // with no UI feedback. The audio 'play' event listener flips isPlaying once
+  // playback actually starts, so the play→pause icon swap stays correct.
+  showPlayer();
+  updatePlayerUI();
+  renderGrid();
   buildWaveform(id);
   audio.src = `${API}/preview/${id}`;
   audio.play().then(()=>{
-    isPlaying=true; showPlayer(); updatePlayerUI(); track('play',{beatId:id}); renderGrid();
+    isPlaying=true; updatePlayerUI(); track('play',{beatId:id}); renderGrid();
     // On mobile, surface the full expanded player (cover + visualizer + lyrics
     // notes + repeat + favorite) immediately so the producer's "open the player
     // with the beat" ask is honored. Desktop keeps the mini-bar-first UX.
