@@ -3302,6 +3302,99 @@ app.post('/notification/send', requireAdminKey, async (req, res) => {
   }
 });
 
+// POST /admin/blast-by-mood — targeted push notification.
+// Body: { title, body, data?, mood?, genre?, subgenre?, dryRun? }
+// OR-semantics across the three filters; users get included if ANY filter
+// matches their past purchase history. dryRun:true returns the audience
+// preview without sending.
+//
+// Ported from desktop-app/backend/routes/notify.js so the OB Uploader mobile
+// Push Broadcast screen + the desktop EXE both hit the same cloud endpoint.
+app.post('/admin/blast-by-mood', requireAdminKey, async (req, res) => {
+  try {
+    const { title, body, data, mood, genre, subgenre, dryRun } = req.body || {};
+    if (!title || !body) return res.status(400).json({ error: 'title and body required' });
+    if (!mood && !genre && !subgenre) {
+      return res.status(400).json({ error: 'at least one of mood/genre/subgenre required' });
+    }
+
+    const supabase = getSupabaseClient();
+
+    // 1. Find beats matching filters (OR across mood/genre/subgenre).
+    let beatQuery = supabase.from('beats').select('id').eq('active', true);
+    const orParts = [];
+    if (mood)     orParts.push(`mood.eq.${mood}`);
+    if (genre)    orParts.push(`genre.eq.${genre}`);
+    if (subgenre) orParts.push(`subgenre.eq.${subgenre}`);
+    beatQuery = beatQuery.or(orParts.join(','));
+    const { data: matchingBeats, error: beatErr } = await beatQuery;
+    if (beatErr) throw new Error(`Beat lookup failed: ${beatErr.message}`);
+    const beatIds = (matchingBeats || []).map(b => b.id);
+    if (beatIds.length === 0) {
+      return res.json({ success: true, message: 'No beats match those filters', sentCount: 0 });
+    }
+
+    // 2. Find emails of customers who bought any of those beats.
+    const { data: items, error: itemsErr } = await supabase
+      .from('order_items')
+      .select('beat_id, orders!inner(customer_email, status)')
+      .in('beat_id', beatIds);
+    if (itemsErr) throw new Error(`Order lookup failed: ${itemsErr.message}`);
+
+    const emails = new Set();
+    for (const it of items || []) {
+      if (it.orders?.status === 'paid' && it.orders?.customer_email) {
+        emails.add(it.orders.customer_email.toLowerCase());
+      }
+    }
+    if (emails.size === 0) {
+      return res.json({ success: true, message: 'No buyers match those filters', sentCount: 0, matchedBeats: beatIds.length });
+    }
+
+    // 3. Look up active push tokens for those buyers.
+    const { data: tokenRows, error: tokErr } = await supabase
+      .from('push_tokens')
+      .select('token, user_id')
+      .in('user_id', Array.from(emails))
+      .gt('last_seen', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+    if (tokErr) throw new Error(`Token lookup failed: ${tokErr.message}`);
+
+    const tokens = (tokenRows || []).map(r => r.token);
+    if (tokens.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Matched buyers have no active push tokens',
+        sentCount: 0,
+        matchedBeats: beatIds.length,
+        matchedEmails: emails.size,
+      });
+    }
+
+    if (dryRun) {
+      return res.json({
+        success: true,
+        dryRun: true,
+        wouldSendTo: tokens.length,
+        matchedBeats: beatIds.length,
+        matchedEmails: emails.size,
+      });
+    }
+
+    const result = await sendPushNotification(tokens, title, body, data || {});
+    res.json({
+      success: true,
+      message: 'Targeted blast sent',
+      sentCount: tokens.length,
+      matchedBeats: beatIds.length,
+      matchedEmails: emails.size,
+      result,
+    });
+  } catch (err) {
+    console.error('blast-by-mood error:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // FREE BEAT OF THE WEEK + EMAIL SUBSCRIBERS
 // ──────────────────────────────────────────────────────────────────────────────
