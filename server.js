@@ -2665,7 +2665,7 @@ Tone: confident, evocative, concrete imagery. Avoid clichés ("fire", "hard-hitt
 // Returns: { url } — Stripe hosted checkout URL to redirect the customer to.
 app.post('/checkout', async (req, res) => {
   try {
-    const { customerEmail, cartItems } = req.body;
+    const { customerEmail, cartItems, bundleId } = req.body;
 
     if (!customerEmail || !Array.isArray(cartItems) || cartItems.length === 0) {
       return res.status(400).json({ error: 'customerEmail and cartItems required' });
@@ -2674,6 +2674,36 @@ app.post('/checkout', async (req, res) => {
     // Validate prices server-side by re-fetching from the DB (never trust client prices).
     const allBeats = await fetchBeatsFromDB();
     const beatById = new Map(allBeats.map(b => [b.id, b]));
+
+    // ── Bundle resolution ──────────────────────────────────────────────────
+    // When a bundleId is passed, the cart's items must all match the bundle's
+    // license_type AND the count must equal bundle.qty. We then charge the
+    // bundle price as a SINGLE Stripe line item ("OB Beats — 3-Lease Bundle:
+    // Beat A, Beat B, Beat C") and store the per-beat resolution in the order
+    // so the existing webhook fulfillment delivers each beat individually —
+    // no fulfillment changes needed.
+    let bundle = null;
+    if (bundleId) {
+      try {
+        const supabase = getSupabaseClient();
+        const { data: row, error: bErr } = await supabase
+          .from('bundles').select('*').eq('id', bundleId).eq('active', true).maybeSingle();
+        if (bErr) throw bErr;
+        if (!row) return res.status(400).json({ error: 'Bundle not found or inactive' });
+        if (cartItems.length !== row.qty) {
+          return res.status(400).json({ error: `Bundle requires exactly ${row.qty} beats (got ${cartItems.length})` });
+        }
+        for (const it of cartItems) {
+          if (it.licenseType !== row.license_type) {
+            return res.status(400).json({ error: `Bundle requires all beats at ${row.license_type} tier` });
+          }
+        }
+        bundle = row;
+      } catch (e) {
+        console.error('bundle lookup failed:', e.message);
+        return res.status(400).json({ error: 'Bundle not available right now' });
+      }
+    }
 
     const validatedItems = [];
     for (const item of cartItems) {
@@ -2694,15 +2724,19 @@ app.post('/checkout', async (req, res) => {
         beatId: beat.id,
         beatTitle: beat.title,
         licenseType: item.licenseType,
+        // Per-beat price keeps internal accounting honest even when the bundle
+        // overrides the customer-facing total.
         price: serverPrice,
         coverUrl: beat.cover_url || beat.cover_art_url || '',
       });
     }
 
-    const totalAmount = validatedItems.reduce((sum, it) => sum + it.price, 0);
+    const itemsTotal = validatedItems.reduce((sum, it) => sum + it.price, 0);
+    const totalAmount = bundle ? Number(bundle.price) : itemsTotal;
     const orderId = uuidv4();
 
-    // Create pending order in Supabase
+    // Create pending order in Supabase. cartItems retains per-beat data so
+    // fulfillOrder can mark each download URL on the corresponding row.
     await createOrder({
       orderId,
       customerEmail,
@@ -2710,26 +2744,44 @@ app.post('/checkout', async (req, res) => {
       totalAmount,
     });
 
-    // Build Stripe line items
-    const line_items = validatedItems.map(item => {
-      const tierLabel =
-        item.licenseType === 'exclusive' ? 'Exclusive Rights (Full Buyout)' :
-        item.licenseType === 'premium' ? 'Premium License (MP3 + WAV)' :
-        item.licenseType === 'stems'   ? 'Stems License (MP3 + WAV + Track Stems)' :
-                                         'Lease License (MP3)';
-      return {
+    // Build Stripe line items — one custom item for bundles, otherwise one
+    // line per cart entry.
+    let line_items;
+    if (bundle) {
+      const titles = validatedItems.map(it => it.beatTitle).join(', ');
+      line_items = [{
         price_data: {
           currency: 'usd',
           product_data: {
-            name: `${item.beatTitle} — ${tierLabel}`,
-            description: `Prod. O'Neil — ${tierLabel}`,
-            images: item.coverUrl ? [item.coverUrl] : undefined,
+            name: `O'Neil Beats — ${bundle.label}`,
+            description: `${bundle.qty} ${bundle.license_type} beats: ${titles}`,
+            images: validatedItems[0].coverUrl ? [validatedItems[0].coverUrl] : undefined,
           },
-          unit_amount: Math.round(item.price * 100), // cents
+          unit_amount: Math.round(Number(bundle.price) * 100),
         },
         quantity: 1,
-      };
-    });
+      }];
+    } else {
+      line_items = validatedItems.map(item => {
+        const tierLabel =
+          item.licenseType === 'exclusive' ? 'Exclusive Rights (Full Buyout)' :
+          item.licenseType === 'premium' ? 'Premium License (MP3 + WAV)' :
+          item.licenseType === 'stems'   ? 'Stems License (MP3 + WAV + Track Stems)' :
+                                           'Lease License (MP3)';
+        return {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `${item.beatTitle} — ${tierLabel}`,
+              description: `Prod. O'Neil — ${tierLabel}`,
+              images: item.coverUrl ? [item.coverUrl] : undefined,
+            },
+            unit_amount: Math.round(item.price * 100), // cents
+          },
+          quantity: 1,
+        };
+      });
+    }
 
     const appUrl = process.env.APP_URL || 'https://oneil-beats-backend.vercel.app';
 
@@ -2739,14 +2791,18 @@ app.post('/checkout', async (req, res) => {
       line_items,
       customer_email: customerEmail,
       client_reference_id: orderId,
-      metadata: { orderId },
+      metadata: bundle ? { orderId, bundleId: bundle.id, bundleLabel: bundle.label } : { orderId },
       success_url: `${appUrl}/success?orderId=${orderId}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/cancel?orderId=${orderId}`,
       payment_intent_data: {
-        metadata: { orderId },
-        description: `O'Neil Beats Order #${orderId.slice(0, 8)}`,
+        metadata: bundle ? { orderId, bundleId: bundle.id } : { orderId },
+        description: bundle
+          ? `O'Neil Beats — ${bundle.label} (Order #${orderId.slice(0, 8)})`
+          : `O'Neil Beats Order #${orderId.slice(0, 8)}`,
       },
-      allow_promotion_codes: true,
+      // Bundles already represent a discount; promo codes on top would
+      // double-discount, so disable for bundle orders.
+      allow_promotion_codes: !bundle,
     });
 
     return res.json({ url: session.url, sessionId: session.id, orderId });
@@ -3301,6 +3357,94 @@ app.get('/unsubscribe', async (req, res) => {
     res.set('Content-Type', 'text/html').send(`<!doctype html><html><head><meta charset="utf-8"><title>Unsubscribed</title><style>body{font-family:system-ui;background:#06060a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;padding:20px}h1{color:#e63946}</style></head><body><div><h1>You're unsubscribed</h1><p>${email} will no longer receive Free Beat of the Week emails.</p><p style="color:#666;font-size:12px;margin-top:24px">Changed your mind? <a href="https://oneilbeats.store" style="color:#e63946">Resubscribe on the site.</a></p></div></body></html>`);
   } catch (err) {
     res.status(500).send('Error: ' + err.message);
+  }
+});
+
+// ── Bundle pricing ─────────────────────────────────────────────────────────
+// Producers configure bundle deals in the desktop EXE admin (Bundles tab).
+// Storefront reads the active list via GET /bundles and shows a bundle CTA
+// + picker; checkout flow detects bundleId and charges the bundle price as
+// a single Stripe line item, with per-beat fulfillment unchanged.
+
+// GET /bundles — public; returns active bundles ordered by sort_order
+app.get('/bundles', async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('bundles')
+      .select('id, label, license_type, qty, price, savings_label, description, sort_order')
+      .eq('active', true)
+      .order('sort_order', { ascending: true });
+    if (error) {
+      // Table may not exist yet on first deploy — return empty cleanly so
+      // the storefront just hides the bundles section.
+      return res.json({ success: true, bundles: [] });
+    }
+    res.set('Cache-Control', 'public, max-age=120, s-maxage=300');
+    res.json({ success: true, bundles: data || [] });
+  } catch (err) {
+    res.json({ success: true, bundles: [], error: err.message });
+  }
+});
+
+// GET /admin/bundles — admin; returns ALL bundles (active + inactive)
+app.get('/admin/bundles', requireAdminKey, async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('bundles').select('*').order('sort_order', { ascending: true });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true, bundles: data || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/bundles — admin; create OR update a bundle.
+//   body: { id?, label, license_type, qty, price, savings_label?, description?, active?, sort_order? }
+//   id present → update existing row, else create.
+app.post('/admin/bundles', requireAdminKey, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const valid = ['lease', 'premium', 'stems'].includes(b.license_type) &&
+      Number.isInteger(Number(b.qty)) && Number(b.qty) >= 2 && Number(b.qty) <= 20 &&
+      Number(b.price) > 0 && typeof b.label === 'string' && b.label.trim().length > 0;
+    if (!valid) return res.status(400).json({ error: 'label, license_type (lease|premium|stems), qty (2-20), price required' });
+    const supabase = getSupabaseClient();
+    const row = {
+      label: b.label.trim(),
+      license_type: b.license_type,
+      qty: Number(b.qty),
+      price: Number(b.price),
+      savings_label: b.savings_label || null,
+      description: b.description || null,
+      active: b.active !== false,
+      sort_order: Number.isFinite(Number(b.sort_order)) ? Number(b.sort_order) : 0,
+      updated_at: new Date().toISOString(),
+    };
+    let result;
+    if (b.id) {
+      result = await supabase.from('bundles').update(row).eq('id', b.id).select().maybeSingle();
+    } else {
+      result = await supabase.from('bundles').insert([row]).select().maybeSingle();
+    }
+    if (result.error) return res.status(500).json({ error: result.error.message });
+    res.json({ success: true, bundle: result.data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /admin/bundles/:id — admin; removes a bundle row entirely.
+app.delete('/admin/bundles/:id', requireAdminKey, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.from('bundles').delete().eq('id', id);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
