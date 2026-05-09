@@ -321,6 +321,12 @@ app.use((req, res, next) => {
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
+// ── Auth (Apple + Google) — bypasses Supabase Auth ──────────────────────────
+// Customer app's signInWithIdToken / signInWithOAuth flows hit Supabase, which
+// is currently quota-restricted. These endpoints accept the same Apple/Google
+// tokens, verify them locally, and mint our own HMAC-signed session token.
+require('./auth').register(app);
+
 // ── Admin Key Middleware ─────────────────────────────────────────────────────
 function requireAdminKey(req, res, next) {
   const key = req.headers['x-admin-key'] || req.query.adminKey;
