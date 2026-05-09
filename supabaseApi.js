@@ -302,39 +302,23 @@ function getSupabaseClient() {
 }
 
 // ── PUSH NOTIFICATIONS ──────────────────────────────────────────────────────
+// One physical device = one row. If the same Expo push token re-registers
+// (e.g. user signs in after browsing as a guest), the existing row is updated
+// to point at the new user_id rather than duplicating, so the device only
+// receives one push per broadcast.
 async function registerPushToken(userId, pushToken, platform = 'mobile') {
   try {
-    // Upsert: if (user_id, token) already exists, just bump last_seen.
     await pgQuery(
       `INSERT INTO push_tokens (user_id, token, platform, created_at, last_seen)
        VALUES ($1, $2, $3, now(), now())
-       ON CONFLICT (user_id, token) DO UPDATE SET last_seen = excluded.last_seen`,
+       ON CONFLICT (token) DO UPDATE
+          SET user_id   = excluded.user_id,
+              platform  = excluded.platform,
+              last_seen = excluded.last_seen`,
       [userId, pushToken, platform]
     );
     return { success: true, message: 'Push token registered' };
   } catch (err) {
-    // Fallback for schemas without the unique (user_id, token) constraint.
-    if (err.code === '42P10' || /there is no unique/i.test(err.message)) {
-      try {
-        const { rows } = await pgQuery(
-          'SELECT id FROM push_tokens WHERE user_id = $1 AND token = $2 LIMIT 1',
-          [userId, pushToken]
-        );
-        if (rows.length > 0) {
-          await pgQuery('UPDATE push_tokens SET last_seen = now() WHERE id = $1', [rows[0].id]);
-          return { success: true, message: 'Token already registered' };
-        }
-        await pgQuery(
-          `INSERT INTO push_tokens (user_id, token, platform, created_at, last_seen)
-           VALUES ($1, $2, $3, now(), now())`,
-          [userId, pushToken, platform]
-        );
-        return { success: true, message: 'Push token registered' };
-      } catch (err2) {
-        console.error('registerPushToken fallback error:', err2.message);
-        return { success: false, error: err2.message };
-      }
-    }
     console.error('registerPushToken error:', err.message);
     return { success: false, error: err.message };
   }
