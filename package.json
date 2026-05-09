@@ -23,7 +23,7 @@
     "fft-js": "^0.0.12",
     "form-data": "^4.0.5",
     "googleapis": "^140.0.0",
-    "jose": "^6.2.3",
+    "jose": "^4.15.9",
     "mpg123-decoder": "^1.0.3",
     "multer": "^1.4.5-lts.1",
     "music-tempo": "^1.0.3",
