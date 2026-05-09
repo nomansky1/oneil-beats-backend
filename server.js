@@ -43,6 +43,7 @@ const {
   registerPushToken,
   getPushTokens,
   removePushToken,
+  pgQuery,
 } = require('./supabaseApi');
 const { generateLicensePDF, generateSplitSheetPDF, LICENSE_TERMS } = require('./licenseGenerator');
 
@@ -3302,6 +3303,93 @@ app.post('/notification/send', requireAdminKey, async (req, res) => {
   }
 });
 
+// POST /admin/blast-by-mood — targeted push notification.
+// Body: { title, body, data?, mood?, genre?, subgenre?, dryRun? }
+// OR-semantics across the three filters; users get included if ANY filter
+// matches their past purchase history. dryRun:true returns the audience
+// preview without sending.
+app.post('/admin/blast-by-mood', requireAdminKey, async (req, res) => {
+  try {
+    const { title, body, data, mood, genre, subgenre, dryRun } = req.body || {};
+    if (!title || !body) return res.status(400).json({ error: 'title and body required' });
+    if (!mood && !genre && !subgenre) {
+      return res.status(400).json({ error: 'at least one of mood/genre/subgenre required' });
+    }
+
+    // 1. Find beats matching filters (OR across mood/genre/subgenre).
+    const orParts = [];
+    const orParams = [];
+    if (mood)     { orParams.push(mood);     orParts.push(`mood = $${orParams.length}`); }
+    if (genre)    { orParams.push(genre);    orParts.push(`genre = $${orParams.length}`); }
+    if (subgenre) { orParams.push(subgenre); orParts.push(`subgenre = $${orParams.length}`); }
+    const beatSql = `SELECT id FROM beats WHERE active = true AND (${orParts.join(' OR ')})`;
+    const { rows: matchingBeats } = await pgQuery(beatSql, orParams);
+    const beatIds = matchingBeats.map(b => b.id);
+    if (beatIds.length === 0) {
+      return res.json({ success: true, message: 'No beats match those filters', sentCount: 0 });
+    }
+
+    // 2. Find emails of customers who bought any of those beats.
+    const { rows: items } = await pgQuery(
+      `SELECT oi.beat_id, o.customer_email, o.status
+         FROM order_items oi
+         JOIN orders o ON o.id::text = oi.order_id::text
+        WHERE oi.beat_id = ANY($1::uuid[])`,
+      [beatIds]
+    );
+    const emails = new Set();
+    for (const it of items) {
+      if (it.status === 'paid' && it.customer_email) {
+        emails.add(it.customer_email.toLowerCase());
+      }
+    }
+    if (emails.size === 0) {
+      return res.json({ success: true, message: 'No buyers match those filters', sentCount: 0, matchedBeats: beatIds.length });
+    }
+
+    // 3. Look up active push tokens for those buyers (active = last_seen within 30d).
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { rows: tokenRows } = await pgQuery(
+      `SELECT token, user_id FROM push_tokens
+        WHERE user_id = ANY($1::text[]) AND last_seen > $2`,
+      [Array.from(emails), cutoff]
+    );
+    const tokens = tokenRows.map(r => r.token);
+    if (tokens.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Matched buyers have no active push tokens',
+        sentCount: 0,
+        matchedBeats: beatIds.length,
+        matchedEmails: emails.size,
+      });
+    }
+
+    if (dryRun) {
+      return res.json({
+        success: true,
+        dryRun: true,
+        wouldSendTo: tokens.length,
+        matchedBeats: beatIds.length,
+        matchedEmails: emails.size,
+      });
+    }
+
+    const result = await sendPushNotification(tokens, title, body, data || {});
+    res.json({
+      success: true,
+      message: 'Targeted blast sent',
+      sentCount: tokens.length,
+      matchedBeats: beatIds.length,
+      matchedEmails: emails.size,
+      result,
+    });
+  } catch (err) {
+    console.error('blast-by-mood error:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // FREE BEAT OF THE WEEK + EMAIL SUBSCRIBERS
 // ──────────────────────────────────────────────────────────────────────────────
@@ -3378,20 +3466,17 @@ app.get('/unsubscribe', async (req, res) => {
 // GET /bundles — public; returns active bundles ordered by sort_order
 app.get('/bundles', async (req, res) => {
   try {
-    const supabase = getSupabaseClient();
-    const { data, error } = await supabase
-      .from('bundles')
-      .select('id, label, license_type, qty, price, savings_label, description, sort_order')
-      .eq('active', true)
-      .order('sort_order', { ascending: true });
-    if (error) {
-      // Table may not exist yet on first deploy — return empty cleanly so
-      // the storefront just hides the bundles section.
-      return res.json({ success: true, bundles: [] });
-    }
+    const { rows } = await pgQuery(
+      `SELECT id, label, license_type, qty, price, savings_label, description, sort_order
+         FROM bundles
+        WHERE active = true
+        ORDER BY sort_order ASC NULLS LAST`
+    );
     res.set('Cache-Control', 'public, max-age=120, s-maxage=300');
-    res.json({ success: true, bundles: data || [] });
+    res.json({ success: true, bundles: rows });
   } catch (err) {
+    // Table may not exist yet on first deploy — return empty cleanly so
+    // the storefront just hides the bundles section.
     res.json({ success: true, bundles: [], error: err.message });
   }
 });
@@ -3399,11 +3484,10 @@ app.get('/bundles', async (req, res) => {
 // GET /admin/bundles — admin; returns ALL bundles (active + inactive)
 app.get('/admin/bundles', requireAdminKey, async (req, res) => {
   try {
-    const supabase = getSupabaseClient();
-    const { data, error } = await supabase
-      .from('bundles').select('*').order('sort_order', { ascending: true });
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ success: true, bundles: data || [] });
+    const { rows } = await pgQuery(
+      'SELECT * FROM bundles ORDER BY sort_order ASC NULLS LAST'
+    );
+    res.json({ success: true, bundles: rows });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -3419,26 +3503,37 @@ app.post('/admin/bundles', requireAdminKey, async (req, res) => {
       Number.isInteger(Number(b.qty)) && Number(b.qty) >= 2 && Number(b.qty) <= 20 &&
       Number(b.price) > 0 && typeof b.label === 'string' && b.label.trim().length > 0;
     if (!valid) return res.status(400).json({ error: 'label, license_type (lease|premium|stems), qty (2-20), price required' });
-    const supabase = getSupabaseClient();
-    const row = {
-      label: b.label.trim(),
-      license_type: b.license_type,
-      qty: Number(b.qty),
-      price: Number(b.price),
-      savings_label: b.savings_label || null,
-      description: b.description || null,
-      active: b.active !== false,
-      sort_order: Number.isFinite(Number(b.sort_order)) ? Number(b.sort_order) : 0,
-      updated_at: new Date().toISOString(),
-    };
-    let result;
+    const label = b.label.trim();
+    const licenseType = b.license_type;
+    const qty = Number(b.qty);
+    const price = Number(b.price);
+    const savingsLabel = b.savings_label || null;
+    const description = b.description || null;
+    const active = b.active !== false;
+    const sortOrder = Number.isFinite(Number(b.sort_order)) ? Number(b.sort_order) : 0;
+
+    let row;
     if (b.id) {
-      result = await supabase.from('bundles').update(row).eq('id', b.id).select().maybeSingle();
+      const { rows } = await pgQuery(
+        `UPDATE bundles
+            SET label = $1, license_type = $2, qty = $3, price = $4,
+                savings_label = $5, description = $6, active = $7, sort_order = $8,
+                updated_at = now()
+          WHERE id = $9
+          RETURNING *`,
+        [label, licenseType, qty, price, savingsLabel, description, active, sortOrder, b.id]
+      );
+      row = rows[0] || null;
     } else {
-      result = await supabase.from('bundles').insert([row]).select().maybeSingle();
+      const { rows } = await pgQuery(
+        `INSERT INTO bundles (label, license_type, qty, price, savings_label, description, active, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING *`,
+        [label, licenseType, qty, price, savingsLabel, description, active, sortOrder]
+      );
+      row = rows[0] || null;
     }
-    if (result.error) return res.status(500).json({ error: result.error.message });
-    res.json({ success: true, bundle: result.data });
+    res.json({ success: true, bundle: row });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -3447,10 +3542,7 @@ app.post('/admin/bundles', requireAdminKey, async (req, res) => {
 // DELETE /admin/bundles/:id — admin; removes a bundle row entirely.
 app.delete('/admin/bundles/:id', requireAdminKey, async (req, res) => {
   try {
-    const id = req.params.id;
-    const supabase = getSupabaseClient();
-    const { error } = await supabase.from('bundles').delete().eq('id', id);
-    if (error) return res.status(500).json({ error: error.message });
+    await pgQuery('DELETE FROM bundles WHERE id = $1', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
