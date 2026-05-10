@@ -123,6 +123,28 @@ async function uploadBase64ToStorage(base64Data, filename, supabaseBucket, mimeT
   return uploadFileToStorage(buffer, filename, supabaseBucket, mimeType);
 }
 
+// Initiate a GCS resumable upload session. The session URL accepts PUT
+// chunks with Content-Range headers (RFC 7233). The desktop EXE's chunk
+// pipeline already proxies chunks through /upload/drive-proxy-chunk to
+// whatever uploadUrl init returned, so swapping init from Supabase
+// signed URLs to a GCS resumable session is enough to unbreak uploads.
+async function getResumableUploadSession(filename, supabaseBucket, mimeType) {
+  const prefix = SUPABASE_TO_GCS_PREFIX[supabaseBucket] || supabaseBucket || 'misc';
+  const objectPath = `${prefix}/${filename}`;
+  const file = getBucket().file(objectPath);
+  const [sessionUri] = await file.createResumableUpload({
+    metadata: {
+      contentType: mimeType || 'application/octet-stream',
+    },
+  });
+  return {
+    uploadUrl: sessionUri,
+    publicUrl: publicUrl(objectPath),
+    path: objectPath,
+    bucket: supabaseBucket,
+  };
+}
+
 // Generate a v4 signed URL for direct client → GCS PUT uploads.
 // Used by /upload/get-signed-url so the desktop EXE / OB Uploader can
 // upload large files without proxying through Vercel (which has a 4.5MB
@@ -180,6 +202,7 @@ module.exports = {
   uploadCoverToStorage,
   uploadBase64ToStorage,
   getSignedUploadUrl,
+  getResumableUploadSession,
   deleteObject,
   listObjects,
   publicUrl,
