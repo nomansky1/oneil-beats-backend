@@ -1751,13 +1751,48 @@ app.post('/upload/drive-finalize', requireAdminKey, async (req, res) => {
   }
 });
 
-// POST /upload/get-signed-url — generate a signed upload URL for direct client-to-Supabase upload
+// POST /upload/get-signed-url — generate a signed upload URL for direct
+// client → storage upload. Routes to GCS when GCS_BUCKET is set (default
+// for prod), falls back to Supabase Storage only when GCS isn't
+// configured. Supabase Storage is currently quota-blocked, so this is the
+// primary path that retag / new-upload flows depend on.
+//
+// The desktop EXE PUTs the file with the file's own Content-Type. GCS v4
+// signed URLs sign the Content-Type into the signature, so we derive it
+// from the filename extension here and the client must PUT with the same
+// header value (xhrPutWithProgress already does this).
+function _mimeFromFilename(name) {
+  const lower = String(name || '').toLowerCase();
+  if (lower.endsWith('.mp3'))  return 'audio/mpeg';
+  if (lower.endsWith('.wav'))  return 'audio/wav';
+  if (lower.endsWith('.m4a'))  return 'audio/mp4';
+  if (lower.endsWith('.flac')) return 'audio/flac';
+  if (lower.endsWith('.zip'))  return 'application/zip';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.png'))  return 'image/png';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.mp4'))  return 'video/mp4';
+  return 'application/octet-stream';
+}
+
 app.post('/upload/get-signed-url', requireAdminKey, async (req, res) => {
   try {
-    const { filename, bucket } = req.body;
+    const { filename, bucket, mimeType } = req.body;
     if (!filename) return res.status(400).json({ error: 'filename required' });
     const targetBucket = bucket || 'beats';
     const safeName = `${Date.now()}_${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const ct = mimeType || _mimeFromFilename(filename);
+
+    // Prefer GCS when configured. This is the primary path now that
+    // Supabase Storage is quota-restricted.
+    let gcs = null;
+    try { gcs = require('./gcsApi'); } catch (_) {}
+    if (gcs && gcs.isGCSEnabled()) {
+      const out = await gcs.getSignedUploadUrl(safeName, targetBucket, ct);
+      return res.json({ success: true, signedUrl: out.signedUrl, publicUrl: out.publicUrl, path: out.path, contentType: out.contentType });
+    }
+
+    // Legacy Supabase fallback (will 503 under quota; only useful in dev).
     const supabase = getSupabaseClient();
     const { data, error } = await supabase.storage.from(targetBucket).createSignedUploadUrl(safeName);
     if (error) throw new Error(`Signed URL error: ${error.message}`);
