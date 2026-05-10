@@ -41,6 +41,16 @@ function getQueue() {
   return _queue;
 }
 
+// Lazy-require gcsApi. When GCS_BUCKET is set, the IG video upload goes
+// straight to GCS (still publicly readable so Meta can ingest from the
+// URL) instead of Supabase Storage, which is currently quota-blocked.
+let _gcs = null;
+function getGcs() {
+  if (_gcs !== null) return _gcs;
+  try { _gcs = require('../gcsApi'); } catch (_) { _gcs = null; }
+  return _gcs;
+}
+
 const GRAPH = 'https://graph.facebook.com/v20.0';
 
 function logLine(msg) {
@@ -117,27 +127,45 @@ async function publishToInstagramReels({ beat, verticalVideoPath }) {
   if (!fs.existsSync(verticalVideoPath)) {
     return { error: `verticalVideoPath not found: ${verticalVideoPath}` };
   }
-  const q = getQueue();
-  if (!q.supabase) {
-    return { error: 'Supabase client unavailable (queue module not loaded)' };
-  }
-
   const t0 = Date.now();
   const objectKey = `reels/${beat.id}-${Date.now()}.mp4`;
   let uploaded = false;
+  let uploadedToGcs = false;
+  let gcsObjectPath = null;
+  let videoUrl = null;
 
   try {
-    // 1. Upload to Supabase public bucket
-    logLine(`IG: uploading vertical to Supabase ${cfg.STORAGE_BUCKET}/${objectKey}`);
+    // 1. Upload to a public bucket Meta can pull from. Prefer GCS — Supabase
+    //    Storage is currently quota-blocked, so the supabase fallback below
+    //    will 503 if GCS isn't configured.
     const fileBuf = fs.readFileSync(verticalVideoPath);
-    const up = await q.supabase.storage.from(cfg.STORAGE_BUCKET).upload(objectKey, fileBuf, {
-      contentType: 'video/mp4', upsert: true,
-    });
-    if (up.error) return { error: `supabase upload: ${up.error.message}` };
-    uploaded = true;
-    const pub = q.supabase.storage.from(cfg.STORAGE_BUCKET).getPublicUrl(objectKey);
-    const videoUrl = pub.data.publicUrl;
-    logLine(`IG: Supabase URL ready ${videoUrl}`);
+    const gcs = getGcs();
+    if (gcs && gcs.isGCSEnabled()) {
+      logLine(`IG: uploading vertical to GCS ${gcs.getGCSBucketName()}/${cfg.STORAGE_BUCKET}/${objectKey}`);
+      videoUrl = await gcs.uploadFileToStorage(fileBuf, objectKey, cfg.STORAGE_BUCKET, 'video/mp4');
+      uploaded = true;
+      uploadedToGcs = true;
+      // gcs.uploadFileToStorage applies the SUPABASE_TO_GCS_PREFIX mapping
+      // (auto-upload → auto-upload), so the cleanup path is the same as the
+      // logical key it stored under.
+      const prefix = (gcs.SUPABASE_TO_GCS_PREFIX && gcs.SUPABASE_TO_GCS_PREFIX[cfg.STORAGE_BUCKET]) || cfg.STORAGE_BUCKET;
+      gcsObjectPath = `${prefix}/${objectKey}`;
+      logLine(`IG: GCS URL ready ${videoUrl}`);
+    } else {
+      const q = getQueue();
+      if (!q.supabase) {
+        return { error: 'Supabase client unavailable (queue module not loaded)' };
+      }
+      logLine(`IG: uploading vertical to Supabase ${cfg.STORAGE_BUCKET}/${objectKey}`);
+      const up = await q.supabase.storage.from(cfg.STORAGE_BUCKET).upload(objectKey, fileBuf, {
+        contentType: 'video/mp4', upsert: true,
+      });
+      if (up.error) return { error: `supabase upload: ${up.error.message}` };
+      uploaded = true;
+      const pub = q.supabase.storage.from(cfg.STORAGE_BUCKET).getPublicUrl(objectKey);
+      videoUrl = pub.data.publicUrl;
+      logLine(`IG: Supabase URL ready ${videoUrl}`);
+    }
 
     // 2. Create media container
     const caption = copy.buildSocialCaption(beat);
@@ -233,10 +261,16 @@ async function publishToInstagramReels({ beat, verticalVideoPath }) {
     logLine(`IG: failed after ${Date.now() - t0}ms: ${detail}`);
     return { error: detail };
   } finally {
-    // Always clean up the public Supabase object — the video is on IG now,
-    // no reason to leave a public URL around.
+    // Always clean up the public object — the video is on IG now, no
+    // reason to leave a public URL around.
     if (uploaded) {
-      try { await q.supabase.storage.from(cfg.STORAGE_BUCKET).remove([objectKey]); } catch (_) {}
+      if (uploadedToGcs && gcsObjectPath) {
+        const gcs = getGcs();
+        try { await gcs.deleteObject(gcsObjectPath); } catch (_) {}
+      } else {
+        const q = getQueue();
+        try { await q.supabase.storage.from(cfg.STORAGE_BUCKET).remove([objectKey]); } catch (_) {}
+      }
     }
   }
 }

@@ -58,15 +58,31 @@ async function publishToFacebookPage(job) {
 }
 
 async function uploadToInstagram(job) {
-  // 1. Push the 9:16 video to Supabase Storage (public bucket) so IG can pull it.
+  // 1. Push the 9:16 video to a public bucket so IG can pull it.
+  // Prefer GCS — Supabase Storage is currently quota-blocked.
   const objectKey = `reels/${job.id}-${Date.now()}.mp4`;
   const fileBuf = fs.readFileSync(job.vertical_path);
-  const up = await supabase.storage.from(cfg.STORAGE_BUCKET).upload(objectKey, fileBuf, {
-    contentType: 'video/mp4', upsert: true,
-  });
-  if (up.error) throw new Error(`supabase upload failed: ${up.error.message}`);
-  const pub = supabase.storage.from(cfg.STORAGE_BUCKET).getPublicUrl(objectKey);
-  const videoUrl = pub.data.publicUrl;
+
+  let gcs = null;
+  try { gcs = require('../../gcsApi'); } catch (_) { gcs = null; }
+
+  let videoUrl;
+  let uploadedToGcs = false;
+  let gcsObjectPath = null;
+
+  if (gcs && gcs.isGCSEnabled()) {
+    videoUrl = await gcs.uploadFileToStorage(fileBuf, objectKey, cfg.STORAGE_BUCKET, 'video/mp4');
+    uploadedToGcs = true;
+    const prefix = (gcs.SUPABASE_TO_GCS_PREFIX && gcs.SUPABASE_TO_GCS_PREFIX[cfg.STORAGE_BUCKET]) || cfg.STORAGE_BUCKET;
+    gcsObjectPath = `${prefix}/${objectKey}`;
+  } else {
+    const up = await supabase.storage.from(cfg.STORAGE_BUCKET).upload(objectKey, fileBuf, {
+      contentType: 'video/mp4', upsert: true,
+    });
+    if (up.error) throw new Error(`supabase upload failed: ${up.error.message}`);
+    const pub = supabase.storage.from(cfg.STORAGE_BUCKET).getPublicUrl(objectKey);
+    videoUrl = pub.data.publicUrl;
+  }
 
   try {
     // 2. Create media container
@@ -139,7 +155,11 @@ async function uploadToInstagram(job) {
 
   } finally {
     // 5. Always clean up the public storage object, even on failure.
-    try { await supabase.storage.from(cfg.STORAGE_BUCKET).remove([objectKey]); } catch (_) {}
+    if (uploadedToGcs && gcsObjectPath) {
+      try { await gcs.deleteObject(gcsObjectPath); } catch (_) {}
+    } else {
+      try { await supabase.storage.from(cfg.STORAGE_BUCKET).remove([objectKey]); } catch (_) {}
+    }
   }
 }
 
