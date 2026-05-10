@@ -123,6 +123,31 @@ async function uploadBase64ToStorage(base64Data, filename, supabaseBucket, mimeT
   return uploadFileToStorage(buffer, filename, supabaseBucket, mimeType);
 }
 
+// Generate a v4 signed URL for direct client → GCS PUT uploads.
+// Used by /upload/get-signed-url so the desktop EXE / OB Uploader can
+// upload large files without proxying through Vercel (which has a 4.5MB
+// request body cap on serverless functions).
+//
+// The Content-Type is baked into the signature, so the client MUST PUT
+// with the same Content-Type header value or GCS rejects the upload.
+async function getSignedUploadUrl(filename, supabaseBucket, mimeType) {
+  const prefix = SUPABASE_TO_GCS_PREFIX[supabaseBucket] || supabaseBucket || 'misc';
+  const objectPath = `${prefix}/${filename}`;
+  const file = getBucket().file(objectPath);
+  const [signedUrl] = await file.getSignedUrl({
+    version: 'v4',
+    action: 'write',
+    expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+    contentType: mimeType || 'application/octet-stream',
+  });
+  return {
+    signedUrl,
+    publicUrl: publicUrl(objectPath),
+    path: objectPath,
+    contentType: mimeType || 'application/octet-stream',
+  };
+}
+
 // Delete an object by its full GCS path (e.g. 'beats/foo.mp3').
 async function deleteObject(objectPath) {
   try {
@@ -154,6 +179,7 @@ module.exports = {
   uploadAudioToStorage,
   uploadCoverToStorage,
   uploadBase64ToStorage,
+  getSignedUploadUrl,
   deleteObject,
   listObjects,
   publicUrl,
