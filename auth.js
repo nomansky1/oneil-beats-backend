@@ -89,7 +89,18 @@ function register(app) {
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
       return res.status(500).send('Google OAuth not configured on backend.');
     }
-    const returnTo = String(req.query.return || 'oneilbeats://auth/callback');
+    const requested = String(req.query.return || 'oneilbeats://auth/callback');
+    // Restrict the post-auth redirect to known surfaces so an attacker
+    // can't send a victim through this endpoint and exfiltrate their
+    // session token to an arbitrary URL.
+    const ALLOWED = [
+      /^oneilbeats:\/\//,
+      /^https:\/\/oneilbeats\.store(\/|$)/,
+      /^https:\/\/www\.oneilbeats\.store(\/|$)/,
+      /^https:\/\/[a-z0-9-]+\.vercel\.app(\/|$)/,
+      /^http:\/\/localhost(:[0-9]+)?(\/|$)/,
+    ];
+    const returnTo = ALLOWED.some(re => re.test(requested)) ? requested : 'oneilbeats://auth/callback';
     // State carries the return URL HMAC-signed so the callback can trust it.
     const state = signSession({ returnTo, nonce: crypto.randomBytes(16).toString('hex') });
 
