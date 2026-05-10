@@ -3342,11 +3342,44 @@ async function submitAuth(ev) {
 }
 
 async function signInGoogle() {
+  // Direct OAuth flow against our backend (Supabase Auth is quota-blocked).
+  // Backend redirects to Google, then back to /auth/google/callback, then
+  // finally to the URL in `return=` with session_token + user attached.
   try {
-    const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + window.location.pathname } });
-    if (error) throw error;
+    const ret = window.location.origin + window.location.pathname + '#auth=1';
+    window.location.href = '/auth/google/start?return=' + encodeURIComponent(ret);
   } catch (e) { authError(e.message || 'Google sign-in failed'); }
 }
+
+// Handle the OAuth callback when our backend redirects back here with
+// session_token + user query params. Runs on every page load; idempotent.
+(function consumeAuthCallback() {
+  try {
+    const url = new URL(window.location.href);
+    const sessionToken = url.searchParams.get('session_token');
+    const userB64 = url.searchParams.get('user');
+    if (!sessionToken || !userB64) return;
+
+    // base64url decode → user object
+    const b64 = userB64.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '=='.slice(0, (4 - (b64.length % 4)) % 4);
+    const json = decodeURIComponent(escape(atob(padded)));
+    const user = JSON.parse(json);
+
+    localStorage.setItem('ob_session_token', sessionToken);
+    localStorage.setItem('ob_user', JSON.stringify(user));
+    if (typeof currentUser !== 'undefined') currentUser = user;
+    if (typeof renderAccount === 'function') try { renderAccount(); } catch(_) {}
+    if (typeof showToast === 'function') showToast('Signed in as ' + (user.name || user.email));
+
+    // Clean the URL so a refresh doesn't re-trigger.
+    url.searchParams.delete('session_token');
+    url.searchParams.delete('user');
+    history.replaceState({}, '', url.toString());
+  } catch (e) {
+    console.warn('auth callback failed:', e?.message || e);
+  }
+})();
 
 async function forgotPassword() {
   const email = document.getElementById('auth-email').value.trim();
