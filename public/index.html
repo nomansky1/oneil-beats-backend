@@ -3393,6 +3393,11 @@ async function forgotPassword() {
 
 async function signOut() {
   await sb.auth.signOut().catch(() => {});
+  // Clear our backend session too — Supabase signOut() doesn't know about it.
+  try {
+    localStorage.removeItem('ob_session_token');
+    localStorage.removeItem('ob_user');
+  } catch (_) {}
   currentUser = null;
   favorites = new Set();
   renderAccount();
@@ -3526,16 +3531,39 @@ async function syncCustomerProfile() {
   } catch (e) {}
 }
 
+// Hydrate currentUser from our backend's localStorage session FIRST, so a
+// Supabase-Auth outage doesn't blow away a Google-signed user.
+function hydrateLocalSession() {
+  try {
+    const stored = localStorage.getItem('ob_user');
+    const tok = localStorage.getItem('ob_session_token');
+    if (stored && tok) {
+      currentUser = JSON.parse(stored);
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+hydrateLocalSession();
+renderAccount();
+if (currentUser) { syncCustomerProfile().catch(()=>{}); loadFavorites().catch(()=>{}); }
+
+// Supabase listeners are kept for legacy email/password sessions, but they
+// must NOT overwrite a backend-issued Google session that's already loaded.
 sb.auth.onAuthStateChange(async (_event, session) => {
-  currentUser = session?.user || null;
-  renderAccount();
-  if (currentUser) { await syncCustomerProfile(); await loadFavorites(); }
+  if (session?.user) {
+    currentUser = session.user;
+    renderAccount();
+    await syncCustomerProfile(); await loadFavorites();
+  }
 });
 sb.auth.getSession().then(async ({ data }) => {
-  currentUser = data?.session?.user || null;
-  renderAccount();
-  if (currentUser) { await syncCustomerProfile(); await loadFavorites(); }
-});
+  if (data?.session?.user) {
+    currentUser = data.session.user;
+    renderAccount();
+    await syncCustomerProfile(); await loadFavorites();
+  }
+}).catch(() => {});
 
 // ───────────── MOBILE NAV ─────────────
 function toggleMobileNav() { document.getElementById('header-nav').classList.toggle('mobile-open'); }
