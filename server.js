@@ -1673,20 +1673,39 @@ app.post('/upload/drive-proxy-init', requireAdminKey, async (req, res) => {
     const fileType = type || 'mp3';
     const { bucket, prefix } = _bucketForType(fileType);
     const cleanName = String(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
-    const safeName = `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2,6)}_${cleanName}`;
+    const objectName = `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2,6)}_${cleanName}`;
+
+    // Prefer GCS resumable upload session — Supabase Storage is currently
+    // quota-blocked. Falls back to Supabase only when GCS_BUCKET isn't set.
+    let gcs = null;
+    try { gcs = require('./gcsApi'); } catch (_) {}
+    if (gcs && gcs.isGCSEnabled()) {
+      // GCS resumable sessions need their OWN object name (the prefix
+      // belongs to the GCS bucket layout, not Supabase). The helper
+      // re-applies the SUPABASE_TO_GCS_PREFIX mapping.
+      const out = await gcs.getResumableUploadSession(
+        objectName.replace(new RegExp(`^${prefix}/`), ''),  // strip duplicate prefix
+        bucket,
+        mimeType || 'application/octet-stream'
+      );
+      return res.json({ success: true, uploadUrl: out.uploadUrl, path: out.path, bucket, publicUrl: out.publicUrl });
+    }
+
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(safeName);
+    const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(objectName);
     if (error) throw new Error(`Signed URL error: ${error.message}`);
-    const publicUrl = supabase.storage.from(bucket).getPublicUrl(safeName).data.publicUrl;
-    res.json({ success: true, uploadUrl: data.signedUrl, path: safeName, bucket, publicUrl, token: data.token });
+    const publicUrl = supabase.storage.from(bucket).getPublicUrl(objectName).data.publicUrl;
+    res.json({ success: true, uploadUrl: data.signedUrl, path: objectName, bucket, publicUrl, token: data.token });
   } catch (err) {
     console.error('drive-proxy-init error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// PUT /upload/drive-proxy-chunk — proxy a chunk to Supabase Storage
-// On serverless (Vercel), each chunk goes directly through to Supabase
+// PUT /upload/drive-proxy-chunk — proxy a chunk to whatever storage the
+// init endpoint returned (GCS resumable session OR Supabase signed URL).
+// On serverless (Vercel), each chunk goes directly through to the
+// upstream storage with Content-Range preserved.
 app.put('/upload/drive-proxy-chunk', requireAdminKey, express.raw({ type: '*/*', limit: '10mb' }), async (req, res) => {
   try {
     const uploadUrl = req.headers['x-upload-url'];
@@ -1694,27 +1713,44 @@ app.put('/upload/drive-proxy-chunk', requireAdminKey, express.raw({ type: '*/*',
     const contentType = req.headers['x-content-type'] || 'application/octet-stream';
     const chunkBuf = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body);
 
-    // If uploadUrl is a Supabase signed URL, proxy the chunk directly
     if (uploadUrl && uploadUrl.startsWith('http')) {
-            const proxyRes = await fetch(uploadUrl, {
+      const isGcs = /storage\.googleapis\.com\/upload\//.test(uploadUrl);
+
+      // GCS resumable PUT semantics differ slightly from Supabase TUS-like:
+      //  - Don't send 'x-upsert'
+      //  - GCS returns 200/201 on the FINAL chunk with full object metadata
+      //  - GCS returns 308 on intermediate chunks (with Range: bytes=0-N header)
+      const headers = {
+        'Content-Type': contentType,
+        'Content-Range': contentRange,
+      };
+      if (!isGcs) headers['x-upsert'] = 'true';
+
+      const proxyRes = await fetch(uploadUrl, {
         method: 'PUT',
-        headers: {
-          'Content-Type': contentType,
-          'Content-Range': contentRange,
-          'x-upsert': 'true',
-        },
+        headers,
         body: chunkBuf,
       });
       if (proxyRes.ok) {
         const data = await proxyRes.json().catch(() => ({}));
-        return res.json({ success: true, fileId: data.Key || uploadUrl, status: 200, done: true });
+        // GCS returns {kind, id, selfLink, name, bucket, ...}; Supabase
+        // returns {Key}. Encode provenance in fileId so finalize knows
+        // which URL pattern to construct.
+        let fileId;
+        if (isGcs && data.name) {
+          fileId = `gcs:${data.name}`;
+        } else if (data.Key) {
+          fileId = data.Key;
+        } else {
+          fileId = uploadUrl;
+        }
+        return res.json({ success: true, fileId, status: 200, done: true });
       }
-      // If 308, chunk was received
       if (proxyRes.status === 308) {
         return res.json({ success: true, status: 308, done: false });
       }
       const errText = await proxyRes.text().catch(() => '');
-      throw new Error(`Supabase chunk upload failed (${proxyRes.status}): ${errText.substring(0, 200)}`);
+      throw new Error(`Chunk upload failed (${proxyRes.status}): ${errText.substring(0, 200)}`);
     }
 
     // Fallback: upload the chunk as a complete file to Supabase
@@ -1732,12 +1768,28 @@ app.put('/upload/drive-proxy-chunk', requireAdminKey, express.raw({ type: '*/*',
   }
 });
 
-// POST /upload/drive-finalize — finalize upload, return public URL
+// POST /upload/drive-finalize — finalize upload, return public URL.
+// Detects GCS uploads via the "gcs:" prefix the chunk endpoint stamps on
+// fileId, and constructs a GCS public URL. Otherwise falls back to the
+// Supabase URL pattern for legacy paths.
 app.post('/upload/drive-finalize', requireAdminKey, async (req, res) => {
   try {
     const { fileId, path, bucket: bucketParam, type } = req.body;
     const storagePath = path || fileId;
     if (!storagePath) return res.status(400).json({ error: 'path or fileId required' });
+
+    // GCS path provenance from /upload/drive-proxy-chunk.
+    if (typeof storagePath === 'string' && storagePath.startsWith('gcs:')) {
+      const objectPath = storagePath.slice(4); // strip "gcs:"
+      let gcs = null;
+      try { gcs = require('./gcsApi'); } catch (_) {}
+      if (gcs && gcs.isGCSEnabled()) {
+        return res.json({ success: true, publicUrl: gcs.publicUrl(objectPath) });
+      }
+      // GCS prefix but module unreachable — fall through to error
+      return res.status(500).json({ error: 'GCS module not available for finalize' });
+    }
+
     const bucket = bucketParam || _bucketForType(type).bucket;
     const supabase = getSupabaseClient();
     const cleanPath = String(storagePath).includes('/object/')
