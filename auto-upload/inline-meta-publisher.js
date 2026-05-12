@@ -303,14 +303,20 @@ async function publishToMeta({ beat, videoPath, narrative }) {
   }
 
   // If IG is enabled, produce the 9:16 vertical variant once (cached by media).
+  // 2026-05-12: capture the actual ffmpeg error so it bubbles up into the
+  // returned `instagram.error` instead of getting buried in the log.
+  // Producer reported "the last 2 IG reels didn't post" — without the real
+  // failure reason in the UI, there's no way to diagnose mid-flight.
   let verticalVideoPath = null;
+  let verticalErr = null;
   if (cfg.ENABLE_INSTAGRAM) {
     try {
       logLine(`generating 9:16 vertical for IG (beat=${beat.id})`);
       verticalVideoPath = await media.makeVertical({ beatId: beat.id, videoPath });
       logLine(`vertical ready ${verticalVideoPath}`);
     } catch (e) {
-      logLine(`vertical gen failed — IG will be skipped: ${e.message}`);
+      verticalErr = (e && e.message) ? e.message : String(e);
+      logLine(`vertical gen failed — IG will be skipped: ${verticalErr}`);
       // Don't throw — FB can still publish with the landscape original.
     }
   }
@@ -328,7 +334,12 @@ async function publishToMeta({ beat, videoPath, narrative }) {
       : Promise.resolve(
           !cfg.ENABLE_INSTAGRAM
             ? { skipped: true, reason: 'ENABLE_INSTAGRAM=false' }
-            : { error: 'vertical render failed — IG skipped' }
+            : {
+                error: verticalErr
+                  ? `vertical render failed — IG skipped. Reason: ${verticalErr}`
+                  : 'vertical render failed — IG skipped (no detail captured)',
+                code: 'VERTICAL_RENDER_FAILED',
+              }
         )
   );
 
