@@ -230,19 +230,70 @@ async function makeVertical({ beatId, videoPath }) {
   const out = path.join(cfg.WORK_DIR, `${beatId}-vertical.mp4`);
   if (fs.existsSync(out)) return out;
 
-  await run(ffmpegPath, [
-    '-y', '-i', videoPath,
-    '-filter_complex',
-    // Two copies of input: one scaled/blurred to fill 1080x1920, one centered.
-    '[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=40:4[bg];' +
-    '[0:v]scale=1080:-2[fg];' +
-    '[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1[vout]',
-    '-map', '[vout]', '-map', '0:a',
-    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'medium', '-crf', '20',
-    '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart',
-    '-r', '30', out,
-  ]);
-  return out;
+  // 2026-05-12: 2-tier vertical render.
+  //
+  // Background: producer reported "the last 2 IG reels didn't post while YT
+  // and FB did." Root cause: when the blur-pad vertical render throws for
+  // any reason (input codec quirk, audio sample rate, weird frame rate,
+  // h264 profile rejection by Meta) the inline publisher silently skips
+  // IG. The strict Reels-spec encoder flags this function uses are
+  // intolerant — too many real-world source videos fail the primary attempt.
+  //
+  // PRIMARY: blur-pad treatment, Reels-strict spec — looks great when it
+  //   succeeds, but is brittle.
+  // FALLBACK: letterbox (black bars) with permissive baseline encoder —
+  //   uglier but accepts anything ffmpeg can read.
+  //
+  // Both attempts share the same output path, so caching downstream still
+  // works (we don't burn re-encodes on retries).
+
+  const TAG = `[media] makeVertical(${beatId})`;
+  try {
+    await run(ffmpegPath, [
+      '-y', '-i', videoPath,
+      '-filter_complex',
+      // Two copies of input: one scaled/blurred to fill 1080x1920, one centered.
+      '[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=40:4[bg];' +
+      '[0:v]scale=1080:-2[fg];' +
+      '[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1[vout]',
+      '-map', '[vout]', '-map', '0:a',
+      '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'medium', '-crf', '20',
+      '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart',
+      '-r', '30', out,
+    ]);
+    return out;
+  } catch (primaryErr) {
+    console.warn(`${TAG} primary (blur-pad, Reels-strict) failed: ${primaryErr.message.slice(0, 220)}`);
+    console.warn(`${TAG} attempting letterbox fallback…`);
+    // Make sure a partial primary output doesn't shadow the retry.
+    try { if (fs.existsSync(out)) fs.unlinkSync(out); } catch (_) {}
+    try {
+      await run(ffmpegPath, [
+        '-y', '-i', videoPath,
+        // Single-stage filter: scale-to-fit, pad the rest with solid black,
+        // normalize SAR. No blur, no overlay — minimum ffmpeg complexity.
+        '-vf',
+        'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black,setsar=1',
+        '-c:v', 'libx264',
+        '-profile:v', 'baseline',     // most permissive H.264 profile
+        '-pix_fmt', 'yuv420p',
+        '-preset', 'medium', '-crf', '23',
+        '-c:a', 'aac',
+        '-b:a', '128k',                // Reels max audio bitrate
+        '-ar', '48000', '-ac', '2',    // 48kHz stereo (Reels-safe)
+        '-movflags', '+faststart',
+        '-r', '30', out,
+      ]);
+      console.warn(`${TAG} letterbox fallback SUCCEEDED — IG will publish with black bars instead of blur-pad`);
+      return out;
+    } catch (fallbackErr) {
+      throw new Error(
+        `vertical render failed — both blur-pad and letterbox attempts threw. ` +
+        `primary: ${(primaryErr.message || '').slice(0, 180)} | ` +
+        `fallback: ${(fallbackErr.message || '').slice(0, 180)}`
+      );
+    }
+  }
 }
 
 // ── 3b. MAKE 60s YOUTUBE SHORT (1080x1920, capped at 60s) ────────────────
