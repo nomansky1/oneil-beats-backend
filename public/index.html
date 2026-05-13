@@ -703,7 +703,11 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
 @media(max-width:860px){
   .header-nav{display:none}
   .menu-toggle{display:flex}
-  .header-nav.mobile-open{display:flex;position:fixed;top:64px;left:0;right:0;bottom:0;background:rgba(6,6,10,.98);backdrop-filter:blur(20px);flex-direction:column;align-items:stretch;padding:24px;gap:0;z-index:200;overflow-y:auto}
+  /* Mobile nav overlay. z-index:400 sits above the fixed player-bar (z:300),
+     and bottom padding clears the player + iOS safe-area so the last menu
+     items (Blog, About, FAQ, My Orders) are always tappable, not hidden
+     under the mini-player when a beat is playing. */
+  .header-nav.mobile-open{display:flex;position:fixed;top:64px;left:0;right:0;bottom:0;background:rgba(6,6,10,.98);backdrop-filter:blur(20px);flex-direction:column;align-items:stretch;padding:24px 24px calc(24px + var(--player-h) + env(safe-area-inset-bottom,0px)) 24px;gap:0;z-index:400;overflow-y:auto;-webkit-overflow-scrolling:touch}
   .header-nav.mobile-open a{padding:16px 4px;font-size:16px;border-bottom:1px solid var(--border);color:var(--text)}
   .acct-name{display:none}
   .cart-btn span:not(.cart-badge){display:none}
