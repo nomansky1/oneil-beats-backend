@@ -2064,58 +2064,53 @@ async function main() {
   // when env vars were missing.
   generateStaticContent();
 
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY;
-
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    console.warn('[build-beat-pages] SUPABASE env vars missing — skipping beat-page generation. Blog + static content already written above. The deploy will succeed without per-beat SEO files.');
-    return;
-  }
   if (!fs.existsSync(TEMPLATE_PATH)) {
     console.error('[build-beat-pages] template not found at', TEMPLATE_PATH);
-    process.exit(1);
+    return;
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-  // DB column names: stem_price (singular), cover_url. The /beats API aliases these
-  // to stems_price/cover_art_url for the SPA, but we go straight to Supabase here
-  // so we use the canonical column names then alias in JS.
-  const { data, error } = await supabase
-    .from('beats')
-    .select('id, title, genre, subgenre, bpm, key, mood, tags, description, lease_price, premium_price, stem_price, exclusive_price, audio_url, cover_url, active')
-    .eq('active', true);
-
-  if (error) {
-    console.error('[build-beat-pages] Supabase error:', error.message);
-    return; // don't fail the build
-  }
-
-  // Fetch approved reviews per beat. Falls back to empty if the reviews table
-  // doesn't exist yet (first deploy before migrations/reviews.sql is applied).
+  // 2026-05-13 — migrated off direct Supabase queries. The rest of the
+  // backend already uses fetchBeatsFromDB() from supabaseApi.js (which now
+  // talks to pg via DATABASE_URL through the Supavisor pooler). Without
+  // this change, the build script bailed on missing SUPABASE_URL and the
+  // 60+ SEO landing pages (Reggaeton / Trap / Perreo / Bad Bunny Type Beat
+  // / comprar-beats-de-* / etc.) never shipped, returning 404 in prod.
+  let beats = [];
   let reviewsByBeat = {};
   try {
-    const { data: rows } = await supabase
-      .from('reviews')
-      .select('beat_id, rating, customer_name, title, body, verified_purchase, created_at')
-      .eq('status', 'approved')
-      .order('created_at', { ascending: false });
-    for (const r of (rows || [])) {
-      (reviewsByBeat[r.beat_id] = reviewsByBeat[r.beat_id] || []).push(r);
-    }
-    const reviewedBeats = Object.keys(reviewsByBeat).length;
-    if (reviewedBeats > 0) console.log(`[build-beat-pages] loaded reviews for ${reviewedBeats} beats`);
+    const { fetchBeatsFromDB } = require('../supabaseApi');
+    beats = (await fetchBeatsFromDB()) || [];
+    console.log(`[build-beat-pages] fetched ${beats.length} active beats via pg`);
   } catch (e) {
-    console.log('[build-beat-pages] reviews table not present yet — schema injection skipped');
+    console.warn(`[build-beat-pages] beats fetch failed (${e.message}) — landing pages render with empty beats array, per-beat pages skipped`);
   }
 
-  const beats = (data || []).filter(b => b && b.id && b.title).map(b => ({
-    ...b,
-    // Alias DB columns to the names the rest of this script (and the SPA's data shape) expects.
-    stems_price: b.stem_price,
-    cover_art_url: b.cover_url, // SPA uses cover_url; cover_art_url is just a synonym
-    reviews: reviewsByBeat[b.id] || [],
-  }));
-  console.log(`[build-beat-pages] fetched ${beats.length} active beats`);
+  // Try to load approved reviews via pg (same source as the live /reviews
+  // endpoint). Non-fatal if the table is missing or query errors.
+  if (beats.length) {
+    try {
+      const { Pool } = require('pg');
+      const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false },
+        max: 2,
+      });
+      const { rows } = await pool.query(
+        `SELECT beat_id, rating, customer_name, title, body, verified_purchase, created_at
+         FROM reviews WHERE status = 'approved' ORDER BY created_at DESC`
+      );
+      for (const r of rows || []) {
+        (reviewsByBeat[r.beat_id] = reviewsByBeat[r.beat_id] || []).push(r);
+      }
+      const reviewedBeats = Object.keys(reviewsByBeat).length;
+      if (reviewedBeats > 0) console.log(`[build-beat-pages] loaded reviews for ${reviewedBeats} beats`);
+      await pool.end();
+    } catch (e) {
+      console.log('[build-beat-pages] reviews query failed (non-fatal):', e.message);
+    }
+    // Attach reviews to the beats array
+    beats = beats.map(b => ({ ...b, reviews: reviewsByBeat[b.id] || [] }));
+  }
 
   if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
 
