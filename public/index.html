@@ -888,6 +888,7 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
         <a href="https://apps.apple.com/app/id6763227699"
            target="_blank" rel="noopener"
            aria-label="Download O'Neil Beats on the App Store"
+           onclick="track('app_store_click',{surface:'hero_badge'})"
            style="display:inline-block;line-height:0">
           <img
             src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?releaseDate=1717372800"
@@ -3002,8 +3003,8 @@ function addToCart(beatId, licenseType) {
   if (!price) return;
   const sameIdx = cart.findIndex(c=>c.beatId===beatId);
   const exactIdx = cart.findIndex(c=>c.beatId===beatId&&c.licenseType===licenseType);
-  if (exactIdx>=0) { cart.splice(exactIdx,1); showToast('Removed from cart'); }
-  else { if(sameIdx>=0) cart.splice(sameIdx,1); cart.push({beatId,beatTitle:b.title,licenseType,price:Number(price),cover:b.cover_url}); showToast(`${b.title} — ${licenseType} added!`,'success'); }
+  if (exactIdx>=0) { cart.splice(exactIdx,1); showToast('Removed from cart'); track('license_remove_from_cart', { beatId, licenseType, price: Number(price) }); }
+  else { if(sameIdx>=0) cart.splice(sameIdx,1); cart.push({beatId,beatTitle:b.title,licenseType,price:Number(price),cover:b.cover_url}); showToast(`${b.title} — ${licenseType} added!`,'success'); track('license_add_to_cart', { beatId, beatTitle: b.title, licenseType, price: Number(price), genre: b.genre || null }); }
   updateCartBadge(); renderGrid();
   if (document.getElementById('detail-overlay').classList.contains('open')) openDetail(beatId);
 }
@@ -3240,6 +3241,17 @@ async function startCheckout() {
   const email=(document.getElementById('checkout-email')?.value||'').trim();
   if (!email||!email.includes('@')) { showToast('Enter a valid email address'); return; }
   if (!cart.length) return;
+  // GA4: fire checkout_started with cart value — this is the conversion event
+  // YT pre-roll campaigns optimize against. Pass cart_value + cart_size so we
+  // can compute average order value per traffic source in GA4 reports.
+  try {
+    const cartValue = cart.reduce((s, c) => s + Number(c.price || 0), 0);
+    track('checkout_started', {
+      cart_value: Number(cartValue.toFixed(2)),
+      cart_size: cart.length,
+      tiers: cart.map(c => c.licenseType).join(','),
+    });
+  } catch (_) {}
   // If the cart has a bundleId on every row AND they all match, send the bundle
   // context up so the backend charges the bundle price as one Stripe line item.
   const bundleId = (currentBundle && cart.length === currentBundle.qty && cart.every(c => c.bundleId === currentBundle.id))
@@ -3286,11 +3298,17 @@ function toggleFaq(el) { el.closest('.faq-item').classList.toggle('open'); }
 // boot script at the bottom of <body> sets up gtag() and loads the GA4
 // library once, then this helper just dispatches every event to both.
 function track(action, data) {
-  fetch(`${API}/customer/track`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,data:{...data,source:'web'}})}).catch(()=>{});
+  // 2026-05-13 — auto-merge stored UTM context so every event is attributable
+  // to the originating paid campaign (YT pre-roll, Meta Ads, etc.). Set by
+  // bootGA4() on first landing; read on every track() call.
+  var utm = {};
+  try { utm = JSON.parse(sessionStorage.getItem('ob_utm') || '{}'); } catch (_) {}
+  var payload = Object.assign({}, utm, data, { source: 'web' });
+  fetch(`${API}/customer/track`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,data:payload})}).catch(()=>{});
   // Mirror to GA4 if configured. Action becomes the event name; data fields
   // become event params (GA4 accepts arbitrary custom params per event).
   if (typeof gtag === 'function') {
-    try { gtag('event', action, data || {}); } catch(e){}
+    try { gtag('event', action, payload); } catch(e){}
   }
 }
 
@@ -3680,6 +3698,23 @@ loadBundles();
     anonymize_ip: true,
     send_page_view: true,
   });
+  // 2026-05-13 — capture UTM params on first landing so every downstream
+  // event (license_add_to_cart / checkout_started / app_store_click) can be
+  // attributed to a specific paid campaign (YT pre-roll, Meta Ads, etc.).
+  // We fire ONE `campaign_landing` event with the parsed UTMs and persist
+  // them to sessionStorage so subsequent track() calls can include them
+  // automatically as an extra param.
+  try {
+    var qs = new URLSearchParams(location.search);
+    var utm = {};
+    ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'].forEach(function(k){
+      var v = qs.get(k); if (v) utm[k] = v.slice(0, 100);
+    });
+    if (Object.keys(utm).length) {
+      sessionStorage.setItem('ob_utm', JSON.stringify(utm));
+      if (typeof track === 'function') track('campaign_landing', utm);
+    }
+  } catch (_) {}
 })();
 </script>
 </body>
