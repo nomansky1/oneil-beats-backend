@@ -2034,13 +2034,41 @@ function renderCrawlerBlock(beat, slug, url, related = []) {
 </div>`;
 }
 
+// ── Generate purely-static content (no Supabase / beats data required) ────
+// Split out so the blog (cornerstone SEO content) always renders, even when
+// Supabase env vars are missing — which is the production state now that
+// we've migrated off Supabase Storage. Previously the whole build bailed at
+// the Supabase guard and /blog/* shipped empty, returning Express 404s.
+function generateStaticContent() {
+  if (!fs.existsSync(TEMPLATE_PATH)) {
+    console.error('[build-beat-pages] template not found at', TEMPLATE_PATH);
+    return;
+  }
+  const template = fs.readFileSync(TEMPLATE_PATH, 'utf8');
+  const PUBLIC_DIR = path.join(ROOT, 'public');
+  const BLOG_DIR = path.join(PUBLIC_DIR, 'blog');
+  if (!fs.existsSync(BLOG_DIR)) fs.mkdirSync(BLOG_DIR, { recursive: true });
+  fs.writeFileSync(path.join(BLOG_DIR, 'index.html'), renderBlogIndex(template), 'utf8');
+  let blogWritten = 1;
+  for (const post of BLOG_POSTS) {
+    fs.writeFileSync(path.join(BLOG_DIR, post.slug + '.html'), renderBlogPost(template, post), 'utf8');
+    blogWritten++;
+  }
+  console.log(`[build-beat-pages] wrote ${blogWritten} blog files → ${path.relative(ROOT, BLOG_DIR)}`);
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────
 async function main() {
+  // Always generate static content (blog, etc.) first — independent of any
+  // DB connection. Was previously inside the Supabase branch and got skipped
+  // when env vars were missing.
+  generateStaticContent();
+
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
-    console.warn('[build-beat-pages] SUPABASE env vars missing — skipping beat-page generation. The deploy will succeed without per-beat SEO files.');
+    console.warn('[build-beat-pages] SUPABASE env vars missing — skipping beat-page generation. Blog + static content already written above. The deploy will succeed without per-beat SEO files.');
     return;
   }
   if (!fs.existsSync(TEMPLATE_PATH)) {
@@ -2158,16 +2186,8 @@ async function main() {
   }
   console.log(`[build-beat-pages] wrote ${esWritten} Spanish landing pages`);
 
-  // ── Blog (cornerstone content) ──
-  const BLOG_DIR = path.join(PUBLIC_DIR, 'blog');
-  if (!fs.existsSync(BLOG_DIR)) fs.mkdirSync(BLOG_DIR, { recursive: true });
-  fs.writeFileSync(path.join(BLOG_DIR, 'index.html'), renderBlogIndex(template), 'utf8');
-  let blogWritten = 1;
-  for (const post of BLOG_POSTS) {
-    fs.writeFileSync(path.join(BLOG_DIR, post.slug + '.html'), renderBlogPost(template, post), 'utf8');
-    blogWritten++;
-  }
-  console.log(`[build-beat-pages] wrote ${blogWritten} blog files → ${path.relative(ROOT, BLOG_DIR)}`);
+  // Blog generation now happens up-front in generateStaticContent() so it
+  // runs even when Supabase is unavailable. No duplicate here.
 }
 
 if (require.main === module) {
