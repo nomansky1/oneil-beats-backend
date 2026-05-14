@@ -212,7 +212,12 @@ app.get('/sitemap.xml', async (req, res) => {
       // Per-beat pages
       ...(beats || []).filter(b => b && b.id && b.title).map(b => {
         const slug = beatSlug(b);
-        const lastmod = (b.createdAt || b.created_at || today).slice(0, 10);
+        // fetchBeatsFromDB returns `createdAt` as a Date object (pg auto-
+        // deserializes timestamptz). Old code called `.slice(0, 10)` directly,
+        // which throws on Date instances and made the whole sitemap route
+        // 500 with an empty <urlset/>. `new Date(...).toISOString()` handles
+        // Date objects, ISO strings, and epoch numbers — bulletproof.
+        const lastmod = new Date(b.createdAt || b.created_at || today).toISOString().slice(0, 10);
         return `<url><loc>${SITE}/beat/${slug}</loc><changefreq>weekly</changefreq><priority>0.8</priority><lastmod>${lastmod}</lastmod></url>`;
       }),
     ].join('\n  ');
