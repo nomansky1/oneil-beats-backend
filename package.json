@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
+    "@aws-sdk/client-s3": "^3.1048.0",
+    "@aws-sdk/s3-request-presigner": "^3.1048.0",
     "@breezystack/lamejs": "^1.2.7",
     "@google-cloud/storage": "^7.19.0",
     "@supabase/supabase-js": "^2.45.0",
