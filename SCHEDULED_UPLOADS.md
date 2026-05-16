@@ -18,7 +18,7 @@ email blasts wait for the cron tick to fire alongside the catalog appearance.
 | Admin reschedule | `server.js::PUT /admin/beat/:id/schedule` | Update timestamp |
 | Admin cancel | `server.js::DELETE /admin/beat/:id/schedule` | Hard-delete pending row |
 | Cron | `server.js::GET /cron/publish-scheduled` | Flips ready beats live, fires push+email |
-| Cron config | `vercel.json` | `*/15 * * * *` (every 15 minutes) |
+| Cron config | `vercel.json` | `0 12 * * *` (daily at 12:00 UTC = 8am Puerto Rico) |
 
 ## To deploy
 
@@ -34,12 +34,37 @@ email blasts wait for the cron tick to fire alongside the catalog appearance.
 4. **Smoke-test**: upload a beat with `scheduled_for` 2 minutes in the future.
    Wait 15+ minutes. Verify `/beats` returns it, push fired, email blast sent.
 
-## Vercel plan caveat
+## Vercel plan + cron precision
 
-`*/15 * * * *` (every 15 min) requires **Vercel Pro** ($20/mo). On Hobby plan
-cron is daily-only — change the schedule in `vercel.json` to e.g. `0 12 * * *`
-(daily at 12pm UTC) and your scheduled beats will publish at the next daily
-tick after their timestamp.
+This PR ships with `0 12 * * *` (daily at 12:00 UTC = 8am Puerto Rico time)
+because Vercel **Hobby plan** caps cron at one run per day. The build was
+initially attempted with `*/15 * * * *` and failed — Vercel rejects sub-day
+intervals on Hobby.
+
+**What this means in practice:**
+- A scheduled beat publishes at the **next 12:00 UTC tick after its
+  `scheduled_for` timestamp.**
+- If you schedule a beat for Tuesday 9am UTC, it publishes at Tuesday 12pm UTC
+  (3 hours late).
+- If you schedule a beat for Tuesday 5pm UTC, it publishes at Wednesday 12pm
+  UTC (19 hours late).
+- **For multiple beats per day, all of them scheduled before 12pm UTC fire at
+  the same 12pm UTC tick.** No staggering within a single day unless you
+  upgrade.
+
+**To get tighter precision (every 15 min, every hour, etc.):**
+1. Upgrade to **Vercel Pro** ($20/mo) — supports cron at minute-level intervals
+2. Change `vercel.json` cron to your desired schedule (e.g. `*/15 * * * *`)
+3. Redeploy
+
+**To shift the daily tick time** to match your audience: change `0 12 * * *`
+to your preferred UTC hour (e.g. `0 17 * * *` = 5pm UTC = 1pm Puerto Rico time
+for an afternoon drop window).
+
+**Alternative for Hobby:** run a free external cron service (cron-job.org,
+EasyCron) that hits `https://oneilbeats.store/cron/publish-scheduled` with
+the `X-Admin-Key` header every 15 min. Works around Vercel's plan limit
+without paying for Pro.
 
 ## Validation rules
 
