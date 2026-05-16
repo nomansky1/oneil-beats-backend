@@ -1204,6 +1204,200 @@ app.delete('/admin/beat/:id', requireAdminKey, async (req, res) => {
   }
 });
 
+// ── Scheduled uploads ────────────────────────────────────────────────────
+// Beats whose `scheduled_for` is in the future and `active=false`. The cron
+// /cron/publish-scheduled flips them live once the timestamp passes.
+
+// GET /admin/scheduled-beats — list pending scheduled uploads, soonest first.
+app.get('/admin/scheduled-beats', requireAdminKey, async (req, res) => {
+  try {
+    const { rows } = await pgQuery(
+      `SELECT id, title, genre, subgenre, bpm, key, mood,
+              cover_url, audio_url, audio_original_url,
+              scheduled_for, created_at
+       FROM beats
+       WHERE active = false AND scheduled_for IS NOT NULL AND scheduled_for > now()
+       ORDER BY scheduled_for ASC`
+    );
+    res.json({ success: true, count: rows.length, beats: rows });
+  } catch (err) {
+    console.error('Admin scheduled-beats list error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /admin/beat/:id/schedule — reschedule a pending beat to a new timestamp.
+// Body: { scheduled_for: ISO 8601 string }
+// Same 30-day validation as /upload/beat-metadata. Setting to a past time is
+// effectively "publish now" — flips active=true immediately.
+app.put('/admin/beat/:id/schedule', requireAdminKey, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'Beat ID required' });
+    const { scheduled_for } = req.body || {};
+    if (!scheduled_for) return res.status(400).json({ error: 'scheduled_for required (ISO 8601)' });
+
+    const d = new Date(scheduled_for);
+    if (isNaN(d.getTime())) return res.status(400).json({ error: 'scheduled_for must be a valid ISO 8601 timestamp' });
+    const ms = d.getTime() - Date.now();
+    if (ms > 30 * 24 * 60 * 60 * 1000) {
+      return res.status(400).json({ error: 'scheduled_for cannot be more than 30 days in the future' });
+    }
+
+    if (ms <= 0) {
+      // Past timestamp → "publish now". Flip active=true, clear scheduled_for.
+      const { rows } = await pgQuery(
+        `UPDATE beats SET active = true, scheduled_for = NULL
+         WHERE id = $1 RETURNING id, title, active, scheduled_for`,
+        [id]
+      );
+      if (rows.length === 0) return res.status(404).json({ error: 'Beat not found' });
+      return res.json({ success: true, published_now: true, beat: rows[0] });
+    }
+
+    // Future timestamp → keep active=false, update scheduled_for.
+    const { rows } = await pgQuery(
+      `UPDATE beats SET scheduled_for = $2
+       WHERE id = $1 RETURNING id, title, active, scheduled_for`,
+      [id, d.toISOString()]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Beat not found' });
+    res.json({ success: true, beat: rows[0] });
+  } catch (err) {
+    console.error('Admin reschedule error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /admin/beat/:id/schedule — cancel a pending scheduled upload.
+// Hard-deletes the beat row. (The beat was never publicly visible, and the
+// audio/cover files on GCS are orphaned but cost ~nothing.)
+// WARNING: If auto-upload already pushed this beat to YT/IG/TT, those posts
+// are now linking to a deleted beat ID. The desktop EXE's confirmation
+// dialog warns about this.
+app.delete('/admin/beat/:id/schedule', requireAdminKey, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'Beat ID required' });
+    // Only allow cancelling scheduled (active=false + future scheduled_for) beats
+    // to avoid accidentally hard-deleting live catalog rows via this endpoint.
+    const { rows } = await pgQuery(
+      `DELETE FROM beats
+       WHERE id = $1 AND active = false AND scheduled_for IS NOT NULL AND scheduled_for > now()
+       RETURNING id, title, scheduled_for`,
+      [id]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Beat not found or not in scheduled state — use DELETE /admin/beat/:id for live beats' });
+    }
+    res.json({ success: true, cancelled: rows[0] });
+  } catch (err) {
+    console.error('Admin cancel-schedule error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /cron/publish-scheduled — Vercel cron entry point. Flips scheduled
+// beats to active=true once their scheduled_for has passed, then fires the
+// push + email broadcasts for each.
+//
+// Auth: Vercel cron sends `Authorization: Bearer ${CRON_SECRET}`. If the env
+// var isn't set, the route falls back to requireAdminKey so manual triggers
+// via the admin tools still work.
+app.get('/cron/publish-scheduled', async (req, res) => {
+  try {
+    const cronSecret = process.env.CRON_SECRET;
+    const authHeader = req.headers.authorization || '';
+    const adminKey = req.headers['x-admin-key'] || req.query.adminKey;
+    const isCronAuth = cronSecret && authHeader === `Bearer ${cronSecret}`;
+    const isAdminAuth = adminKey && adminKey === process.env.ADMIN_KEY;
+    if (!isCronAuth && !isAdminAuth) {
+      return res.status(401).json({ error: 'unauthorized — needs Bearer CRON_SECRET or admin key' });
+    }
+
+    // Atomically flip all ready-to-publish beats. Returning the affected rows
+    // gives us everything we need to fire push + email per beat.
+    const { rows: published } = await pgQuery(
+      `UPDATE beats
+       SET active = true
+       WHERE active = false
+         AND scheduled_for IS NOT NULL
+         AND scheduled_for <= now()
+       RETURNING id, title, genre, bpm, key, mood, audio_url, cover_url`
+    );
+
+    if (published.length === 0) {
+      return res.json({ success: true, published: 0, message: 'no beats ready' });
+    }
+
+    // Best-effort push + email per beat. Failures log-and-continue; the beats
+    // are already live in the catalog regardless.
+    let pushSent = 0, emailQueued = 0;
+    for (const b of published) {
+      try {
+        const tokens = await getPushTokens();
+        if (tokens.length > 0) {
+          await sendPushNotification(
+            tokens,
+            '🎵 New Beat Released!',
+            `Check out "${b.title}" — ${b.genre || 'New'} · ${b.bpm || '?'} BPM`,
+            { beatId: b.id, beatTitle: b.title, genre: b.genre, bpm: b.bpm }
+          );
+          pushSent++;
+        }
+      } catch (e) {
+        console.warn('[cron/publish-scheduled] push failed for', b.id, e.message);
+      }
+      // Email blast — fire-and-forget per beat. Reuses the same mailer as
+      // /upload/beat-metadata. Failures here are logged but don't fail the
+      // overall cron tick.
+      (async () => {
+        try {
+          const supabase = getSupabaseClient();
+          const { data: subs } = await supabase.from('email_subscribers')
+            .select('email, token').is('unsubscribed_at', null);
+          const recipients = (subs || []).filter(s => s.email);
+          if (recipients.length === 0) return;
+          const PUBLIC_BASE = process.env.PUBLIC_BASE_URL || 'https://oneilbeats.store';
+          const subject = `🔥 New Drop: ${b.title} — ${b.genre || "O'Neil Beats"}${b.bpm ? ' · ' + b.bpm + ' BPM' : ''}`;
+          const beatLandingUrl = `${PUBLIC_BASE}/beat/${b.id}`;
+          for (const sub of recipients) {
+            const unsubUrl = `${PUBLIC_BASE}/unsubscribe?email=${encodeURIComponent(sub.email)}&token=${sub.token}`;
+            const html = `<div style="font-family:system-ui;max-width:560px;margin:0 auto;background:#06060a;color:#e2e8f0;padding:32px;border-radius:12px"><h2 style="color:#fff">${b.title}</h2><p style="color:#aaa">${b.genre || ''}${b.bpm ? ' · ' + b.bpm + ' BPM' : ''}</p>${b.cover_url ? `<img src="${b.cover_url}" style="width:100%;max-width:400px;border-radius:12px;display:block;margin:16px auto">` : ''}<p style="text-align:center;margin:24px 0"><a href="${beatLandingUrl}" style="background:linear-gradient(135deg,#d4af37,#e63946);color:#000;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:900">🎧 LISTEN + LICENSE</a></p><p style="color:#555;font-size:11px;text-align:center;margin-top:24px"><a href="${unsubUrl}" style="color:#888">Unsubscribe</a></p></div>`;
+            try {
+              await mailer.sendMail({
+                from: `"O'Neil Beats" <${process.env.EMAIL_FROM}>`,
+                to: sub.email,
+                subject,
+                html,
+                headers: {
+                  'X-OB-Email-Type': 'new-beat-drop-scheduled',
+                  'X-OB-Beat-Id': String(b.id),
+                  'X-OB-Beat-Title': b.title || '',
+                },
+              });
+              emailQueued++;
+            } catch (_) { /* logged below */ }
+          }
+        } catch (e) {
+          console.warn('[cron/publish-scheduled] email blast failed for', b.id, e.message);
+        }
+      })();
+    }
+
+    res.json({
+      success: true,
+      published: published.length,
+      push_sent: pushSent,
+      email_queued: emailQueued,
+      beats: published.map(b => ({ id: b.id, title: b.title })),
+    });
+  } catch (err) {
+    console.error('cron/publish-scheduled error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /admin/audit-dirty-urls — scan the catalog for whitespace-corrupted URLs.
 // Belt-and-suspenders for the GCS_BUCKET trailing-newline bug (PR #23). Run
 // this nightly (or on demand) and alert on any beat whose audio_url,
@@ -2249,8 +2443,30 @@ app.post('/upload/cover-from-url', requireAdminKey, async (req, res) => {
 // POST /upload/beat-metadata — register beat in DB (no file upload, just metadata + URLs)
 app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
   try {
-    const { title, genre, subgenre, bpm, key, mood, tags, description, lease_price, premium_price, stems_price, exclusive_price, audio_url, audio_original_url, wav_url, stem_url, cover_url, announce, announce_title, announce_body } = req.body;
+    const { title, genre, subgenre, bpm, key, mood, tags, description, lease_price, premium_price, stems_price, exclusive_price, audio_url, audio_original_url, wav_url, stem_url, cover_url, announce, announce_title, announce_body, scheduled_for } = req.body;
     if (!title) return res.status(400).json({ error: 'Title is required' });
+
+    // Scheduled upload validation:
+    //   • Must be a parseable date
+    //   • Must be in the future (else it's just "now", same as no scheduling)
+    //   • Max 30 days ahead — protects against typo-fat-finger drops in 2099
+    let scheduledForIso = null;
+    let isScheduledFuture = false;
+    if (scheduled_for) {
+      const d = new Date(scheduled_for);
+      if (isNaN(d.getTime())) {
+        return res.status(400).json({ error: 'scheduled_for must be a valid ISO 8601 timestamp' });
+      }
+      const ms = d.getTime() - Date.now();
+      if (ms > 30 * 24 * 60 * 60 * 1000) {
+        return res.status(400).json({ error: 'scheduled_for cannot be more than 30 days in the future' });
+      }
+      if (ms > 0) {
+        scheduledForIso = d.toISOString();
+        isScheduledFuture = true;
+      }
+      // ms <= 0 → treat as immediate publish, ignore the field silently
+    }
 
     const beatId = await addBeatToDB({
       title, genre: genre || '', subgenre: subgenre || '',
@@ -2264,6 +2480,7 @@ app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
       audio_url: audio_url || '', audio_original_url: audio_original_url || '',
       wav_url: wav_url || '', stem_url: stem_url || '',
       cover_url: cover_url || '',
+      scheduled_for: scheduledForIso,
     });
 
     // Enqueue auto-upload (YouTube/IG/TikTok). Non-blocking — if this throws
@@ -2294,7 +2511,11 @@ app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
 
     // Push broadcast on new beat — opt-in. Uploader sends announce:false to skip
     // (e.g. reuploads / test uploads). Custom title/body optional.
-    if (announce !== false) {
+    //
+    // SKIPPED for scheduled uploads — push tells customers about a beat they
+    // can't see yet (active=false). The cron /cron/publish-scheduled fires
+    // push when it flips the beat live.
+    if (announce !== false && !isScheduledFuture) {
       try {
         const tokens = await getPushTokens();
         if (tokens.length > 0) {
@@ -2321,7 +2542,9 @@ app.post('/upload/beat-metadata', requireAdminKey, async (req, res) => {
     // announce:false (uploader can opt out for re-uploads / test runs) AND
     // the broadcast_email flag (uploader can disable email-only without
     // disabling push, e.g. when shipping a quick fix).
-    if (announce !== false && req.body.broadcast_email !== false) {
+    // Email broadcast also waits for active=true on scheduled uploads — same
+    // logic as push (don't email customers about a hidden beat).
+    if (announce !== false && req.body.broadcast_email !== false && !isScheduledFuture) {
       // Fire and forget — never block the response.
       (async () => {
         try {

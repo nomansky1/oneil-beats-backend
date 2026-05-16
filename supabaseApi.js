@@ -54,9 +54,18 @@ async function pgQuery(text, params = []) {
 }
 
 // ── BEATS CRUD ──────────────────────────────────────────────────────────────
+// Public read filter:
+//   • active=true                                    → beat is published
+//   • scheduled_for IS NULL OR scheduled_for <= now() → not a future-scheduled
+//     drop that hasn't matured yet. The cron /cron/publish-scheduled flips
+//     active=true once the timestamp passes; until then beats are hidden from
+//     customer apps, storefront, and DistroKid pulls.
 async function fetchBeatsFromDB() {
   const { rows } = await pgQuery(
-    'SELECT * FROM beats WHERE active = true ORDER BY created_at DESC NULLS LAST'
+    `SELECT * FROM beats
+     WHERE active = true
+       AND (scheduled_for IS NULL OR scheduled_for <= now())
+     ORDER BY created_at DESC NULLS LAST`
   );
   return rows.map(beat => ({
     ...beat,
@@ -77,11 +86,24 @@ async function fetchBeatsFromDB() {
 }
 
 async function addBeatToDB(beatData) {
+  // Scheduled upload: scheduled_for in the future flips active=false so the
+  // beat stays hidden until /cron/publish-scheduled flips it live. Null /
+  // past values are treated as "publish now" (the existing behavior).
+  let scheduledForTs = null;
+  let isActive = true;
+  if (beatData.scheduled_for) {
+    const d = new Date(beatData.scheduled_for);
+    if (!isNaN(d.getTime()) && d.getTime() > Date.now()) {
+      scheduledForTs = d.toISOString();
+      isActive = false;
+    }
+  }
+
   const cols = [
     'title', 'artist', 'genre', 'subgenre', 'bpm', 'key', 'mood', 'price',
     'lease_price', 'premium_price', 'stem_price', 'exclusive_price', 'tags',
     'description', 'audio_url', 'audio_original_url', 'cover_url', 'wav_url',
-    'stem_url', 'plays', 'active',
+    'stem_url', 'plays', 'active', 'scheduled_for',
   ];
   const values = [
     beatData.title || '',
@@ -104,7 +126,8 @@ async function addBeatToDB(beatData) {
     beatData.wav_url || '',
     beatData.stem_url || '',
     0,
-    true,
+    isActive,
+    scheduledForTs,
   ];
   const placeholders = cols.map((_, i) => `$${i + 1}`).join(', ');
   const { rows } = await pgQuery(
