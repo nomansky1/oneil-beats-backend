@@ -54,20 +54,10 @@ async function pgQuery(text, params = []) {
 }
 
 // ── BEATS CRUD ──────────────────────────────────────────────────────────────
-// Public read filter:
-//   • active=true                                    → beat is published
-//   • scheduled_for IS NULL OR scheduled_for <= now() → not a future-scheduled
-//     drop that hasn't matured yet. The cron /cron/publish-scheduled flips
-//     active=true once the timestamp passes; until then beats are hidden from
-//     customer apps, storefront, and DistroKid pulls.
-async function fetchBeatsFromDB() {
-  const { rows } = await pgQuery(
-    `SELECT * FROM beats
-     WHERE active = true
-       AND (scheduled_for IS NULL OR scheduled_for <= now())
-     ORDER BY created_at DESC NULLS LAST`
-  );
-  return rows.map(beat => ({
+// Map DB row shape → API response shape. Extracted so the post-migration
+// and legacy queries share normalization without duplicating 12 lines.
+function _mapBeatRow(beat) {
+  return {
     ...beat,
     bpm: beat.bpm || 120,
     lease_price: parseFloat(beat.lease_price || beat.price) || 29.99,
@@ -82,7 +72,48 @@ async function fetchBeatsFromDB() {
     wav_url: beat.wav_url || '',
     stems_url: beat.stem_url || '',
     createdAt: beat.created_at,
-  }));
+  };
+}
+
+// Public read filter:
+//   • active=true                                    → beat is published
+//   • scheduled_for IS NULL OR scheduled_for <= now() → not a future-scheduled
+//     drop that hasn't matured yet. The cron /cron/publish-scheduled flips
+//     active=true once the timestamp passes; until then beats are hidden from
+//     customer apps, storefront, and DistroKid pulls.
+//
+// 2026-05-17 incident recovery: a Vercel deploy of #63 went live before the
+// scheduled_for migration was run, so the post-migration query 500'd the
+// storefront for ~minutes. The try/catch below detects the specific Postgres
+// "column does not exist" code (42703) and falls back to the legacy query so
+// future "code-before-migration" merges degrade gracefully instead of
+// nuking the catalog. The fallback path logs loudly so the missing migration
+// stays visible in Vercel logs and gets run ASAP.
+async function fetchBeatsFromDB() {
+  try {
+    const { rows } = await pgQuery(
+      `SELECT * FROM beats
+       WHERE active = true
+         AND (scheduled_for IS NULL OR scheduled_for <= now())
+       ORDER BY created_at DESC NULLS LAST`
+    );
+    return rows.map(_mapBeatRow);
+  } catch (e) {
+    // 42703 = undefined_column. If the migration that adds scheduled_for
+    // hasn't been applied to this database, fall back to the pre-migration
+    // query. ALL OTHER errors re-throw so genuine bugs aren't masked.
+    if (e && e.code === '42703') {
+      console.warn(
+        '[fetchBeatsFromDB] scheduled_for column missing — falling back to legacy query. ' +
+        'Run migrations/scheduled_uploads.sql in Supabase SQL editor to enable scheduled uploads.'
+      );
+      const { rows } = await pgQuery(
+        `SELECT * FROM beats WHERE active = true ORDER BY created_at DESC NULLS LAST`
+      );
+      return rows.map(_mapBeatRow);
+    }
+    throw e;
+  }
 }
 
 async function addBeatToDB(beatData) {
