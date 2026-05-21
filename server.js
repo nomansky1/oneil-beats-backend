@@ -3229,7 +3229,8 @@ app.post('/checkout', async (req, res) => {
 app.get('/success', (req, res) => {
   const orderId = req.query.orderId || '';
   const value = parseFloat(req.query.value) || 0;
-  const pixelId = process.env.META_PIXEL_ID || '';
+  // Defaults to the live dataset ID; override via META_PIXEL_ID env if it changes.
+  const pixelId = process.env.META_PIXEL_ID || '1845591916107254';
   const pixelOk = /^\d{10,20}$/.test(pixelId);
   const pixelSnippet = pixelOk ? `<script>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
