@@ -882,19 +882,39 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
         <div class="hero-stat-pill"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Lease <span class="num">$29.99</span></div>
       </div>
 
-      <!-- App Store launch row — added 2026-05-12 the moment Apple approved v1.8.18. -->
-      <div class="hero-app-row" style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:14px">
-        <div style="font-size:11px;font-weight:900;letter-spacing:3px;color:var(--accent)">🎉 NOW ON IPHONE</div>
-        <a href="https://apps.apple.com/app/id6763227699"
-           target="_blank" rel="noopener"
-           aria-label="Download O'Neil Beats on the App Store"
-           onclick="track('app_store_click',{surface:'hero_badge'})"
-           style="display:inline-block;line-height:0">
-          <img
-            src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?releaseDate=1717372800"
-            alt="Download on the App Store"
-            style="height:48px;width:auto;display:block;border-radius:8px"/>
-        </a>
+      <!-- App badges row — added 2026-05-12 the moment Apple approved v1.8.18.
+           2026-05-21 — added Android APK direct-download button. Play Store
+           production is still gated behind Google's 14-day-with-12-testers
+           policy, so we offer a sideload APK in parallel for users who don't
+           want to wait. /download/android-apk is a stable redirect to the
+           latest GCS-hosted APK. -->
+      <div class="hero-app-row" style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:14px">
+        <div style="font-size:11px;font-weight:900;letter-spacing:3px;color:var(--accent)">📲 NOW ON IPHONE + ANDROID</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center">
+          <a href="https://apps.apple.com/app/id6763227699"
+             target="_blank" rel="noopener"
+             aria-label="Download O'Neil Beats on the App Store"
+             onclick="track('app_store_click',{surface:'hero_badge'})"
+             style="display:inline-block;line-height:0">
+            <img
+              src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?releaseDate=1717372800"
+              alt="Download on the App Store"
+              style="height:48px;width:auto;display:block;border-radius:8px"/>
+          </a>
+          <a href="/download/android-apk"
+             aria-label="Download O'Neil Beats APK for Android"
+             onclick="track('apk_download_click',{surface:'hero_badge'})"
+             style="display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#3DDC84 0%,#0a7f47 100%);color:#fff;padding:0 18px;height:48px;border-radius:8px;text-decoration:none;font-weight:800;font-size:13px;letter-spacing:.5px;box-shadow:0 4px 12px rgba(61,220,132,0.25)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.341c-.5 0-.91-.41-.91-.91s.41-.91.91-.91.91.41.91.91-.41.91-.91.91zm-11.046 0c-.5 0-.91-.41-.91-.91s.41-.91.91-.91.91.41.91.91-.41.91-.91.91zm11.378-6.317l1.815-3.144a.378.378 0 0 0-.654-.378l-1.836 3.18C15.706 7.755 13.91 7.286 12 7.286c-1.91 0-3.706.469-5.18 1.396L4.984 5.502a.378.378 0 0 0-.654.378l1.815 3.144C3.094 10.515 1 13.314 1 16.5h22c0-3.186-2.094-5.985-5.145-7.476z"/></svg>
+            <div style="line-height:1.1">
+              <div style="font-size:10px;opacity:0.85;font-weight:600;letter-spacing:1px">GET IT ON</div>
+              <div style="font-size:16px;font-weight:900;letter-spacing:0">Android (APK)</div>
+            </div>
+          </a>
+        </div>
+        <div style="font-size:10px;color:var(--dim);max-width:340px;text-align:center;margin-top:2px">
+          Android users: tap the APK button, allow install from this source when prompted. <a href="/android-install" style="color:var(--accent)">How to install →</a>
+        </div>
       </div>
     </div>
   </div>
