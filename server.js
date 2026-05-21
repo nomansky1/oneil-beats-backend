@@ -3202,7 +3202,7 @@ app.post('/checkout', async (req, res) => {
       customer_email: customerEmail,
       client_reference_id: orderId,
       metadata: bundle ? { orderId, bundleId: bundle.id, bundleLabel: bundle.label } : { orderId },
-      success_url: `${appUrl}/success?orderId=${orderId}&session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${appUrl}/success?orderId=${orderId}&value=${totalAmount}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/cancel?orderId=${orderId}`,
       payment_intent_data: {
         metadata: bundle ? { orderId, bundleId: bundle.id } : { orderId },
@@ -3222,11 +3222,28 @@ app.post('/checkout', async (req, res) => {
   }
 });
 
-// GET /success — simple success landing page after Stripe redirects back
+// GET /success — simple success landing page after Stripe redirects back.
+// Fires the Meta Pixel Purchase event (for ROAS / conversion optimization)
+// when META_PIXEL_ID env is set. The value comes from the success_url query
+// param set at checkout. Dormant if the env var is unset.
 app.get('/success', (req, res) => {
   const orderId = req.query.orderId || '';
+  const value = parseFloat(req.query.value) || 0;
+  // Defaults to the live dataset ID; override via META_PIXEL_ID env if it changes.
+  const pixelId = process.env.META_PIXEL_ID || '1845591916107254';
+  const pixelOk = /^\d{10,20}$/.test(pixelId);
+  const pixelSnippet = pixelOk ? `<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(
+window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', ${JSON.stringify(pixelId)});
+fbq('track', 'PageView');
+fbq('track', 'Purchase', { value: ${value}, currency: 'USD', content_type: 'product'${orderId ? `, content_ids: [${JSON.stringify(orderId)}]` : ''} });
+</script>` : '';
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Payment Successful — O'Neil Beats</title></head>
+  res.send(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Payment Successful — O'Neil Beats</title>${pixelSnippet}</head>
 <body style="background:#06060a;color:#fff;font-family:-apple-system,Segoe UI,Roboto,sans-serif;padding:40px 20px;text-align:center;">
 <div style="max-width:520px;margin:40px auto;background:#0f0f14;border:1px solid #222;border-radius:20px;padding:36px 24px;">
 <div style="font-size:56px;margin-bottom:8px;">🎵</div>

@@ -16,6 +16,9 @@
      gtag('event', ...) mirroring inside the track() helper — every existing
      first-party event ('view_beat', 'play', etc.) reports to GA4 too. -->
 <meta name="ga-measurement-id" content="G-ZN3809WF88">
+<!-- Meta Pixel ID — powers retargeting (the highest-ROI ad play). Live as of
+     2026-05-21 (dataset 1845591916107254). Empty = dormant. Format: 15-16 digits. -->
+<meta name="meta-pixel-id" content="1845591916107254">
 <link rel="canonical" href="https://oneilbeats.store/">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon.png">
@@ -3330,6 +3333,31 @@ function track(action, data) {
   if (typeof gtag === 'function') {
     try { gtag('event', action, payload); } catch(e){}
   }
+  // Mirror to Meta Pixel if loaded. Map our internal action names to Meta's
+  // standard events so retargeting audiences (ViewContent / AddToCart /
+  // InitiateCheckout) build automatically off organic traffic. PageView fires
+  // once at boot; Purchase fires on the /success page (server-rendered).
+  if (typeof fbq === 'function') {
+    try {
+      var fbMap = {
+        view_beat:           'ViewContent',
+        license_add_to_cart: 'AddToCart',
+        checkout_started:    'InitiateCheckout',
+        free_beat_download:  'Lead',
+        free_beat_gate_submit: 'Lead',
+      };
+      var fbEvent = fbMap[action];
+      if (fbEvent) {
+        var fbParams = {};
+        if (data && data.beatId) fbParams.content_ids = [data.beatId];
+        if (data && data.beatTitle) fbParams.content_name = data.beatTitle;
+        if (data && data.price) { fbParams.value = Number(data.price); fbParams.currency = 'USD'; }
+        if (data && data.cart_value) { fbParams.value = Number(data.cart_value); fbParams.currency = 'USD'; }
+        fbParams.content_type = 'product';
+        fbq('track', fbEvent, fbParams);
+      }
+    } catch(e){}
+  }
 }
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -3735,6 +3763,26 @@ loadBundles();
       if (typeof track === 'function') track('campaign_landing', utm);
     }
   } catch (_) {}
+})();
+
+// ───────────── META PIXEL ─────────────
+// Boots only when <meta name="meta-pixel-id"> has a real numeric ID.
+// Empty = dormant (fbq never defined, track() skips the Pixel mirror).
+// Powers retargeting: every visitor is pixeled, and the standard events
+// wired into track() (ViewContent / AddToCart / InitiateCheckout) build
+// warm audiences off the free organic traffic. Purchase fires on /success.
+(function bootMetaPixel(){
+  var meta = document.querySelector('meta[name="meta-pixel-id"]');
+  var id = meta && meta.getAttribute('content');
+  if (!id || !/^\d{10,20}$/.test(id)) return; // not configured yet — quiet no-op
+  // Standard Meta Pixel bootstrap snippet
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(
+    window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', id);
+  fbq('track', 'PageView');
 })();
 </script>
 </body>
