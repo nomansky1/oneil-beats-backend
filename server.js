@@ -235,6 +235,22 @@ app.get('/sitemap.xml', async (req, res) => {
 // (without this, all the SEO landing pages 404 — they live as bare slugs without trailing .html).
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
+// ── /download/android-apk — stable redirect to the current APK ──────────────
+// Direct-sideload alternative to Play Store while we wait out Google's 14-day
+// closed-test policy. Reads ANDROID_APK_URL env var (Vercel-configurable) so
+// future APK builds can swap the download target without redeploying. Falls
+// back to a hardcoded GCS URL of the v1.8.20 build so the route works out of
+// the box on first deploy.
+// 2026-05-21 — added when Google's new-account 14d/12-tester gate blocked us
+// from a fast public Android launch.
+const _APK_FALLBACK = 'https://storage.googleapis.com/oneilbeats-media/auto-upload/1779345463239_downloads_oneil-beats-android-v1.8.20.apk';
+app.get('/download/android-apk', (req, res) => {
+  const url = process.env.ANDROID_APK_URL || _APK_FALLBACK;
+  // 302 (not 301) — keeps the redirect non-cacheable so APK swaps are
+  // instant once we update the env var.
+  res.redirect(302, url);
+});
+
 // ── /beat/:slug fallback — fires only when no static public/beat/{slug}.html
 // file matched (i.e., a beat uploaded after the last build). Builds the page
 // on the fly using the same template + renderBeatPage helper from the build
