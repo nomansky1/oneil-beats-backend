@@ -181,6 +181,69 @@ app.use((req, res, next) => {
   res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=(), payment=(self "https://js.stripe.com")');
   next();
 });
+// ── SEO: shared URL-list builder ───────────────────────────────────────────
+// Single source of truth for "every public URL on the site." Used by both the
+// /sitemap.xml route and the IndexNow ping so they never drift. Returns a flat
+// array of absolute URLs.
+async function buildAllSiteUrls() {
+  const { beatSlug, getAllLandingPages, BLOG_POSTS, SPANISH_LANDING_PAGES } = require('./scripts/build-beat-pages');
+  const beats = await fetchBeatsFromDB().catch(() => []);
+  const SITE = 'https://oneilbeats.store';
+  const landingPages = getAllLandingPages(beats || []);
+  const urls = [
+    `${SITE}/`,
+    `${SITE}/blog`,
+    ...(BLOG_POSTS || []).map(p => `${SITE}/blog/${p.slug}`),
+    ...(SPANISH_LANDING_PAGES || []).map(p => `${SITE}/${p.slug}`),
+    ...landingPages.map(p => `${SITE}/${p.slug}`),
+    ...(beats || []).filter(b => b && b.id && b.title).map(b => `${SITE}/beat/${beatSlug(b)}`),
+  ];
+  // De-dupe + drop anchor-only URLs (IndexNow rejects fragments)
+  return [...new Set(urls)].filter(u => !u.includes('#'));
+}
+
+// ── IndexNow — instant crawl notification for Bing, Yandex, Seznam, Naver ───
+// IndexNow lets us push "these URLs changed, crawl them now" instead of waiting
+// for organic discovery. Google does NOT participate (use Search Console for
+// Google), but Bing + Yandex cover meaningful Spanish-language reggaeton search
+// traffic in LatAm + Spain. Key is served at /{key}.txt to prove ownership.
+const INDEXNOW_KEY = process.env.INDEXNOW_KEY || 'd5d53a46de9e073808d4c70539f043fc';
+
+// Serve the ownership-proof key file at /{key}.txt
+app.get(`/${INDEXNOW_KEY}.txt`, (req, res) => {
+  res.type('text/plain').send(INDEXNOW_KEY);
+});
+
+// Push all site URLs to IndexNow. Returns { submitted, status }.
+async function pingIndexNow() {
+  const urls = await buildAllSiteUrls();
+  const body = {
+    host: 'oneilbeats.store',
+    key: INDEXNOW_KEY,
+    keyLocation: `https://oneilbeats.store/${INDEXNOW_KEY}.txt`,
+    urlList: urls,
+  };
+  const r = await fetch('https://api.indexnow.org/indexnow', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    body: JSON.stringify(body),
+  });
+  return { submitted: urls.length, status: r.status };
+}
+
+// Manual trigger (admin-gated). Call after adding new beats/pages for an
+// instant re-crawl request. Vercel deploys can also hit this.
+app.post('/admin/indexnow-ping', requireAdminKey, async (req, res) => {
+  try {
+    const result = await pingIndexNow();
+    console.log(`[indexnow] submitted ${result.submitted} URLs → status ${result.status}`);
+    res.json({ success: true, ...result });
+  } catch (e) {
+    console.error('[indexnow] ping error:', e.message);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 // ── Dynamic /sitemap.xml — must be registered BEFORE express.static so it
 // overrides any stale public/sitemap.xml file. Lists every active beat as a
 // per-URL <url> entry, plus the homepage and primary section anchors.
