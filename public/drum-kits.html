@@ -67,6 +67,21 @@ header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-fi
 .buy-btn{font-family:inherit;font-size:13px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--accent),var(--gold));border:none;border-radius:var(--radius-sm);padding:10px 16px;cursor:pointer;transition:opacity .15s}
 .buy-btn:hover{opacity:.88}
 .empty,.loading{grid-column:1/-1;text-align:center;color:var(--dim);padding:80px 20px;font-size:15px}
+/* cart */
+.cart-btn{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:var(--text);position:relative;transition:border-color .15s}
+.cart-btn:hover{border-color:var(--accent);color:var(--accent)}
+.cart-count{background:var(--accent);color:#fff;font-size:11px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 5px}
+.cart-count.show{display:inline-flex}
+.cart-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.cart-row img{width:42px;height:42px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--surface3)}
+.cart-row .cr-info{flex:1;min-width:0}
+.cart-row .cr-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cart-row .cr-sub{font-size:11px;color:var(--dim)}
+.cart-row .cr-price{font-weight:800;font-size:14px}
+.cart-row .cr-x{background:none;border:none;color:var(--dim);font-size:18px;cursor:pointer;padding:0 4px;line-height:1}
+.cart-row .cr-x:hover{color:var(--accent)}
+.cart-empty{text-align:center;color:var(--dim);padding:30px 10px;font-size:14px}
+.cart-total{display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin:14px 0}
 
 /* Buy modal */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
@@ -90,13 +105,19 @@ footer a{color:var(--accent)}
   <a href="/" aria-label="O'Neil Beats home">
     <div><span class="logo-3d"><span class="l-main">O'NEIL</span></span><div class="logo-sub">BEATS STORE</div></div>
   </a>
-  <nav class="header-nav">
-    <a href="/" class="home-link">Beats</a>
-    <a href="/drum-kits" class="active">Drum Kits</a>
-    <a href="/#about">About</a>
-    <a href="/#faq">FAQ</a>
-    <a href="/#orders">My Orders</a>
-  </nav>
+  <div style="display:flex;align-items:center;gap:18px">
+    <nav class="header-nav">
+      <a href="/" class="home-link">Beats</a>
+      <a href="/drum-kits" class="active">Drum Kits</a>
+      <a href="/#about">About</a>
+      <a href="/#faq">FAQ</a>
+      <a href="/#orders">My Orders</a>
+    </nav>
+    <button class="cart-btn" onclick="openCart()" aria-label="Open cart">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.97 1.61h9.72a2 2 0 001.97-1.61L23 6H6"/></svg>
+      <span>Cart</span><span id="cart-count" class="cart-count">0</span>
+    </button>
+  </div>
 </header>
 
 <section class="hero">
@@ -113,17 +134,22 @@ footer a{color:var(--accent)}
 <div class="filterbar" id="filterbar"></div>
 <div class="grid" id="grid"><div class="loading">Loading kits…</div></div>
 
-<div class="modal" id="buy-modal">
+<div class="modal" id="cart-modal">
   <div class="modal-card">
-    <h3 id="buy-title">Get this drum kit</h3>
-    <p>Enter your email — your download link is sent there the moment payment clears.</p>
-    <input type="email" id="buy-email" placeholder="you@email.com" autocomplete="email">
-    <div class="row">
-      <button class="btn-cancel" onclick="closeBuy()">Cancel</button>
-      <button class="btn-go" id="buy-go" onclick="goCheckout()">Continue to payment</button>
+    <h3>Your Cart</h3>
+    <div id="cart-items"></div>
+    <div id="cart-foot" style="display:none">
+      <div class="cart-total"><span>Total</span><span id="cart-total">$0.00</span></div>
+      <input type="email" id="cart-email" placeholder="you@email.com — for delivery" autocomplete="email">
+      <div class="row">
+        <button class="btn-cancel" onclick="closeCart()">Keep shopping</button>
+        <button class="btn-go" id="cart-go" onclick="checkout()">Secure Checkout</button>
+      </div>
+      <p style="color:var(--dim);font-size:11px;text-align:center;margin-top:10px">Stripe secured · instant email delivery · beats &amp; kits ship in one order</p>
     </div>
   </div>
 </div>
+<div id="toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:13px;font-weight:600;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.4)"></div>
 
 <footer>
   © <span id="yr"></span> O'Neil Beats · <a href="/">Browse beats</a> · <a href="/#faq">Licensing</a>
@@ -131,7 +157,7 @@ footer a{color:var(--accent)}
 
 <script>
 document.getElementById('yr').textContent = new Date().getFullYear();
-let KITS = [], activeGenre = 'All', selectedKit = null;
+let KITS = [], activeGenre = 'All';
 
 function fmtPrice(p){ return '$' + Number(p).toFixed(2); }
 
@@ -173,7 +199,7 @@ function render(){
         <div class="card-meta">${k.sample_count||0} one-shots${k.has_midi?' · MIDI groove':''}</div>
         <div class="card-foot">
           <span class="price">${fmtPrice(k.price)}</span>
-          <button class="buy-btn" onclick='openBuy(${JSON.stringify(k.id)}, ${JSON.stringify(k.title)})'>Get Kit</button>
+          <button class="buy-btn" onclick="addToCart('${k.id}')">Add to Cart</button>
         </div>
       </div>
     </div>`;
@@ -182,34 +208,58 @@ function render(){
 
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-function openBuy(id, title){
-  selectedKit = id;
-  document.getElementById('buy-title').textContent = title;
-  document.getElementById('buy-modal').classList.add('open');
-  setTimeout(()=>document.getElementById('buy-email').focus(), 50);
-}
-function closeBuy(){ document.getElementById('buy-modal').classList.remove('open'); selectedKit = null; }
+// ── Shared cart (localStorage 'ob_cart' — same cart as the beats store, so
+// kits and beats check out together) ──
+let cart = [];
+try { cart = JSON.parse(localStorage.getItem('ob_cart') || '[]') || []; } catch(e) { cart = []; }
+function saveCart(){ try { localStorage.setItem('ob_cart', JSON.stringify(cart)); } catch(e){} }
+function updateCount(){ const el=document.getElementById('cart-count'); el.textContent=cart.length; el.classList.toggle('show', cart.length>0); }
 
-async function goCheckout(){
-  const email = document.getElementById('buy-email').value.trim();
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ document.getElementById('buy-email').focus(); return; }
-  const btn = document.getElementById('buy-go');
-  btn.disabled = true; btn.textContent = 'Redirecting…';
+let toastT;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.opacity='1'; clearTimeout(toastT); toastT=setTimeout(()=>{t.style.opacity='0';},2200); }
+
+function addToCart(id){
+  const k = KITS.find(x=>x.id===id); if(!k) return;
+  if(cart.some(c=>c.kitId===id)){ toast('Already in your cart'); openCart(); return; }
+  cart.push({ kind:'kit', kitId:k.id, kitTitle:k.title, price:Number(k.price), cover:k.cover_url||'' });
+  saveCart(); updateCount(); toast(String(k.title).replace(/ — Drum Kit$/,'') + ' added to cart');
+}
+function openCart(){ renderCart(); document.getElementById('cart-modal').classList.add('open'); }
+function closeCart(){ document.getElementById('cart-modal').classList.remove('open'); }
+function removeItem(i){ cart.splice(i,1); saveCart(); updateCount(); renderCart(); }
+
+function renderCart(){
+  const wrap=document.getElementById('cart-items'), foot=document.getElementById('cart-foot');
+  if(!cart.length){ wrap.innerHTML='<div class="cart-empty">Your cart is empty.<br>Add a kit to get started 🥁</div>'; foot.style.display='none'; return; }
+  wrap.innerHTML = cart.map((c,i)=>{
+    const isKit = c.kind==='kit';
+    const title = isKit ? c.kitTitle : c.beatTitle;
+    const sub = isKit ? '🥁 Drum Kit' : (c.licenseType ? c.licenseType.charAt(0).toUpperCase()+c.licenseType.slice(1)+' License' : 'License');
+    const cov = c.cover ? `<img src="${c.cover}" alt="">` : '<img alt="">';
+    return `<div class="cart-row">${cov}<div class="cr-info"><div class="cr-title">${esc(title||'')}</div><div class="cr-sub">${esc(sub)}</div></div><div class="cr-price">$${Number(c.price).toFixed(2)}</div><button class="cr-x" onclick="removeItem(${i})" aria-label="Remove">×</button></div>`;
+  }).join('');
+  document.getElementById('cart-total').textContent = '$' + cart.reduce((s,c)=>s+Number(c.price||0),0).toFixed(2);
+  foot.style.display='block';
+}
+
+async function checkout(){
+  const email=(document.getElementById('cart-email').value||'').trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ document.getElementById('cart-email').focus(); toast('Enter a valid email'); return; }
+  if(!cart.length) return;
+  const btn=document.getElementById('cart-go'); btn.disabled=true; btn.textContent='Redirecting…';
   try{
-    const r = await fetch('/checkout-kit', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ kitId: selectedKit, email })
-    });
-    const d = await r.json();
-    if(d.url){ window.location = d.url; }
-    else throw new Error(d.error || 'Checkout failed');
-  }catch(e){
-    btn.disabled = false; btn.textContent = 'Continue to payment';
-    alert('Sorry — ' + e.message);
-  }
+    const items = cart.map(c => c.kind==='kit'
+      ? ({ kitId:c.kitId, kind:'kit', price:c.price })
+      : ({ beatId:c.beatId, beatTitle:c.beatTitle, licenseType:c.licenseType, price:c.price }));
+    const r=await fetch('/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ customerEmail:email, cartItems:items })});
+    const d=await r.json();
+    if(!r.ok||!d.url) throw new Error(d.error||'Checkout failed');
+    cart=[]; saveCart(); window.location=d.url;
+  }catch(e){ btn.disabled=false; btn.textContent='Secure Checkout'; toast('Sorry — '+e.message); }
 }
-document.getElementById('buy-modal').addEventListener('click', e => { if(e.target.id==='buy-modal') closeBuy(); });
+document.getElementById('cart-modal').addEventListener('click', e=>{ if(e.target.id==='cart-modal') closeCart(); });
 
+updateCount();
 load();
 </script>
 </body>

@@ -3104,6 +3104,22 @@ app.post('/checkout', async (req, res) => {
       return res.status(400).json({ error: 'customerEmail and cartItems required' });
     }
 
+    // Split mixed cart: drum kits (added from /drum-kits) vs beats. Kit support
+    // is additive — the beat validation/order/fulfillment path below is unchanged.
+    const kitCartItems = cartItems.filter(i => i.kitId || i.kind === 'kit');
+    const beatCartItems = cartItems.filter(i => !(i.kitId || i.kind === 'kit'));
+
+    // Validate kit prices server-side from drum_kits (never trust client prices).
+    const validatedKits = [];
+    for (const item of kitCartItems) {
+      const { rows } = await pgQuery('SELECT id,title,price,cover_url,active FROM drum_kits WHERE id=$1', [item.kitId]);
+      const kit = rows[0];
+      if (!kit || !kit.active) return res.status(400).json({ error: 'A drum kit in your cart is no longer available' });
+      const kp = parseFloat(kit.price);
+      if (!kp || kp <= 0) return res.status(400).json({ error: `Invalid price for kit ${kit.title}` });
+      validatedKits.push({ id: kit.id, title: kit.title, price: kp, coverUrl: kit.cover_url });
+    }
+
     // Validate prices server-side by re-fetching from the DB (never trust client prices).
     const allBeats = await fetchBeatsFromDB();
     const beatById = new Map(allBeats.map(b => [b.id, b]));
@@ -3123,10 +3139,10 @@ app.post('/checkout', async (req, res) => {
           .from('bundles').select('*').eq('id', bundleId).eq('active', true).maybeSingle();
         if (bErr) throw bErr;
         if (!row) return res.status(400).json({ error: 'Bundle not found or inactive' });
-        if (cartItems.length !== row.qty) {
-          return res.status(400).json({ error: `Bundle requires exactly ${row.qty} beats (got ${cartItems.length})` });
+        if (beatCartItems.length !== row.qty) {
+          return res.status(400).json({ error: `Bundle requires exactly ${row.qty} beats (got ${beatCartItems.length})` });
         }
-        for (const it of cartItems) {
+        for (const it of beatCartItems) {
           if (it.licenseType !== row.license_type) {
             return res.status(400).json({ error: `Bundle requires all beats at ${row.license_type} tier` });
           }
@@ -3139,7 +3155,7 @@ app.post('/checkout', async (req, res) => {
     }
 
     const validatedItems = [];
-    for (const item of cartItems) {
+    for (const item of beatCartItems) {
       const beat = beatById.get(item.beatId);
       if (!beat) {
         return res.status(400).json({ error: `Beat ${item.beatId} not found or inactive` });
@@ -3165,17 +3181,22 @@ app.post('/checkout', async (req, res) => {
     }
 
     const itemsTotal = validatedItems.reduce((sum, it) => sum + it.price, 0);
-    const totalAmount = bundle ? Number(bundle.price) : itemsTotal;
+    const kitsTotal = validatedKits.reduce((sum, k) => sum + k.price, 0);
+    const beatsTotal = bundle ? Number(bundle.price) : itemsTotal;
+    const totalAmount = beatsTotal + kitsTotal;
     const orderId = uuidv4();
 
-    // Create pending order in Supabase. cartItems retains per-beat data so
-    // fulfillOrder can mark each download URL on the corresponding row.
-    await createOrder({
-      orderId,
-      customerEmail,
-      cartItems: validatedItems,
-      totalAmount,
-    });
+    // Create the beat order only when the cart has beats. A kits-only cart has
+    // nothing to put in order_items — kits are delivered by the webhook from
+    // the session's kitIds metadata.
+    if (validatedItems.length) {
+      await createOrder({
+        orderId,
+        customerEmail,
+        cartItems: validatedItems,
+        totalAmount: beatsTotal,
+      });
+    }
 
     // Build Stripe line items — one custom item for bundles, otherwise one
     // line per cart entry.
@@ -3216,6 +3237,22 @@ app.post('/checkout', async (req, res) => {
       });
     }
 
+    // Append drum-kit line items (cart kits ride alongside beats).
+    for (const k of validatedKits) {
+      line_items.push({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: k.title,
+            description: "O'Neil Beats — Drum Kit",
+            images: k.coverUrl ? [k.coverUrl] : undefined,
+          },
+          unit_amount: Math.round(k.price * 100),
+        },
+        quantity: 1,
+      });
+    }
+
     const appUrl = process.env.APP_URL || 'https://oneil-beats-backend.vercel.app';
 
     const session = await stripe.checkout.sessions.create({
@@ -3223,8 +3260,12 @@ app.post('/checkout', async (req, res) => {
       payment_method_types: ['card'],
       line_items,
       customer_email: customerEmail,
-      client_reference_id: orderId,
-      metadata: bundle ? { orderId, bundleId: bundle.id, bundleLabel: bundle.label } : { orderId },
+      client_reference_id: validatedItems.length ? orderId : undefined,
+      metadata: {
+        ...(validatedItems.length ? { orderId } : {}),
+        ...(bundle ? { bundleId: bundle.id, bundleLabel: bundle.label } : {}),
+        ...(validatedKits.length ? { kitIds: validatedKits.map(k => k.id).join(',') } : {}),
+      },
       success_url: `${appUrl}/success?orderId=${orderId}&value=${totalAmount}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/cancel?orderId=${orderId}`,
       payment_intent_data: {
@@ -4561,6 +4602,18 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         console.error('kit fulfillment error:', e);
       }
       return res.json({ received: true });
+    }
+
+    // Cart kits — a /checkout cart that included drum kits (mixed with beats or
+    // kits-only). Deliver each kit; beats (if any) still fulfill via orderId below.
+    if (session.metadata?.kitIds) {
+      const kitEmail = session.customer_details?.email || session.customer_email;
+      for (const kid of session.metadata.kitIds.split(',').filter(Boolean)) {
+        try {
+          const { rows } = await pgQuery('SELECT * FROM drum_kits WHERE id=$1', [kid]);
+          if (rows[0] && kitEmail) await sendKitEmail(kitEmail, rows[0]);
+        } catch (e) { console.error('cart kit fulfillment error:', kid, e.message); }
+      }
     }
 
     const orderId = session.metadata?.orderId || session.client_reference_id;
