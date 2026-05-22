@@ -16,6 +16,7 @@
     "@breezystack/lamejs": "^1.2.7",
     "@google-cloud/storage": "^7.19.0",
     "@supabase/supabase-js": "^2.45.0",
+    "adm-zip": "^0.5.17",
     "axios": "^1.15.1",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
