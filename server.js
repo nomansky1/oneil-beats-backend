@@ -1734,6 +1734,29 @@ async function sendFulfillmentEmail(order, orderId, items) {
   });
 }
 
+// Deliver a purchased drum kit — a single ZIP download link. Kit purchases are
+// isolated from beat orders (no order_items, no license PDFs); the license
+// terms ship inside the zip's README.
+async function sendKitEmail(email, kit) {
+  const html = buildColoredEmail({
+    type: 'purchase',
+    title: '🥁 Your O\'Neil Drum Kit is Ready!',
+    bodyHtml: `<div style="background:#0f0f14;border:1px solid #222;border-radius:12px;padding:20px;">
+        <h3 style="color:#fff;margin:0 0 10px;font-size:17px;">${kit.title}</h3>
+        <p style="color:#aaa;margin:0 0 16px;font-size:13px;">${kit.sample_count} one-shots${kit.has_midi ? ' + MIDI pattern' : ''}${kit.genre ? ' · ' + kit.genre : ''}${kit.bpm ? ' · ' + kit.bpm + ' BPM' : ''}</p>
+        <a href="${kit.kit_url}" style="display:inline-block;padding:12px 22px;background:#e63946;color:#fff;text-decoration:none;border-radius:6px;font-weight:700;font-size:14px;">⬇ Download Kit (.zip)</a>
+      </div>
+      <p style="color:#666;font-size:12px;margin-top:20px;">Royalty-free for your own productions. Full license terms are in the README inside the zip. Thank you!</p>`,
+  });
+  await mailer.sendMail({
+    from: `"O'Neil Beats" <${process.env.EMAIL_FROM}>`,
+    to: email,
+    subject: `🥁 Your O'Neil Drum Kit: ${kit.title}`,
+    text: `Thanks for your purchase!\n\n${kit.title}\n${kit.sample_count} one-shots${kit.has_midi ? ' + MIDI' : ''}\n\nDownload: ${kit.kit_url}\n\nRoyalty-free for your productions. License terms in the README. Enjoy!`,
+    html,
+  });
+}
+
 // GET /admin/orders — list recent orders (for Orders inbox)
 app.get('/admin/orders', requireAdminKey, async (req, res) => {
   try {
@@ -3898,6 +3921,138 @@ app.get('/bundles', async (req, res) => {
   }
 });
 
+// ═══════════════ DRUM KITS ═══════════════
+// Sellable sample packs extracted from beats. Files (ZIP + cover) live on GCS;
+// metadata in the drum_kits table. The desktop EXE builds a kit locally (Demucs/
+// stems → slice → MIDI → zip) then POSTs it to /admin/kits/publish so storage +
+// DB stay on the working GCS + direct-Postgres path (Supabase REST is blocked).
+
+// GET /kits — public; active kits for the storefront /kits page.
+app.get('/kits', async (req, res) => {
+  try {
+    const { rows } = await pgQuery(
+      `SELECT id, beat_id, title, genre, bpm, cover_url, kit_url, price, sample_count, has_midi, created_at
+         FROM drum_kits WHERE active = true ORDER BY created_at DESC`
+    );
+    res.set('Cache-Control', 'public, max-age=120, s-maxage=300');
+    res.json({ success: true, kits: rows });
+  } catch (err) {
+    // Table may not exist yet on first deploy — fail soft so the page hides it.
+    res.json({ success: true, kits: [], error: err.message });
+  }
+});
+
+// GET /admin/kits — admin; ALL kits (active + inactive).
+app.get('/admin/kits', requireAdminKey, async (req, res) => {
+  try {
+    const { rows } = await pgQuery('SELECT * FROM drum_kits ORDER BY created_at DESC');
+    res.json({ success: true, kits: rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /admin/kits/publish — admin; multipart { kit: <zip>, cover?: <png> } plus
+// metadata fields. Called by the desktop EXE after it builds the kit locally.
+app.post('/admin/kits/publish', requireAdminKey,
+  upload.fields([{ name: 'kit', maxCount: 1 }, { name: 'cover', maxCount: 1 }]),
+  async (req, res) => {
+    try {
+      const kitFile = req.files?.kit?.[0];
+      if (!kitFile) return res.status(400).json({ error: 'kit (zip) file required' });
+      const b = req.body || {};
+      // Text fields arrive URL-encoded (the EXE encodes them so multipart/busboy
+      // doesn't mangle accents/em-dashes into latin1 mojibake).
+      const dec = (v) => { try { return decodeURIComponent(v || ''); } catch (_) { return v || ''; } };
+      const title = dec(b.title);
+      const genre = dec(b.genre);
+      if (!title) return res.status(400).json({ error: 'title required' });
+
+      const seed = Date.now();
+      const safe = String(title).replace(/[^\w\-]+/g, '_').slice(0, 60) || 'DrumKit';
+      const kitUrl = await uploadFileToStorage(kitFile.buffer, `kits/${safe}_${seed}.zip`, 'beats', 'application/zip');
+
+      let coverUrl = b.cover_url || null;
+      const coverFile = req.files?.cover?.[0];
+      if (coverFile) coverUrl = await uploadCoverToStorage(coverFile.buffer, `kit_cover_${seed}.png`, 'image/png');
+
+      const { rows } = await pgQuery(
+        `INSERT INTO drum_kits (beat_id, title, genre, bpm, cover_url, kit_url, price, sample_count, has_midi, active)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+        [b.beat_id || null, title, genre || null, b.bpm ? parseInt(b.bpm, 10) : null,
+         coverUrl, kitUrl, b.price ? parseFloat(b.price) : 9.99,
+         b.sample_count ? parseInt(b.sample_count, 10) : 0,
+         String(b.has_midi) === 'false' ? false : true,
+         String(b.active) === 'true']
+      );
+      res.json({ success: true, kit: rows[0] });
+    } catch (err) {
+      console.error('kit publish error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+// PATCH /admin/kits/:id — admin; toggle active / change price / rename.
+app.patch('/admin/kits/:id', requireAdminKey, async (req, res) => {
+  try {
+    const sets = [], vals = []; let i = 1;
+    if (req.body.active != null) { sets.push(`active=$${i++}`); vals.push(!!req.body.active); }
+    if (req.body.price != null && req.body.price !== '') { sets.push(`price=$${i++}`); vals.push(parseFloat(req.body.price)); }
+    if (req.body.title) { sets.push(`title=$${i++}`); vals.push(String(req.body.title)); }
+    if (!sets.length) return res.status(400).json({ error: 'nothing to update' });
+    sets.push('updated_at=now()');
+    vals.push(req.params.id);
+    const { rows } = await pgQuery(`UPDATE drum_kits SET ${sets.join(', ')} WHERE id=$${i} RETURNING *`, vals);
+    res.json({ success: true, kit: rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /admin/kits/:id — admin.
+app.delete('/admin/kits/:id', requireAdminKey, async (req, res) => {
+  try {
+    await pgQuery('DELETE FROM drum_kits WHERE id=$1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /checkout-kit — public; single-kit Stripe Checkout. Isolated from the
+// beat /checkout flow: price is validated server-side from drum_kits and the
+// kit is delivered by the webhook's metadata.type==='kit' branch.
+app.post('/checkout-kit', async (req, res) => {
+  try {
+    const { kitId, email } = req.body || {};
+    if (!kitId || !email) return res.status(400).json({ error: 'kitId and email required' });
+    const { rows } = await pgQuery('SELECT * FROM drum_kits WHERE id=$1 AND active=true', [kitId]);
+    const kit = rows[0];
+    if (!kit) return res.status(404).json({ error: 'Kit not available' });
+    const price = Number(kit.price);
+    if (!price || isNaN(price) || price <= 0) return res.status(400).json({ error: 'Invalid kit price' });
+
+    const origin = req.headers.origin || process.env.APP_URL || 'https://oneilbeats.store';
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      customer_email: email,
+      line_items: [{
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: kit.title,
+            description: `${kit.sample_count} one-shots${kit.has_midi ? ' + MIDI' : ''}${kit.genre ? ' — ' + kit.genre : ''} drum kit`,
+            images: kit.cover_url ? [kit.cover_url] : undefined,
+          },
+          unit_amount: Math.round(price * 100),
+        },
+        quantity: 1,
+      }],
+      metadata: { type: 'kit', kitId: kit.id, kitTitle: kit.title },
+      success_url: `${origin}/drum-kits?purchased=1`,
+      cancel_url: `${origin}/drum-kits`,
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('checkout-kit error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /admin/bundles — admin; returns ALL bundles (active + inactive)
 app.get('/admin/bundles', requireAdminKey, async (req, res) => {
   try {
@@ -4397,6 +4552,21 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
+
+    // Drum-kit purchase — isolated from beat orders. Deliver the ZIP link.
+    if (session.metadata?.type === 'kit') {
+      try {
+        const { rows } = await pgQuery('SELECT * FROM drum_kits WHERE id=$1', [session.metadata.kitId]);
+        const kit = rows[0];
+        const email = session.customer_details?.email || session.customer_email;
+        if (kit && email) await sendKitEmail(email, kit);
+        else console.error('kit fulfillment: missing kit or email', session.metadata.kitId);
+      } catch (e) {
+        console.error('kit fulfillment error:', e);
+      }
+      return res.json({ received: true });
+    }
+
     const orderId = session.metadata?.orderId || session.client_reference_id;
 
     if (orderId) {
