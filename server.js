@@ -4122,12 +4122,11 @@ app.delete('/admin/bundles/:id', requireAdminKey, async (req, res) => {
 });
 
 // GET /featured-free — public; returns the currently featured free beat (or null)
+// Direct Postgres (pgQuery) — Supabase PostgREST is quota-blocked.
 app.get('/featured-free', async (req, res) => {
   try {
-    const supabase = getSupabaseClient();
-    const { data, error } = await supabase.from('beats').select('*').eq('is_free_weekly', true).limit(1);
-    if (error) return res.json({ success: true, beat: null });
-    const beat = (data && data[0]) || null;
+    const { rows } = await pgQuery('SELECT * FROM beats WHERE is_free_weekly = true LIMIT 1');
+    const beat = rows[0] || null;
     res.set('Cache-Control', 'public, max-age=120');
     res.json({ success: true, beat });
   } catch (err) {
@@ -4139,11 +4138,10 @@ app.get('/featured-free', async (req, res) => {
 app.post('/admin/featured-free', requireAdminKey, async (req, res) => {
   try {
     const { beatId } = req.body || {};
-    const supabase = getSupabaseClient();
-    await supabase.from('beats').update({ is_free_weekly: false }).neq('id', '00000000-0000-0000-0000-000000000000');
+    // Clear the current featured beat, then set the new one (if any).
+    await pgQuery('UPDATE beats SET is_free_weekly = false WHERE is_free_weekly = true');
     if (beatId) {
-      const { error } = await supabase.from('beats').update({ is_free_weekly: true }).eq('id', beatId);
-      if (error) return res.status(500).json({ error: error.message });
+      await pgQuery('UPDATE beats SET is_free_weekly = true WHERE id = $1', [beatId]);
     }
     res.json({ success: true, beatId: beatId || null });
   } catch (err) {
@@ -4156,9 +4154,9 @@ app.post('/admin/featured-free', requireAdminKey, async (req, res) => {
 // Free subscribers get the producer-tagged version so the clean audio stays paid-only.
 app.post('/admin/send-free-beat', requireAdminKey, async (req, res) => {
   try {
-    const supabase = getSupabaseClient();
+    // Direct Postgres (pgQuery) — Supabase PostgREST is quota-blocked.
     // 1. Find the currently featured free beat
-    const { data: featured } = await supabase.from('beats').select('*').eq('is_free_weekly', true).limit(1);
+    const { rows: featured } = await pgQuery('SELECT * FROM beats WHERE is_free_weekly = true LIMIT 1');
     const beat = featured && featured[0];
     if (!beat) return res.status(400).json({ error: 'No beat is currently set as Free Beat of the Week. Set one first.' });
     // Tagged MP3 only — never the untagged original.
@@ -4166,8 +4164,7 @@ app.post('/admin/send-free-beat', requireAdminKey, async (req, res) => {
     if (!taggedUrl) return res.status(400).json({ error: 'Featured beat has no audio_url (tagged preview).' });
 
     // 2. Get all active subscribers
-    const { data: subs } = await supabase.from('email_subscribers')
-      .select('email, token').is('unsubscribed_at', null);
+    const { rows: subs } = await pgQuery('SELECT email, token FROM email_subscribers WHERE unsubscribed_at IS NULL');
     const recipients = (subs || []).filter(s => s.email);
     if (recipients.length === 0) return res.status(400).json({ error: 'No active subscribers.' });
 
@@ -4220,13 +4217,12 @@ app.post('/admin/send-free-beat', requireAdminKey, async (req, res) => {
 // GET /admin/subscribers — admin; subscriber stats
 app.get('/admin/subscribers', requireAdminKey, async (req, res) => {
   try {
-    const supabase = getSupabaseClient();
-    const { data, error } = await supabase.from('email_subscribers').select('email, consent, source, created_at, unsubscribed_at').order('created_at', { ascending: false }).limit(500);
-    if (error) return res.json({ success: true, subscribers: [], error: error.message });
-    const active = (data || []).filter(s => !s.unsubscribed_at);
-    res.json({ success: true, total: data?.length || 0, active: active.length, subscribers: data || [] });
+    // Direct Postgres (pgQuery) — Supabase PostgREST is quota-blocked.
+    const { rows } = await pgQuery('SELECT email, consent, source, created_at, unsubscribed_at FROM email_subscribers ORDER BY created_at DESC LIMIT 500');
+    const active = rows.filter(s => !s.unsubscribed_at);
+    res.json({ success: true, total: rows.length, active: active.length, subscribers: rows });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.json({ success: true, subscribers: [], error: err.message });
   }
 });
 
