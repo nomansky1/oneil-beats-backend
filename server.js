@@ -190,13 +190,18 @@ async function buildAllSiteUrls() {
   const beats = await fetchBeatsFromDB().catch(() => []);
   const SITE = 'https://oneilbeats.store';
   const landingPages = getAllLandingPages(beats || []);
+  // Drum-kit detail pages (best-effort — table may be empty/missing).
+  let kits = [];
+  try { kits = (await pgQuery("SELECT id,title FROM drum_kits WHERE active = true")).rows || []; } catch (_) {}
   const urls = [
     `${SITE}/`,
     `${SITE}/blog`,
+    `${SITE}/drum-kits`,
     ...(BLOG_POSTS || []).map(p => `${SITE}/blog/${p.slug}`),
     ...(SPANISH_LANDING_PAGES || []).map(p => `${SITE}/${p.slug}`),
     ...landingPages.map(p => `${SITE}/${p.slug}`),
     ...(beats || []).filter(b => b && b.id && b.title).map(b => `${SITE}/beat/${beatSlug(b)}`),
+    ...kits.filter(k => k && k.id && k.title).map(k => `${SITE}/kit/${kitSlug(k)}`),
   ];
   // De-dupe + drop anchor-only URLs (IndexNow rejects fragments)
   return [...new Set(urls)].filter(u => !u.includes('#'));
@@ -3976,12 +3981,146 @@ app.get('/kits', async (req, res) => {
          FROM drum_kits WHERE active = true ORDER BY created_at DESC`
     );
     res.set('Cache-Control', 'public, max-age=120, s-maxage=300');
-    res.json({ success: true, kits: rows });
+    res.json({ success: true, kits: rows.map(k => ({ ...k, slug: kitSlug(k) })) });
   } catch (err) {
     // Table may not exist yet on first deploy — fail soft so the page hides it.
     res.json({ success: true, kits: [], error: err.message });
   }
 });
+
+// Slug for a kit's SEO page: same scheme as beats (kebab title + short id).
+function kitSlug(kit) {
+  const { slugify, shortId } = require('./scripts/build-beat-pages');
+  return `${slugify(kit.title)}-${shortId(kit.id)}`;
+}
+
+// Build a unique, keyword-rich description from the kit's real attributes.
+function kitDescription(kit) {
+  const beatName = String(kit.title || '').replace(/\s*[—-]\s*Drum Kit\s*$/i, '').trim() || 'this beat';
+  const genre = kit.genre || 'hip-hop';
+  const n = kit.sample_count || 'dozens of';
+  const bpm = kit.bpm ? ` at ${kit.bpm} BPM` : '';
+  const midi = kit.has_midi ? ` It also ships with a ${genre} MIDI groove so you can rebuild the pattern and flip it your way in seconds.` : '';
+  return `The ${beatName} Drum Kit serves up ${n} studio-isolated one-shots — punchy kicks, crisp snares, sharp hi-hats and ${genre} percussion — pulled straight from O'Neil's ${genre} beat "${beatName}"${bpm}. Every sound is a clean, royalty-free WAV ready to drop into FL Studio, Ableton, Logic Pro, Maschine or any MPC/sampler.${midi} Perfect for producers making ${genre}, trap and Latin records who want real, useable drums with character — not recycled stock samples. Instant download, royalty-free for your own productions.`;
+}
+
+// GET /kit/:slug — SEO-rich detail page per drum kit (rendered from the DB so
+// newly generated kits get a page automatically; no rebuild needed).
+app.get('/kit/:slug', async (req, res, next) => {
+  try {
+    const slug = String(req.params.slug || '').toLowerCase();
+    const { rows } = await pgQuery('SELECT * FROM drum_kits WHERE active = true ORDER BY created_at DESC');
+    const kit = (rows || []).find(k => kitSlug(k) === slug);
+    if (!kit) return next(); // fall through to 404
+    res.set('Cache-Control', 'public, max-age=300, s-maxage=600');
+    res.type('html').send(renderKitPage(kit));
+  } catch (e) {
+    console.error('/kit/:slug error:', e.message);
+    next();
+  }
+});
+
+function renderKitPage(kit) {
+  const SITE = 'https://oneilbeats.store';
+  const slug = kitSlug(kit);
+  const url = `${SITE}/kit/${slug}`;
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const beatName = String(kit.title || '').replace(/\s*[—-]\s*Drum Kit\s*$/i, '').trim() || kit.title;
+  const genre = kit.genre || 'Hip-Hop';
+  const price = Number(kit.price || 0).toFixed(2);
+  const desc = kitDescription(kit);
+  const cover = kit.cover_url || `${SITE}/og-image.jpg`;
+  const title = `${beatName} Drum Kit — ${genre} Kicks, Snares & Hi-Hats${kit.has_midi ? ' + MIDI' : ''} | O'Neil Beats`;
+  const metaDesc = `Download the ${beatName} drum kit: ${kit.sample_count || ''} royalty-free ${genre} one-shots (kicks, snares, hi-hats, perc)${kit.has_midi ? ' + a MIDI groove' : ''}. Instant download, $${price}.`.replace(/\s+/g, ' ').trim();
+  const jsonLd = {
+    '@context': 'https://schema.org', '@type': 'Product',
+    name: `${beatName} Drum Kit`, description: desc,
+    image: cover, sku: `kit-${slug}`, category: 'Drum Kit / Sample Pack',
+    brand: { '@type': 'Brand', name: "O'Neil Beats" },
+    url,
+    offers: { '@type': 'Offer', price: String(price), priceCurrency: 'USD', availability: 'https://schema.org/InStock', url },
+  };
+  const chips = [genre, kit.bpm ? `${kit.bpm} BPM` : null, `${kit.sample_count || 0} one-shots`, kit.has_midi ? 'MIDI included' : null]
+    .filter(Boolean).map(c => `<span class="chip">${esc(c)}</span>`).join('');
+  return `<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(metaDesc)}">
+<link rel="canonical" href="${url}">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta property="og:type" content="product"><meta property="og:url" content="${url}">
+<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(metaDesc)}">
+<meta property="og:image" content="${esc(cover)}"><meta property="og:site_name" content="O'Neil Beats">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}">
+<meta name="twitter:description" content="${esc(metaDesc)}"><meta name="twitter:image" content="${esc(cover)}">
+<link rel="icon" type="image/png" href="/favicon.png"><meta name="theme-color" content="#06060a">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
+<style>
+:root{--bg:#06060a;--surface:#0e0e16;--surface2:#14141f;--surface3:#1c1c2a;--accent:#e63946;--gold:#f59e0b;--purple:#8b5cf6;--text:#e2e8f0;--dim:#64748b;--border:rgba(255,255,255,0.07);--radius:14px;--radius-sm:8px}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);line-height:1.6}a{color:inherit;text-decoration:none}
+header{position:sticky;top:0;z-index:100;background:rgba(6,6,10,.94);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);padding:0 24px;height:72px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:22px;font-weight:900;letter-spacing:5px;background:linear-gradient(135deg,#ff4d5a,var(--accent) 25%,var(--gold) 55%,#ffd27a 75%,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hnav a{font-size:13px;font-weight:600;color:var(--dim);margin-left:20px}.hnav a:hover{color:var(--text)}
+.wrap{max-width:1000px;margin:0 auto;padding:32px 24px 80px}
+.crumb{font-size:13px;color:var(--dim);margin-bottom:20px}.crumb a:hover{color:var(--accent)}
+.top{display:grid;grid-template-columns:340px 1fr;gap:32px}@media(max-width:740px){.top{grid-template-columns:1fr}}
+.cover{width:100%;aspect-ratio:1;border-radius:var(--radius);object-fit:cover;background:var(--surface2)}
+h1{font-size:clamp(24px,4vw,34px);font-weight:900;line-height:1.1;margin-bottom:12px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.chip{font-size:12px;font-weight:600;color:var(--dim);background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:5px 12px}
+.price{font-size:30px;font-weight:900;margin:6px 0 16px}
+.buy{font-family:inherit;font-size:15px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--accent),var(--gold));border:none;border-radius:var(--radius-sm);padding:14px 26px;cursor:pointer}.buy:hover{opacity:.9}
+.viewcart{display:none;margin-left:12px;font-weight:700;color:var(--accent)}
+.desc{margin:34px 0;font-size:16px;color:#cbd5e1;max-width:760px}
+.inc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-top:24px;max-width:760px}
+.inc h2{font-size:16px;margin-bottom:12px}.inc ul{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:8px}@media(max-width:560px){.inc ul{grid-template-columns:1fr}}
+.inc li{font-size:14px;color:var(--dim)}.inc li b{color:var(--text);font-weight:700}
+footer{border-top:1px solid var(--border);padding:28px 24px;text-align:center;color:var(--dim);font-size:13px;margin-top:40px}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:13px;font-weight:600;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none}
+</style></head>
+<body>
+<header><a href="/" aria-label="O'Neil Beats"><span class="logo">O'NEIL</span></a><nav class="hnav"><a href="/">Beats</a><a href="/drum-kits">Drum Kits</a><a href="/drum-kits">Cart</a></nav></header>
+<div class="wrap">
+  <div class="crumb"><a href="/">Home</a> › <a href="/drum-kits">Drum Kits</a> › ${esc(beatName)}</div>
+  <div class="top">
+    <img class="cover" src="${esc(cover)}" alt="${esc(beatName)} drum kit cover" onerror="this.style.opacity=.3">
+    <div>
+      <h1>${esc(beatName)} <span style="background:linear-gradient(135deg,var(--accent),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Drum Kit</span></h1>
+      <div class="chips">${chips}</div>
+      <div class="price">$${price}</div>
+      <button class="buy" onclick="addKit()">Add to Cart</button>
+      <a class="viewcart" id="viewcart" href="/drum-kits">View cart & checkout →</a>
+      <p style="color:var(--dim);font-size:12px;margin-top:14px">🎟️ Royalty-free · ⚡ Instant download · 🥁 Real studio-isolated drums</p>
+    </div>
+  </div>
+  <div class="desc">${esc(desc)}</div>
+  <div class="inc">
+    <h2>What's inside</h2>
+    <ul>
+      <li><b>${kit.sample_count || 0} one-shots</b> — kicks, snares, hi-hats, perc</li>
+      <li><b>WAV format</b> — works in every DAW</li>
+      ${kit.has_midi ? '<li><b>MIDI groove</b> — rebuild the pattern fast</li>' : ''}
+      <li><b>Royalty-free</b> — use in your releases</li>
+      <li><b>${esc(genre)}</b>${kit.bpm ? ' · ' + kit.bpm + ' BPM' : ''} source</li>
+      <li><b>Instant delivery</b> — emailed on purchase</li>
+    </ul>
+  </div>
+  <p style="margin-top:30px"><a href="/drum-kits" style="color:var(--accent);font-weight:700">← Browse all O'Neil drum kits</a></p>
+</div>
+<footer>© ${new Date().getFullYear()} O'Neil Beats · <a href="/" style="color:var(--accent)">Beats</a> · <a href="/drum-kits" style="color:var(--accent)">Drum Kits</a></footer>
+<div id="toast"></div>
+<script>
+var KIT={id:${JSON.stringify(kit.id)},title:${JSON.stringify(kit.title)},price:${Number(kit.price||0)},cover:${JSON.stringify(kit.cover_url||'')}};
+function addKit(){
+  var cart=[];try{cart=JSON.parse(localStorage.getItem('ob_cart')||'[]')||[]}catch(e){}
+  if(cart.some(function(c){return c.kitId===KIT.id})){toast('Already in your cart');}
+  else{cart.push({kind:'kit',kitId:KIT.id,kitTitle:KIT.title,price:KIT.price,cover:KIT.cover});try{localStorage.setItem('ob_cart',JSON.stringify(cart))}catch(e){}toast('Added to cart');}
+  document.getElementById('viewcart').style.display='inline';
+}
+var tt;function toast(m){var t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(tt);tt=setTimeout(function(){t.style.opacity='0'},2200);}
+</script>
+</body></html>`;
+}
 
 // GET /admin/kits — admin; ALL kits (active + inactive).
 app.get('/admin/kits', requireAdminKey, async (req, res) => {

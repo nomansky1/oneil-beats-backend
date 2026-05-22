@@ -191,10 +191,11 @@ function render(){
       : '<div class="ph">🥁</div>';
     const chips = [k.genre, k.bpm ? k.bpm + ' BPM' : null].filter(Boolean)
       .map(c => `<span class="chip">${esc(String(c))}</span>`).join('');
+    const href = k.slug ? `/kit/${k.slug}` : '#';
     return `<div class="card">
-      <div class="card-cover">${cover}${k.has_midi?'<span class="midi-badge">+ MIDI</span>':''}</div>
+      <a href="${href}" class="card-cover" style="display:block">${cover}${k.has_midi?'<span class="midi-badge">+ MIDI</span>':''}</a>
       <div class="card-body">
-        <div class="card-title">${esc(k.title)}</div>
+        <a href="${href}" class="card-title" style="display:block">${esc(k.title)}</a>
         <div class="card-chips">${chips}</div>
         <div class="card-meta">${k.sample_count||0} one-shots${k.has_midi?' · MIDI groove':''}</div>
         <div class="card-foot">
