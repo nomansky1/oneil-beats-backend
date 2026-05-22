@@ -4029,6 +4029,9 @@ function renderKitPage(kit) {
   const genre = kit.genre || 'Hip-Hop';
   const price = Number(kit.price || 0).toFixed(2);
   const desc = kitDescription(kit);
+  let previews = kit.preview_urls;
+  if (typeof previews === 'string') { try { previews = JSON.parse(previews); } catch (_) { previews = []; } }
+  if (!Array.isArray(previews)) previews = [];
   const cover = kit.cover_url || `${SITE}/og-image.jpg`;
   const title = `${beatName} Drum Kit — ${genre} Kicks, Snares & Hi-Hats${kit.has_midi ? ' + MIDI' : ''} | O'Neil Beats`;
   const metaDesc = `Download the ${beatName} drum kit: ${kit.sample_count || ''} royalty-free ${genre} one-shots (kicks, snares, hi-hats, perc)${kit.has_midi ? ' + a MIDI groove' : ''}. Instant download, $${price}.`.replace(/\s+/g, ' ').trim();
@@ -4077,6 +4080,17 @@ h1{font-size:clamp(24px,4vw,34px);font-weight:900;line-height:1.1;margin-bottom:
 .inc li{font-size:14px;color:var(--dim)}.inc li b{color:var(--text);font-weight:700}
 footer{border-top:1px solid var(--border);padding:28px 24px;text-align:center;color:var(--dim);font-size:13px;margin-top:40px}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:13px;font-weight:600;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none}
+.preview-btn{font-family:inherit;font-size:14px;font-weight:700;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:13px 22px;cursor:pointer;margin-left:10px}
+.preview-btn:hover{border-color:var(--accent);color:var(--accent)}
+.pmodal{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.pmodal.open{display:flex}
+.pmodal-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:100%;max-width:460px}
+.pmodal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.pmodal-head strong{font-size:16px}
+.pclose{background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer;line-height:1}.pclose:hover{color:var(--text)}
+.psamples{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.psample{font-family:inherit;font-size:13px;font-weight:600;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 12px;cursor:pointer;text-align:left;transition:all .12s}
+.psample:hover{border-color:var(--accent)}
+.psample.playing{background:var(--accent);border-color:var(--accent);color:#fff}
 </style></head>
 <body>
 <header><a href="/" aria-label="O'Neil Beats"><span class="logo">O'NEIL</span></a><nav class="hnav"><a href="/">Beats</a><a href="/drum-kits">Drum Kits</a><a href="/drum-kits">Cart</a></nav></header>
@@ -4089,7 +4103,8 @@ footer{border-top:1px solid var(--border);padding:28px 24px;text-align:center;co
       <div class="chips">${chips}</div>
       <div class="price">$${price}</div>
       <button class="buy" onclick="addKit()">Add to Cart</button>
-      <a class="viewcart" id="viewcart" href="/drum-kits">View cart & checkout →</a>
+      ${previews.length ? '<button class="preview-btn" onclick="openPreview()">🔊 Preview the sounds</button>' : ''}
+      <a class="viewcart" id="viewcart" href="/drum-kits">View cart &amp; checkout →</a>
       <p style="color:var(--dim);font-size:12px;margin-top:14px">🎟️ Royalty-free · ⚡ Instant download · 🥁 Real studio-isolated drums</p>
     </div>
   </div>
@@ -4108,9 +4123,22 @@ footer{border-top:1px solid var(--border);padding:28px 24px;text-align:center;co
   <p style="margin-top:30px"><a href="/drum-kits" style="color:var(--accent);font-weight:700">← Browse all O'Neil drum kits</a></p>
 </div>
 <footer>© ${new Date().getFullYear()} O'Neil Beats · <a href="/" style="color:var(--accent)">Beats</a> · <a href="/drum-kits" style="color:var(--accent)">Drum Kits</a></footer>
+${previews.length ? `<div id="preview-modal" class="pmodal" onclick="if(event.target.id==='preview-modal')closePreview()">
+  <div class="pmodal-card">
+    <div class="pmodal-head"><strong>🥁 ${esc(beatName)} — Preview</strong><button class="pclose" onclick="closePreview()" aria-label="Close">✕</button></div>
+    <p style="color:var(--dim);font-size:13px;margin-bottom:14px">Tap a sound to play — a taste of the ${kit.sample_count || ''} one-shots inside this kit.</p>
+    <div class="psamples">${previews.map(p => `<button class="psample" data-url="${esc(p.url)}" data-label="${esc(p.label)}" onclick="playSample(this)">▶ ${esc(p.label)}</button>`).join('')}</div>
+    <button class="buy" style="width:100%;margin-top:18px" onclick="addKit();closePreview()">Add Kit to Cart — $${price}</button>
+  </div>
+</div>` : ''}
 <div id="toast"></div>
 <script>
 var KIT={id:${JSON.stringify(kit.id)},title:${JSON.stringify(kit.title)},price:${Number(kit.price||0)},cover:${JSON.stringify(kit.cover_url||'')}};
+var pAudio=null,pBtn=null;
+function openPreview(){var m=document.getElementById('preview-modal');if(m)m.classList.add('open');}
+function closePreview(){var m=document.getElementById('preview-modal');if(m)m.classList.remove('open');stopSample();}
+function stopSample(){if(pAudio){pAudio.pause();pAudio=null;}if(pBtn){pBtn.classList.remove('playing');pBtn.textContent='▶ '+pBtn.dataset.label;pBtn=null;}}
+function playSample(btn){if(pBtn===btn){stopSample();return;}stopSample();pAudio=new Audio(btn.dataset.url);pBtn=btn;btn.classList.add('playing');btn.textContent='⏸ '+btn.dataset.label;pAudio.play().catch(function(){});pAudio.onended=stopSample;}
 function addKit(){
   var cart=[];try{cart=JSON.parse(localStorage.getItem('ob_cart')||'[]')||[]}catch(e){}
   if(cart.some(function(c){return c.kitId===KIT.id})){toast('Already in your cart');}
@@ -4154,14 +4182,40 @@ app.post('/admin/kits/publish', requireAdminKey,
       const coverFile = req.files?.cover?.[0];
       if (coverFile) coverUrl = await uploadCoverToStorage(coverFile.buffer, `kit_cover_${seed}.png`, 'image/png');
 
+      // Pull a few preview one-shots out of the ZIP → upload → store, so the
+      // kit page can play samples. Best-effort: never block publishing.
+      let previewArr = null;
+      try {
+        const AdmZip = require('adm-zip');
+        const zip = new AdmZip(kitFile.buffer);
+        const LABEL = { kicks: 'Kick', snares: 'Snare', hihats: 'Hi-Hat', percs: 'Perc' };
+        const byType = { kicks: [], snares: [], hihats: [], percs: [] };
+        for (const e of zip.getEntries()) {
+          const m = e.entryName.match(/Samples\/(kicks|snares|hihats|percs)\/([^/]+\.wav)$/i);
+          if (m) byType[m[1].toLowerCase()].push(e);
+        }
+        const previews = [];
+        for (const t of ['kicks', 'snares', 'hihats', 'percs']) {
+          const picks = byType[t].sort((a, c) => a.entryName.localeCompare(c.entryName)).slice(0, 2);
+          let i = 0;
+          for (const e of picks) {
+            i++;
+            const base = e.entryName.split('/').pop();
+            const purl = await uploadFileToStorage(e.getData(), `kit-previews/${safe}_${seed}/${base}`, 'beats', 'audio/wav');
+            previews.push({ label: `${LABEL[t]} ${i}`, url: purl });
+          }
+        }
+        if (previews.length) previewArr = JSON.stringify(previews);
+      } catch (e) { console.warn('kit preview extraction failed:', e.message); }
+
       const { rows } = await pgQuery(
-        `INSERT INTO drum_kits (beat_id, title, genre, bpm, cover_url, kit_url, price, sample_count, has_midi, active)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+        `INSERT INTO drum_kits (beat_id, title, genre, bpm, cover_url, kit_url, price, sample_count, has_midi, active, preview_urls)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
         [b.beat_id || null, title, genre || null, b.bpm ? parseInt(b.bpm, 10) : null,
          coverUrl, kitUrl, b.price ? parseFloat(b.price) : 9.99,
          b.sample_count ? parseInt(b.sample_count, 10) : 0,
          String(b.has_midi) === 'false' ? false : true,
-         String(b.active) === 'true']
+         String(b.active) === 'true', previewArr]
       );
       res.json({ success: true, kit: rows[0] });
     } catch (err) {
