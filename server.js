@@ -3335,6 +3335,60 @@ app.get('/cancel', (req, res) => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// COVERLOOP — desktop-app subscription (Stripe). Each user subscribes from inside
+// the app (which knows their Google email); the /webhook records status here, and
+// the app checks /coverloop/subscription to unlock Pro features.
+// ──────────────────────────────────────────────────────────────────────────────
+
+// POST /coverloop/checkout { email } — create a Stripe subscription Checkout
+// Session and return its URL. The desktop app opens it in the user's browser.
+app.post('/coverloop/checkout', async (req, res) => {
+  try {
+    const email = ((req.body && req.body.email) || '').trim();
+    if (!email) return res.status(400).json({ error: 'email required' });
+    const priceId = process.env.COVERLOOP_PRICE_ID;
+    if (!priceId) return res.status(500).json({ error: 'COVERLOOP_PRICE_ID not configured' });
+    const appUrl = process.env.APP_URL || 'https://oneil-beats-backend.vercel.app';
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      customer_email: email,
+      metadata: { type: 'coverloop', email: email.toLowerCase() },
+      subscription_data: { metadata: { type: 'coverloop', email: email.toLowerCase() } },
+      success_url: `${appUrl}/coverloop-thanks.html`,
+      cancel_url: `${appUrl}/coverloop.html#pricing`,
+      allow_promotion_codes: true,
+    });
+    return res.json({ url: session.url });
+  } catch (err) {
+    console.error('CoverLoop checkout error:', err.message);
+    return res.status(500).json({ error: err.message || 'Checkout failed' });
+  }
+});
+
+// GET /coverloop/subscription?email=... — the desktop app's entitlement check.
+// Returns only non-sensitive status (never Stripe IDs). active = current sub.
+app.get('/coverloop/subscription', async (req, res) => {
+  try {
+    const email = (req.query.email || '').toString().trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: 'email query param required' });
+    const { rows } = await pgQuery(
+      'SELECT status, current_period_end FROM coverloop_subscriptions WHERE email = $1 LIMIT 1',
+      [email]
+    );
+    const row = rows[0] || null;
+    const active = !!row
+      && ['active', 'trialing', 'past_due'].includes(row.status)
+      && (!row.current_period_end || new Date(row.current_period_end).getTime() > Date.now() - 3 * 86400000);
+    return res.json({ active, status: (row && row.status) || 'none', currentPeriodEnd: (row && row.current_period_end) || null });
+  } catch (err) {
+    console.error('CoverLoop subscription check error:', err.message);
+    return res.status(500).json({ error: 'lookup failed' });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // PURCHASES & ORDERS
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -4780,6 +4834,31 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
+  // CoverLoop SUBSCRIPTION checkout (mode=subscription, metadata.type='coverloop').
+  // MUST run before the beat/kit order branch and return early, so it never falls
+  // through to fulfillOrder()/getOrderById(undefined).
+  if (event.type === 'checkout.session.completed' && event.data.object.metadata?.type === 'coverloop') {
+    const session = event.data.object;
+    const email = (session.customer_details?.email || session.customer_email || session.metadata?.email || '').toLowerCase();
+    try {
+      const sub = session.subscription ? await stripe.subscriptions.retrieve(session.subscription) : null;
+      await pgQuery(
+        `INSERT INTO coverloop_subscriptions
+           (email, stripe_customer_id, stripe_subscription_id, status, current_period_end, updated_at)
+         VALUES ($1,$2,$3,$4, to_timestamp($5), now())
+         ON CONFLICT (email) DO UPDATE
+            SET stripe_customer_id     = excluded.stripe_customer_id,
+                stripe_subscription_id = excluded.stripe_subscription_id,
+                status                 = excluded.status,
+                current_period_end     = excluded.current_period_end,
+                updated_at             = now()`,
+        [email, session.customer, session.subscription, (sub && sub.status) || 'active', (sub && sub.current_period_end) || null]
+      );
+      console.log('CoverLoop subscription active for', email);
+    } catch (e) { console.error('CoverLoop checkout fulfillment error:', e.message); }
+    return res.json({ received: true });
+  }
+
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
 
@@ -4860,6 +4939,21 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         console.error('PaymentIntent fulfillment error:', e);
       }
     }
+  }
+
+  // CoverLoop subscription lifecycle — renewals + cancellations. (A cancel
+  // arrives as customer.subscription.deleted with status 'canceled'.) These
+  // events carry no email, so we match on the Stripe subscription id.
+  if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
+    const sub = event.data.object;
+    try {
+      await pgQuery(
+        `UPDATE coverloop_subscriptions
+            SET status = $2, current_period_end = to_timestamp($3), updated_at = now()
+          WHERE stripe_subscription_id = $1`,
+        [sub.id, sub.status, sub.current_period_end || null]
+      );
+    } catch (e) { console.error('CoverLoop subscription update error:', e.message); }
   }
 
   res.json({ received: true });
