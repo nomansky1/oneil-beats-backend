@@ -1,0 +1,215 @@
+<!--
+  CoverLoop — public home / landing page (by O'Neil Beats).
+  Hosted at https://oneilbeats.store/coverloop.html — used as the app home page URL
+  for Google OAuth verification; links to the CoverLoop privacy policy + terms.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CoverLoop — Turn Your Beats Into YouTube Videos | by O'Neil Beats</title>
+<meta name="description" content="CoverLoop is a desktop studio that turns your beats into channel-quality YouTube videos — AI cover art, reactive visualizers, beat-synced cut-scenes, lyric videos and thumbnails — rendered on your PC and published to your own YouTube channel.">
+<meta name="robots" content="index, follow">
+<meta property="og:title" content="CoverLoop — Turn Your Beats Into YouTube Videos">
+<meta property="og:description" content="A desktop studio that turns beats into channel-quality YouTube videos and publishes to your own channel.">
+<meta property="og:type" content="website">
+<style>
+  :root{
+    --bg:#08080b; --bg2:#0d0d12; --fg:#f2f2f5; --muted:#9a9aa6; --dim:#6c6c78;
+    --accent:#d4af37; --accent2:#f0d57a; --card:#121218; --line:#23232c;
+    --radius:14px; --max:1120px;
+  }
+  *{box-sizing:border-box} html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 24px}
+  .btn{display:inline-block;font-weight:700;font-size:15px;padding:13px 24px;border-radius:10px;transition:.15s;cursor:pointer;border:1px solid transparent}
+  .btn-primary{background:linear-gradient(135deg,var(--accent2),var(--accent));color:#1a1305}
+  .btn-primary:hover{filter:brightness(1.07);transform:translateY(-1px)}
+  .btn-ghost{background:transparent;border-color:var(--line);color:var(--fg)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .eyebrow{font-size:12.5px;letter-spacing:2.5px;text-transform:uppercase;color:var(--accent);font-weight:700}
+
+  nav{position:sticky;top:0;z-index:20;background:rgba(8,8,11,.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;letter-spacing:.3px}
+  .brand .dot{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,var(--accent2),var(--accent));display:inline-block}
+  .navlinks{display:flex;align-items:center;gap:28px;font-size:14.5px;color:var(--muted)}
+  .navlinks a:hover{color:var(--fg)}
+  @media(max-width:720px){.navlinks .hide{display:none}}
+
+  .hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+  .hero::before{content:"";position:absolute;inset:0;background:radial-gradient(900px 380px at 50% -8%,rgba(212,175,55,.18),transparent 60%);pointer-events:none}
+  .hero .wrap{position:relative;padding:84px 24px 72px;text-align:center}
+  .hero h1{font-size:clamp(34px,5.4vw,60px);line-height:1.05;letter-spacing:-1px;margin:18px auto 18px;max-width:880px;font-weight:800}
+  .hero h1 .g{background:linear-gradient(120deg,var(--accent2),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.lead{max-width:660px;margin:0 auto 30px;color:#cfcfd6;font-size:19px}
+  .hero .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .trust{margin-top:40px;color:var(--dim);font-size:13px;letter-spacing:.5px}
+  .trust b{color:var(--muted);font-weight:700}
+
+  section{padding:80px 0;border-bottom:1px solid var(--line)}
+  .sec-head{text-align:center;max-width:640px;margin:0 auto 48px}
+  .sec-head h2{font-size:clamp(26px,3.4vw,38px);margin:12px 0 10px;letter-spacing:-.5px;font-weight:800}
+  .sec-head p{color:var(--muted);font-size:16.5px;margin:0}
+
+  .grid{display:grid;gap:18px}
+  .feat{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+  .feat .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:26px}
+  .feat .card:hover{border-color:#33333f}
+  .feat .ico{font-size:26px;margin-bottom:12px}
+  .feat h3{margin:0 0 8px;font-size:18px;color:#fff}
+  .feat p{margin:0;color:#bcbcc6;font-size:14.5px}
+
+  .steps{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .step{padding:8px 6px}
+  .step .n{width:36px;height:36px;border-radius:9px;border:1px solid var(--accent);color:var(--accent);display:grid;place-items:center;font-weight:800;margin-bottom:14px}
+  .step h3{margin:0 0 6px;font-size:17px}
+  .step p{margin:0;color:#b6b6c0;font-size:14.5px}
+
+  .price{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));max-width:760px;margin:0 auto;align-items:stretch}
+  .plan{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:30px;display:flex;flex-direction:column}
+  .plan.pro{border-color:var(--accent);box-shadow:0 0 0 1px rgba(212,175,55,.25),0 24px 60px -30px rgba(212,175,55,.4);position:relative}
+  .plan .tag{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--accent2),var(--accent));color:#1a1305;font-size:11.5px;font-weight:800;letter-spacing:1px;padding:5px 14px;border-radius:20px;text-transform:uppercase}
+  .plan h3{margin:0 0 4px;font-size:19px}
+  .plan .psub{color:var(--muted);font-size:13.5px;margin:0 0 18px}
+  .plan .amt{font-size:42px;font-weight:800;letter-spacing:-1px}
+  .plan .amt span{font-size:15px;color:var(--muted);font-weight:600}
+  .plan ul{list-style:none;padding:0;margin:20px 0 24px;flex:1}
+  .plan li{padding:7px 0;font-size:14.5px;color:#d2d2da;display:flex;gap:10px;align-items:flex-start}
+  .plan li::before{content:"✓";color:var(--accent);font-weight:800}
+  .plan li.off{color:var(--dim)} .plan li.off::before{content:"–";color:var(--dim)}
+  .plan .btn{text-align:center;width:100%}
+  .price-note{text-align:center;color:var(--dim);font-size:13px;margin-top:22px}
+
+  .yt .box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:34px;text-align:center;max-width:780px;margin:0 auto}
+  .yt h3{margin:0 0 10px;font-size:22px}
+  .yt p{margin:0 auto;color:#c4c4ce;max-width:620px;font-size:15px}
+
+  .band{background:linear-gradient(135deg,#15110a,#0b0b0f);text-align:center}
+  .band h2{font-size:clamp(24px,3.2vw,34px);margin:0 0 14px;font-weight:800}
+  .band p{color:var(--muted);margin:0 0 26px;font-size:16px}
+
+  footer{padding:40px 0;color:var(--dim);font-size:13.5px;border-top:none}
+  footer .wrap{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+  footer a{color:var(--muted)} footer a:hover{color:var(--accent)}
+  footer .links a{margin-left:18px}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <a class="brand" href="/coverloop.html"><span class="dot"></span> CoverLoop</a>
+  <div class="navlinks">
+    <a class="hide" href="#features">Features</a>
+    <a class="hide" href="#how">How it works</a>
+    <a href="#pricing">Pricing</a>
+    <a class="btn btn-primary" style="padding:9px 18px" href="#pricing">Get started</a>
+  </div>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div class="eyebrow">by O'Neil Beats</div>
+  <h1>Turn your beats into <span class="g">channel-quality YouTube videos</span>.</h1>
+  <p class="lead">CoverLoop is a desktop studio that generates AI cover art, reactive visualizers, beat-synced cut-scenes and high-CTR thumbnails — renders everything on your PC — and publishes straight to <b>your own</b> YouTube channel.</p>
+  <div class="cta">
+    <a class="btn btn-primary" href="#pricing">Start free</a>
+    <a class="btn btn-ghost" href="#features">See what it does</a>
+  </div>
+  <div class="trust">Rendered locally · <b>Your audio never leaves your PC</b> · Publishes to your channel, not ours</div>
+</div></header>
+
+<section id="features"><div class="wrap">
+  <div class="sec-head">
+    <div class="eyebrow">The studio</div>
+    <h2>Everything a release needs, in one app</h2>
+    <p>Drop a beat. Get a finished, upload-ready video — artwork, motion, lyrics, thumbnail and SEO included.</p>
+  </div>
+  <div class="grid feat">
+    <div class="card"><div class="ico">🎨</div><h3>AI artwork &amp; cut-scenes</h3><p>Auto-generates album-style cover art and a playlist of AI scenes that cross-dissolve on the beat across your whole song.</p></div>
+    <div class="card"><div class="ico">📊</div><h3>Reactive visualizers</h3><p>Audio-reactive bars and effects drawn from your beat's own frequencies, with cinematic color grades and motion.</p></div>
+    <div class="card"><div class="ico">🎤</div><h3>Lyric videos</h3><p>Add lyrics with styled, beat-timed text — outline, glow, karaoke and more — for full lyric videos.</p></div>
+    <div class="card"><div class="ico">🖼️</div><h3>One-click thumbnails</h3><p>Generate a click-worthy AI thumbnail with bold, high-CTR text baked on — in a single click.</p></div>
+    <div class="card"><div class="ico">🗂️</div><h3>Batch render</h3><p>Drop a whole folder of beats and render a finished video for every one, completely unattended.</p></div>
+    <div class="card"><div class="ico">📅</div><h3>Scheduled publishing</h3><p>Queue your videos and let YouTube publish them on a schedule — consistent posting, hands-free.</p></div>
+  </div>
+</div></section>
+
+<section id="how"><div class="wrap">
+  <div class="sec-head">
+    <div class="eyebrow">How it works</div>
+    <h2>From beat to published in minutes</h2>
+  </div>
+  <div class="grid steps">
+    <div class="step"><div class="n">1</div><h3>Drop your beat</h3><p>Import an MP3 or WAV. CoverLoop auto-detects the genre and mood and builds a matching look.</p></div>
+    <div class="step"><div class="n">2</div><h3>Make it yours</h3><p>Tune the visualizer, cut-scenes, lyrics, title style and thumbnail — with a live preview.</p></div>
+    <div class="step"><div class="n">3</div><h3>Render &amp; publish</h3><p>Render locally, then sign in with Google and publish to your own channel — or schedule it.</p></div>
+  </div>
+</div></section>
+
+<section id="pricing"><div class="wrap">
+  <div class="sec-head">
+    <div class="eyebrow">Pricing</div>
+    <h2>Start free. Go Pro when you're ready.</h2>
+    <p>Try the full studio free. Upgrade for unlimited renders and the automation that scales a channel.</p>
+  </div>
+  <div class="grid price">
+    <div class="plan">
+      <h3>Free</h3>
+      <p class="psub">Everything to try it out</p>
+      <div class="amt">$0</div>
+      <ul>
+        <li>5 video renders to start</li>
+        <li>AI cover art &amp; thumbnails</li>
+        <li>Reactive visualizers &amp; color grades</li>
+        <li>Cinematic 3D motion</li>
+        <li>Publish to your YouTube channel</li>
+        <li class="off">Unlimited renders</li>
+        <li class="off">Batch render &amp; scheduling</li>
+      </ul>
+      <a class="btn btn-ghost" href="mailto:produceroneil@gmail.com?subject=CoverLoop%20early%20access">Get the app</a>
+    </div>
+    <div class="plan pro">
+      <div class="tag">Most popular</div>
+      <h3>Pro</h3>
+      <p class="psub">For producers shipping releases</p>
+      <div class="amt">$19<span> / month</span></div>
+      <ul>
+        <li><b>Unlimited</b> video renders</li>
+        <li>Batch render a whole folder of beats</li>
+        <li>Scheduled auto-publishing to YouTube</li>
+        <li>Beat-synced AI cut-scenes</li>
+        <li>Everything in Free, with no limits</li>
+        <li>Priority support &amp; new features</li>
+      </ul>
+      <a class="btn btn-primary" href="mailto:produceroneil@gmail.com?subject=CoverLoop%20Pro%20early%20access">Get CoverLoop Pro</a>
+    </div>
+  </div>
+  <p class="price-note">Cancel anytime. Subscriptions are billed securely by Stripe. Annual billing available.</p>
+</div></section>
+
+<section class="yt"><div class="wrap">
+  <div class="box">
+    <h3>Publishes to your own YouTube channel</h3>
+    <p>CoverLoop uses YouTube API Services. You sign in with your own Google account and grant permission, and CoverLoop uploads the videos <b>you</b> create to <b>your</b> channel and shows you <b>your</b> analytics. Your audio and your login stay on your computer. You can revoke access anytime at <a style="color:var(--accent)" href="https://myaccount.google.com/permissions">Google account permissions</a>. CoverLoop is not affiliated with or endorsed by YouTube or Google.</p>
+  </div>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <h2>Ready to turn beats into a channel?</h2>
+  <p>Join the early access list and start rendering for free.</p>
+  <a class="btn btn-primary" href="mailto:produceroneil@gmail.com?subject=CoverLoop%20early%20access">Request early access</a>
+</div></section>
+
+<footer><div class="wrap">
+  <div>© 2026 O'Neil Beats · CoverLoop</div>
+  <div class="links">
+    <a href="/coverloop-privacy.html">Privacy</a>
+    <a href="/coverloop-terms.html">Terms</a>
+    <a href="mailto:produceroneil@gmail.com">Contact</a>
+  </div>
+</div></footer>
+
+</body>
+</html>

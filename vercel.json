@@ -7,7 +7,8 @@
       "config": {
         "maxLambdaSize": "50mb",
         "maxDuration": 60,
-        "includeFiles": "public/**"
+        "includeFiles": "public/**",
+        "excludeFiles": "node_modules/ff*-static/**"
       }
     }
   ],
