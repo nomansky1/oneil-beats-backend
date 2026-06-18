@@ -3393,6 +3393,90 @@ app.get('/coverloop/subscription', async (req, res) => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// COVERLOOP — per-user Meta (Facebook Pages + Instagram) connect (MULTI-TENANT)
+// Every CoverLoop user links THEIR OWN Facebook Page(s) + linked IG Business
+// account. The App Secret never leaves the backend: the desktop app opens /start,
+// Meta redirects to /callback here (server-side exchange), and the app polls /poll
+// for the result keyed by a one-time `state` nonce. The publishing scopes require
+// Meta App Review before non-tester users can use it.
+// ──────────────────────────────────────────────────────────────────────────────
+const META_GRAPH = 'https://graph.facebook.com/v19.0';
+const COVERLOOP_FB_APP_ID = process.env.COVERLOOP_FB_APP_ID || process.env.FB_APP_ID;
+const COVERLOOP_FB_SECRET = process.env.COVERLOOP_FB_SECRET || process.env.FB_APP_SECRET;
+const META_SCOPES = ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'business_management', 'instagram_basic', 'instagram_content_publish'].join(',');
+function metaRedirectUri() {
+  const base = (process.env.COVERLOOP_PUBLIC_URL || 'https://oneilbeats.store').replace(/\/$/, '');
+  return base + '/coverloop/meta/callback';
+}
+
+// Step 1 — the app opens this in the browser; we bounce to Meta's consent dialog.
+app.get('/coverloop/meta/start', (req, res) => {
+  if (!COVERLOOP_FB_APP_ID) return res.status(500).send('Meta app not configured (set COVERLOOP_FB_APP_ID).');
+  const state = (req.query.state || '').toString().slice(0, 120);
+  if (!state) return res.status(400).send('state required');
+  const u = new URL('https://www.facebook.com/v19.0/dialog/oauth');
+  u.searchParams.set('client_id', COVERLOOP_FB_APP_ID);
+  u.searchParams.set('redirect_uri', metaRedirectUri());
+  u.searchParams.set('state', state);
+  u.searchParams.set('scope', META_SCOPES);
+  u.searchParams.set('response_type', 'code');
+  res.redirect(u.toString());
+});
+
+// Step 2 — Meta redirects back with ?code&state. Exchange server-side (secret stays
+// here), upgrade to a long-lived token, discover the user's Pages + their linked IG
+// Business accounts, and stash the result keyed by `state`.
+app.get('/coverloop/meta/callback', async (req, res) => {
+  const page = (msg) => `<!doctype html><meta charset=utf8><body style="font-family:system-ui;background:#0a0e17;color:#e5e7eb;text-align:center;padding:14vh 8vw"><h2>${msg}</h2><p>You can close this tab and return to CoverLoop.</p></body>`;
+  const state = (req.query.state || '').toString();
+  try {
+    const code = (req.query.code || '').toString();
+    if (!code || !state) return res.status(400).send('missing code/state');
+    if (!COVERLOOP_FB_SECRET) return res.status(500).send('Meta app secret not configured (COVERLOOP_FB_SECRET).');
+    // code -> short-lived user token
+    const tok = await (await fetch(`${META_GRAPH}/oauth/access_token?` + new URLSearchParams({
+      client_id: COVERLOOP_FB_APP_ID, client_secret: COVERLOOP_FB_SECRET, redirect_uri: metaRedirectUri(), code,
+    }))).json();
+    if (!tok.access_token) throw new Error((tok.error && tok.error.message) || 'token exchange failed');
+    // -> long-lived user token (~60 days)
+    const ll = await (await fetch(`${META_GRAPH}/oauth/access_token?` + new URLSearchParams({
+      grant_type: 'fb_exchange_token', client_id: COVERLOOP_FB_APP_ID, client_secret: COVERLOOP_FB_SECRET, fb_exchange_token: tok.access_token,
+    }))).json();
+    const userToken = ll.access_token || tok.access_token;
+    // the user's Pages, each with its own page token + linked IG business account
+    const pg = await (await fetch(`${META_GRAPH}/me/accounts?fields=${encodeURIComponent('id,name,access_token,instagram_business_account{id,username}')}&limit=100&access_token=${userToken}`)).json();
+    const pages = (pg.data || []).map((p) => ({
+      id: p.id, name: p.name, pageToken: p.access_token,
+      ig: p.instagram_business_account ? { id: p.instagram_business_account.id, username: p.instagram_business_account.username } : null,
+    }));
+    await pgQuery(
+      'INSERT INTO coverloop_meta_oauth (state, payload) VALUES ($1, $2) ON CONFLICT (state) DO UPDATE SET payload = $2, created_at = now()',
+      [state, JSON.stringify({ pages, connectedAt: new Date().toISOString() })]
+    );
+    return res.send(page('✓ Connected your Facebook &amp; Instagram'));
+  } catch (e) {
+    console.error('CoverLoop meta callback error:', e.message);
+    try { await pgQuery('INSERT INTO coverloop_meta_oauth (state, payload) VALUES ($1,$2) ON CONFLICT (state) DO UPDATE SET payload=$2, created_at=now()', [state, JSON.stringify({ error: e.message })]); } catch (_) {}
+    return res.status(500).send(page('Connection failed: ' + e.message));
+  }
+});
+
+// Step 3 — the app polls for the result (one-time: the row is deleted on read).
+app.get('/coverloop/meta/poll', async (req, res) => {
+  try {
+    const state = (req.query.state || '').toString();
+    if (!state) return res.status(400).json({ error: 'state required' });
+    const { rows } = await pgQuery('SELECT payload FROM coverloop_meta_oauth WHERE state = $1 LIMIT 1', [state]);
+    if (!rows[0]) return res.json({ pending: true });
+    await pgQuery('DELETE FROM coverloop_meta_oauth WHERE state = $1', [state]);
+    return res.json({ pending: false, ...rows[0].payload });
+  } catch (e) {
+    console.error('CoverLoop meta poll error:', e.message);
+    return res.status(500).json({ error: 'poll failed' });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // PURCHASES & ORDERS
 // ──────────────────────────────────────────────────────────────────────────────
 
