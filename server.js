@@ -3476,6 +3476,34 @@ app.get('/coverloop/meta/poll', async (req, res) => {
   }
 });
 
+// Host a rendered video briefly so Instagram can pull it (IG content-publish can't
+// take a file upload — it fetches a public URL). Returns a SIGNED upload URL so the
+// desktop app uploads the mp4 DIRECTLY to storage (avoids the serverless body limit);
+// the app then uses publicUrl for the Reel and DELETEs the file afterwards.
+app.post('/coverloop/meta/host-video', async (req, res) => {
+  try {
+    const name = `coverloop-ig/${Date.now()}-${require('crypto').randomBytes(8).toString('hex')}.mp4`;
+    const { data, error } = await supabase.storage.from('beats').createSignedUploadUrl(name);
+    if (error) throw new Error(error.message);
+    const publicUrl = supabase.storage.from('beats').getPublicUrl(name).data.publicUrl;
+    return res.json({ uploadUrl: data.signedUrl, token: data.token, path: name, publicUrl });
+  } catch (e) {
+    console.error('CoverLoop host-video sign error:', e.message);
+    return res.status(500).json({ error: 'host failed' });
+  }
+});
+app.delete('/coverloop/meta/host-video', async (req, res) => {
+  try {
+    const path = (req.query.path || '').toString();
+    if (!path.startsWith('coverloop-ig/')) return res.status(400).json({ error: 'bad path' });
+    await supabase.storage.from('beats').remove([path]);
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('CoverLoop host-video delete error:', e.message);
+    return res.status(500).json({ error: 'delete failed' });
+  }
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // PURCHASES & ORDERS
 // ──────────────────────────────────────────────────────────────────────────────
