@@ -3505,6 +3505,135 @@ app.delete('/coverloop/meta/host-video', async (req, res) => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// COVERLOOP — artist analytics data (web dashboard). Each artist inputs their OWN
+// revenue / streams / followers (manual entry or client-parsed CSV) and the dashboard
+// reads the aggregates. Everything is scoped to the signed-in user's email, taken
+// from their session token (never a client-supplied param) so one artist can never
+// read or write another's numbers.
+// ──────────────────────────────────────────────────────────────────────────────
+const CL_METRICS = ['revenue', 'streams', 'followers'];
+function coverloopEmail(req) {
+  const a = req.headers.authorization || '';
+  const t = a.startsWith('Bearer ') ? a.slice(7) : null;
+  if (!t) return null;
+  const d = require('./auth').verifySession(t);
+  return d && d.email ? String(d.email).toLowerCase() : null;
+}
+function clNormPeriod(p) {
+  if (!p) return null;
+  const s = String(p).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/);
+  if (m) return `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3] || '01').padStart(2, '0')}`;
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${String(m[1]).padStart(2, '0')}-${String(m[2]).padStart(2, '0')}`;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
+async function clInsertPoints(email, rawPoints) {
+  const clean = (rawPoints || [])
+    .map((p) => ({
+      metric: CL_METRICS.includes(p.metric) ? p.metric : null,
+      source: (p.source || 'other').toString().toLowerCase().slice(0, 40) || 'other',
+      period: clNormPeriod(p.period),
+      value: Number(p.value),
+    }))
+    .filter((p) => p.metric && Number.isFinite(p.value));
+  if (!clean.length) return 0;
+  const rowsSql = [];
+  const params = [];
+  clean.forEach((p) => {
+    const i = params.length;
+    rowsSql.push(`($${i + 1},$${i + 2},$${i + 3},$${i + 4},$${i + 5})`);
+    params.push(email, p.metric, p.source, p.period, p.value);
+  });
+  await pgQuery(`INSERT INTO coverloop_data_points (email, metric, source, period, value) VALUES ${rowsSql.join(',')}`, params);
+  return clean.length;
+}
+
+// POST /coverloop/data  { points: [{ metric, source?, period?, value }] }
+app.post('/coverloop/data', async (req, res) => {
+  try {
+    const email = coverloopEmail(req);
+    if (!email) return res.status(401).json({ error: 'sign in required' });
+    const points = Array.isArray(req.body && req.body.points) ? req.body.points : [];
+    if (points.length > 5000) return res.status(413).json({ error: 'too many points in one request (max 5000)' });
+    const inserted = await clInsertPoints(email, points);
+    if (!inserted) return res.status(400).json({ error: 'no valid points' });
+    return res.json({ inserted });
+  } catch (e) {
+    console.error('CoverLoop data insert error:', e.message);
+    return res.status(500).json({ error: 'save failed' });
+  }
+});
+
+// GET /coverloop/analytics — aggregates the dashboard renders.
+app.get('/coverloop/analytics', async (req, res) => {
+  try {
+    const email = coverloopEmail(req);
+    if (!email) return res.status(401).json({ error: 'sign in required' });
+    const [totalsQ, bySourceQ, byPeriodQ, followersQ] = await Promise.all([
+      pgQuery(`SELECT metric, COALESCE(SUM(value),0)::float AS total FROM coverloop_data_points WHERE email=$1 GROUP BY metric`, [email]),
+      pgQuery(`SELECT source, COALESCE(SUM(value),0)::float AS total FROM coverloop_data_points WHERE email=$1 AND metric='revenue' GROUP BY source ORDER BY total DESC`, [email]),
+      pgQuery(`SELECT to_char(period,'YYYY-MM') AS period, source, COALESCE(SUM(value),0)::float AS total FROM coverloop_data_points WHERE email=$1 AND metric='revenue' AND period IS NOT NULL GROUP BY 1,2 ORDER BY 1`, [email]),
+      pgQuery(`SELECT DISTINCT ON (source) source, value::float AS value FROM coverloop_data_points WHERE email=$1 AND metric='followers' ORDER BY source, period DESC NULLS LAST, created_at DESC`, [email]),
+    ]);
+    const totals = { revenue: 0, streams: 0, followers: 0 };
+    totalsQ.rows.forEach((r) => { totals[r.metric] = r.total; });
+    const followersBySource = followersQ.rows.map((r) => ({ source: r.source, value: r.value }));
+    totals.followers = followersBySource.reduce((a, b) => a + b.value, 0);
+    const periodMap = {};
+    byPeriodQ.rows.forEach((r) => {
+      periodMap[r.period] = periodMap[r.period] || { period: r.period, total: 0 };
+      periodMap[r.period][r.source] = r.total;
+      periodMap[r.period].total += r.total;
+    });
+    const revenueByPeriod = Object.values(periodMap);
+    const revenueBySource = bySourceQ.rows.map((r) => ({ source: r.source, value: r.total }));
+    const STREAMING = ['streaming', 'spotify', 'apple', 'apple music', 'amazon', 'amazon music', 'tidal', 'deezer'];
+    const streamingRevenue = revenueBySource.filter((r) => STREAMING.includes(r.source)).reduce((a, b) => a + b.value, 0);
+    const hasData = totals.revenue > 0 || totals.streams > 0 || totals.followers > 0 || revenueBySource.length > 0;
+    return res.json({ hasData, totals, streamingRevenue, revenueBySource, revenueByPeriod, followersBySource });
+  } catch (e) {
+    console.error('CoverLoop analytics error:', e.message);
+    return res.status(500).json({ error: 'analytics failed' });
+  }
+});
+
+// GET /coverloop/data — the user's raw points (for the manage view).
+app.get('/coverloop/data', async (req, res) => {
+  try {
+    const email = coverloopEmail(req);
+    if (!email) return res.status(401).json({ error: 'sign in required' });
+    const { rows } = await pgQuery(
+      `SELECT id, metric, source, to_char(period,'YYYY-MM-DD') AS period, value::float AS value, created_at
+       FROM coverloop_data_points WHERE email=$1 ORDER BY created_at DESC LIMIT 1000`, [email]);
+    return res.json({ points: rows });
+  } catch (e) {
+    console.error('CoverLoop data list error:', e.message);
+    return res.status(500).json({ error: 'list failed' });
+  }
+});
+
+// DELETE /coverloop/data?id=...  or ?all=1
+app.delete('/coverloop/data', async (req, res) => {
+  try {
+    const email = coverloopEmail(req);
+    if (!email) return res.status(401).json({ error: 'sign in required' });
+    if (req.query.all === '1') {
+      await pgQuery('DELETE FROM coverloop_data_points WHERE email=$1', [email]);
+      return res.json({ ok: true, cleared: true });
+    }
+    const id = (req.query.id || '').toString();
+    if (!id) return res.status(400).json({ error: 'id or all=1 required' });
+    await pgQuery('DELETE FROM coverloop_data_points WHERE email=$1 AND id=$2', [email, id]);
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('CoverLoop data delete error:', e.message);
+    return res.status(500).json({ error: 'delete failed' });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // PURCHASES & ORDERS
 // ──────────────────────────────────────────────────────────────────────────────
 
