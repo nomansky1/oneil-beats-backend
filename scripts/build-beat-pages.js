@@ -1336,6 +1336,107 @@ const TYPE_BEAT_ARTISTS = [
 <p>Drake's records are famously meticulous in the mix. WAV (Premium Lease, $99.99) is the floor; if you're recording with a real engineer, the stems package opens up the option to push the low-end on dancehall records or pull back the pads on R&B records. <a href="/blog/lease-vs-exclusive-beat-license-guide">License tier breakdown</a>.</p>
 <h2>Related lanes worth checking</h2>
 <p>Explore <a href="/trap-beats">trap beats</a>, <a href="/reggaeton-beats">reggaeton beats</a> (Drake has worked extensively with Latin artists), and the <a href="/future-type-beat">Future</a> + <a href="/lil-baby-type-beat">Lil Baby</a> pages for the harder melodic-trap end of his catalog.</p>` },
+  // 2026-06-20 — USA gap fill. The biggest absolute type-beat search terms in
+  // the format were missing. Catalog fit: psychedelic/dark/melodic trap.
+  { artist: 'Travis Scott',    slug: 'travis-scott-type-beat',   intro: 'Travis Scott built a sound on psychedelic, reverb-drenched dark trap — distorted 808s, ambient pads, and chant-style hooks. Pick dark, atmospheric trap with cinematic space to match the rage-meets-melody lane.',
+    filter: (b) => b.genre === 'Trap' && (b.subgenre === 'Dark Trap' || /dark|atmospheric|psychedelic|moody|cinematic/i.test(b.mood || '')),
+    body: `<h2>What makes a Travis Scott type beat</h2>
+<p>A Travis Scott instrumental is dark trap pushed into psychedelic territory: detuned, distorted 808s, wide reverb-soaked ambient pads, sparse hi-hats with sudden triplet rolls, and dramatic beat switches mid-song. The signature is space — the mix breathes so the auto-tuned chant hooks can float on top. Tempos usually sit 130–155 BPM in half-time feel, almost always in minor keys. Reverb and distortion are not effects here; they are the genre.</p>
+<h2>How to write to a Travis Scott instrumental</h2>
+<p>Don't out-rap the beat — ride it. Travis's hooks are short, melodic, heavily layered chants repeated until they're hypnotic. Find two or three notes in your natural range, build an ad-lib-heavy hook, and let the auto-tune and reverb do the harmonic work. Verses can be denser and more rhythmic, but the magic is in the atmosphere and the ad-libs ("it's lit," "straight up") that fill the empty pockets. Leave room. Silence is part of the arrangement.</p>
+<h2>BPM, key, and mix notes</h2>
+<p>Most of this lane lives at 130–155 BPM (half-time), minor keys (F minor, A minor, D minor). The 808 needs to distort slightly and the pads need real stereo width — both depend on uncompressed audio. Grab the WAV (Premium Lease, $99.99) so the low end and the reverb tails survive. If you want to build the psychedelic switch-ups yourself, the stems package ($199.99) gives you the raw layers to rearrange.</p>
+<h2>License and use</h2>
+<p>Every Travis Scott type beat here is a non-exclusive lease unless you take the Exclusive tier. Lease ($29.99) covers a SoundCloud or YouTube drop; Premium Lease ($99.99) covers unlimited streams on all DSPs; Exclusive pulls the beat off the store for good. <a href="/blog/lease-vs-exclusive-beat-license-guide">Full license breakdown</a>. When a major artist drops an album the type-beat searches spike for days — grab the <a href="/#free-signup">Free Beat Friday email</a> to get tagged previews early.</p>
+<h2>Related lanes</h2>
+<p>Pair this page with <a href="/dark-trap-beats">dark trap beats</a>, <a href="/future-type-beat">Future type beats</a> (close cousin), <a href="/metro-boomin-type-beat">Metro Boomin type beats</a>, and <a href="/playboi-carti-type-beat">Playboi Carti type beats</a> for the harder rage end.</p>` },
+  { artist: 'Playboi Carti',   slug: 'playboi-carti-type-beat',  intro: 'Playboi Carti pioneered rage and experimental dark trap — distorted synth leads, aggressive 808s, and minimal, chant-driven hooks. Pick hard, dark, high-energy trap to match.',
+    filter: (b) => b.genre === 'Trap' && (b.subgenre === 'Dark Trap' || /dark|hard|aggressive|energetic/i.test(b.mood || '')),
+    body: `<h2>The Playboi Carti / rage sound, broken down</h2>
+<p>Carti's rage lane is built on distorted, almost screaming synth leads, hard-clipped 808s, simple aggressive drum patterns, and a wall-of-energy mix that feels intentionally overdriven. It's the opposite of clean — the distortion is the point. Tempos run 140–160 BPM. Keys are minor and the melodies are simple, often a single repeating synth motif drenched in saturation. The hooks are minimal: ad-libs, short phrases, energy over lyricism.</p>
+<h2>Writing in the rage lane</h2>
+<p>This is the most vibe-driven lane in trap. Lyrics matter less than cadence, energy, and ad-libs. Write short, punchy, repeatable phrases. Lean into the distortion — your vocal can be processed hard. Most rage hits are built on momentum, not storytelling. If you can make a room jump with four words, you've got the hook. Stack ad-libs aggressively in the empty spaces.</p>
+<h2>BPM, key, and mix notes</h2>
+<p>140–160 BPM, minor keys, heavily saturated 808s. The whole genre depends on controlled distortion that still translates on phone speakers — that needs WAV headroom (Premium Lease, $99.99). Stems ($199.99) let you push or tame the saturation to taste, which is the single biggest variable in this sound.</p>
+<h2>License and use</h2>
+<p>Non-exclusive lease by default; Exclusive removes it from the store. Lease ($29.99) for testing and SoundCloud, Premium Lease ($99.99) for DSP releases with unlimited streams. <a href="/blog/lease-vs-exclusive-beat-license-guide">License tier breakdown</a>. New hard trap drops weekly — <a href="/#free-signup">grab a free beat every Friday</a>.</p>
+<h2>Related lanes</h2>
+<p>Check <a href="/dark-trap-beats">dark trap beats</a>, <a href="/travis-scott-type-beat">Travis Scott type beats</a>, <a href="/trap-beats">trap beats</a>, and <a href="/southside-type-beat">Southside type beats</a> for the heavy-808 end.</p>` },
+  { artist: 'Juice WRLD',      slug: 'juice-wrld-type-beat',     intro: 'Juice WRLD defined melodic emo-trap — guitar-driven loops, emotional minor-key chords, and sung-rapped melodic hooks. Pick melodic or smooth trap with emotional chord work.',
+    filter: (b) => b.genre === 'Trap' && (/melodic|smooth|emotional|sad|chill/i.test(b.mood || '') || (b.subgenre || '').toLowerCase().includes('melodic')),
+    body: `<h2>The Juice WRLD / emo-trap sound</h2>
+<p>Juice WRLD's lane is melodic trap with its heart on its sleeve: clean electric-guitar or piano loops, emotional minor-key progressions, warm 808s that support rather than dominate, and a vocal that's sung as much as rapped. The production leaves a wide-open mid-range for melody. This is the most topline-forward corner of trap — the beat is a bed for the song, not a wall to shout over. Tempos run 140–160 BPM (half-time feel), minor keys throughout.</p>
+<h2>Writing in this lane</h2>
+<p>This is freestyle-melody territory. Juice WRLD famously wrote nothing down — he found melodies by humming over the beat until the song appeared. Try that: loop the instrumental, improvise melodic gibberish, and let the hook reveal itself before you write a single word. Emotional honesty beats technical rapping here. The best emo-trap hooks feel like a confession. Stay melodic even in the verses.</p>
+<h2>BPM, key, and mix notes</h2>
+<p>140–160 BPM half-time, minor keys, guitar or piano-led. The emotional weight lives in the chord tails and the vocal warmth — both need uncompressed audio. WAV (Premium Lease, $99.99) is the floor. If you're stacking vocal harmonies (this lane lives on them), the stems package ($199.99) lets you carve space so your stacks don't fight the melodic loop.</p>
+<h2>License and use</h2>
+<p>Non-exclusive lease unless you take Exclusive. Lease ($29.99) for SoundCloud/YouTube, Premium Lease ($99.99) for unlimited DSP streams. <a href="/blog/lease-vs-exclusive-beat-license-guide">License breakdown</a>. <a href="/#free-signup">Free Beat Friday</a> drops tagged melodic-trap previews weekly.</p>
+<h2>Related lanes</h2>
+<p>Explore <a href="/trap-beats">trap beats</a>, <a href="/don-toliver-type-beat">Don Toliver type beats</a> (melodic cousin), <a href="/lil-baby-type-beat">Lil Baby type beats</a>, and <a href="/drake-type-beat">Drake type beats</a> for the sung-rap melodic end.</p>` },
+  { artist: 'Don Toliver',     slug: 'don-toliver-type-beat',    intro: 'Don Toliver blends melodic trap, psychedelic R&B, and atmospheric production into a hazy, sung-rap sound. Pick smooth, atmospheric, melodic trap or alternative R&B.',
+    filter: (b) => (b.genre === 'Trap' && /melodic|smooth|atmospheric|chill|romantic/i.test(b.mood || '')) || b.subgenre === 'Alternative R&B',
+    body: `<h2>What a Don Toliver type beat sounds like</h2>
+<p>Don Toliver lives where melodic trap meets psychedelic R&B: hazy reverb-soaked production, warm rolling 808s, lush chords, and a falsetto-heavy sung-rap delivery that floats over the top. The mix is dreamy and wide, with the vocal often doubled and drenched in reverb. Tempos run 130–150 BPM (half-time) and lean minor, but the chords are richer and warmer than standard dark trap — more color, more soul.</p>
+<h2>Writing in the Don Toliver lane</h2>
+<p>This is a singer's lane. Lead with melody and tone over bars. Don Toliver's hooks are built on vibe and falsetto runs — the words are almost secondary to the feeling. Improvise melodies first, find the pocket that floats, then write lyrics that match the haze. Lean into your upper register. Stack harmonies. The atmosphere does half the work, so don't overcrowd it.</p>
+<h2>BPM, key, and mix notes</h2>
+<p>130–150 BPM half-time, minor keys with warm extended chords. The dreamy width and the warm low end both need uncompressed audio — WAV (Premium Lease, $99.99) minimum. The stems package ($199.99) is ideal here because this sound is all about balancing the vocal reverb against the chord bed.</p>
+<h2>License and use</h2>
+<p>Non-exclusive lease by default; Exclusive removes it from the store permanently. Lease ($29.99) for early releases, Premium Lease ($99.99) for unlimited streaming. <a href="/blog/lease-vs-exclusive-beat-license-guide">Tier breakdown</a>. <a href="/#free-signup">Free Beat Friday</a> sends tagged previews weekly.</p>
+<h2>Related lanes</h2>
+<p>Pair with <a href="/trap-beats">trap beats</a>, <a href="/juice-wrld-type-beat">Juice WRLD type beats</a>, <a href="/travis-scott-type-beat">Travis Scott type beats</a> (frequent collaborator), and <a href="/drake-type-beat">Drake type beats</a> for the R&B-leaning end.</p>` },
+  { artist: '21 Savage',       slug: '21-savage-type-beat',      intro: '21 Savage rides cold, dark, minimal trap — sinister minor-key melodies, hard 808s, and a calm menacing flow. Pick dark, hard trap with sparse, eerie production.',
+    filter: (b) => b.genre === 'Trap' && (b.subgenre === 'Dark Trap' || /dark|hard|moody|menacing|cold/i.test(b.mood || '')),
+    body: `<h2>The 21 Savage sound, broken down</h2>
+<p>21 Savage's lane is cold, minimal, and menacing: sparse sinister minor-key melodies (often a single eerie bell or pluck), hard-hitting 808s, restrained hi-hats, and a lot of empty space. The production is deliberately understated so the calm, deadpan flow can sit at the center. This is the opposite of busy — the menace comes from restraint. Tempos run 120–145 BPM (half-time), minor keys, with a dark cinematic edge (no surprise Metro Boomin produced much of his catalog).</p>
+<h2>Writing in this lane</h2>
+<p>Less is more. 21 Savage delivers cold, matter-of-fact bars with almost no melodic strain — the menace is in the calm. Write tight, punchy lines and deliver them flat and confident. You don't need to fill every bar; the empty space is the vibe. The hook should be simple and repeatable, more chant than melody. Let the beat's emptiness work for you.</p>
+<h2>BPM, key, and mix notes</h2>
+<p>120–145 BPM half-time, minor keys, sparse arrangement. The 808 carries the whole low end, so it needs room — WAV (Premium Lease, $99.99) preserves the sub. Because the arrangement is minimal, mix clarity matters more than usual; the stems package ($199.99) lets you keep the 808 and vocal perfectly separated.</p>
+<h2>License and use</h2>
+<p>Non-exclusive lease unless you take Exclusive. Lease ($29.99) for SoundCloud/YouTube; Premium Lease ($99.99) for unlimited DSP streams. <a href="/blog/lease-vs-exclusive-beat-license-guide">License breakdown</a>. <a href="/#free-signup">Free Beat Friday</a> drops tagged dark-trap previews weekly.</p>
+<h2>Related lanes</h2>
+<p>Check <a href="/dark-trap-beats">dark trap beats</a>, <a href="/metro-boomin-type-beat">Metro Boomin type beats</a> (main collaborator), <a href="/future-type-beat">Future type beats</a>, and <a href="/trap-beats">trap beats</a>.</p>` },
+  // 2026-06-20 — UK gap fill. Site already targets drill subgenres in keywords
+  // but had ZERO UK artist pages. Central Cee is a top-volume global type-beat
+  // search. Filters fall back to trap/drill; pages render even with 0 matches.
+  { artist: 'Central Cee',     slug: 'central-cee-type-beat',    intro: 'Central Cee fuses UK drill with melodic, radio-ready hooks — sliding 808s, dark melodic loops, and the signature drill drum pattern. Pick UK drill or dark/melodic trap to match.',
+    filter: (b) => (b.subgenre || '').toLowerCase().includes('drill') || (b.genre === 'Trap' && /dark|melodic|smooth|hard/i.test(b.mood || '')),
+    body: `<h2>What makes a Central Cee type beat</h2>
+<p>Central Cee took UK drill mainstream by marrying it to melody. The signature: the UK drill drum pattern (skippy hi-hats, syncopated kicks, that distinctive sliding/gliding 808 that bends between notes), paired with melodic, often sample-driven minor-key loops that feel almost pop. Tempos sit 138–145 BPM. The sliding 808 is the defining element — it's pitched and glides, unlike the static 808 of US trap. The mix is clean and radio-ready, not gritty.</p>
+<h2>How to write to a UK drill instrumental</h2>
+<p>The drill pocket is different from US trap — the kick pattern is syncopated and the flow rides the off-beats. Central Cee's gift is melodic, quotable hooks over hard drill drums. Write a hook that's catchy enough for radio but deliver your verses with drill cadence — punchy, rhythmic, riding the bounce of the sliding 808. Wordplay and quotables matter in UK rap. Mix Spanish/English/slang freely; Central Cee's crossover came from being globally legible.</p>
+<h2>BPM, key, and mix notes</h2>
+<p>138–145 BPM, minor keys, with the pitched sliding 808 as the centerpiece. That 808 needs to glide cleanly between notes — it depends on uncompressed audio, so get the WAV (Premium Lease, $99.99). The stems package ($199.99) lets you control the 808 glide and the melodic sample balance, which is where UK drill mixes are won or lost.</p>
+<h2>License and use</h2>
+<p>Non-exclusive lease by default; Exclusive removes the beat from the store. Lease ($29.99) covers a SoundCloud/YouTube drop; Premium Lease ($99.99) covers unlimited streams across all platforms. <a href="/blog/lease-vs-exclusive-beat-license-guide">Full license breakdown</a>. New UK drill and melodic trap drop weekly — <a href="/#free-signup">grab a free beat every Friday</a>.</p>
+<h2>Related lanes</h2>
+<p>Explore <a href="/dark-trap-beats">dark trap beats</a>, <a href="/trap-beats">trap beats</a>, the <a href="/dave-type-beat">Dave type beat</a> page, and <a href="/headie-one-type-beat">Headie One type beats</a> for harder UK drill.</p>` },
+  { artist: 'Dave',            slug: 'dave-type-beat',           intro: 'Dave (Santan Dave) moves between cinematic UK rap, piano-driven storytelling, and melodic drill. Pick lyrical, emotional, or piano-led instrumentals, or UK drill for the harder lane.',
+    filter: (b) => (b.subgenre || '').toLowerCase().includes('drill') || b.genre === 'Boom Bap' || b.subgenre === 'Lyrical' || b.subgenre === 'Conscious' || (b.genre === 'Trap' && /emotional|melodic|smooth|dark/i.test(b.mood || '')),
+    body: `<h2>Dave's range: cinematic UK rap and melodic drill</h2>
+<p>Dave is one of UK rap's most versatile artists — he moves from intimate piano-driven storytelling ballads to hard melodic drill to cinematic, orchestral rap. A "Dave type beat" can mean a sparse emotional piano loop for lyrical storytelling, or a melodic UK drill instrumental with the signature sliding 808. The constant is space for lyricism: Dave is a writer first, so the production leaves room for dense, narrative verses. Tempos range from 70 BPM piano ballads to 140 BPM drill.</p>
+<h2>Writing in the Dave lane</h2>
+<p>This is the lyricist's lane in UK rap. Dave's songs are built on storytelling, double meanings, and emotional depth — the beat serves the narrative. Decide first whether you're writing a reflective piano record or a hard drill cut. For the storytelling lane, write like you're telling someone a true story, restrained and detailed. For the drill lane, keep the lyricism but ride the syncopated pocket. Either way, content carries the song.</p>
+<h2>BPM, key, and mix notes</h2>
+<p>Wide range: 70–90 BPM for piano/lyrical records, 138–145 BPM for drill. Minor keys throughout. The emotional records depend on clean piano tails and vocal intimacy; the drill records depend on the sliding 808. Both want the WAV (Premium Lease, $99.99). Stems ($199.99) help most on the sparse piano records where every element is exposed.</p>
+<h2>License and use</h2>
+<p>Non-exclusive lease unless you take Exclusive. Lease ($29.99) for early releases; Premium Lease ($99.99) for unlimited streaming. <a href="/blog/lease-vs-exclusive-beat-license-guide">License tier breakdown</a>. <a href="/#free-signup">Free Beat Friday</a> sends tagged previews weekly.</p>
+<h2>Related lanes</h2>
+<p>Check the <a href="/central-cee-type-beat">Central Cee type beat</a> page, <a href="/headie-one-type-beat">Headie One type beats</a>, <a href="/j-cole-type-beat">J Cole type beats</a> (lyrical cousin), and <a href="/trap-beats">trap beats</a>.</p>` },
+  { artist: 'Headie One',      slug: 'headie-one-type-beat',     intro: 'Headie One is a cornerstone of UK drill — dark sliding 808s, eerie minor-key loops, and the hard syncopated drill pattern. Pick UK drill or dark trap for the authentic drill lane.',
+    filter: (b) => (b.subgenre || '').toLowerCase().includes('drill') || (b.genre === 'Trap' && (b.subgenre === 'Dark Trap' || /dark|hard|moody/i.test(b.mood || ''))),
+    body: `<h2>The Headie One / UK drill sound</h2>
+<p>Headie One is one of the defining voices of UK drill — darker and grittier than the melodic crossover lane. The production is built on eerie, sparse minor-key loops, the signature pitched sliding 808, hard syncopated drum patterns with skippy hi-hats, and an atmosphere of cold tension. Tempos sit 138–145 BPM. This is authentic drill: menacing, rhythmic, and built around the pocket rather than the hook. The 808 glide and the drum syncopation are non-negotiable.</p>
+<h2>How to write to a UK drill beat</h2>
+<p>Drill flow is its own discipline — the cadence rides the syncopated kick pattern and the off-beats, not the straight grid of US trap. Headie One delivers cold, rhythmic, slang-dense bars with a calm menace. Lock into the bounce of the sliding 808, keep your delivery punchy and on the pocket, and let the wordplay and ad-libs carry weight. The hook can be a simple repeated chant — energy and pocket over melody.</p>
+<h2>BPM, key, and mix notes</h2>
+<p>138–145 BPM, minor keys, dark and sparse. The pitched sliding 808 is the centerpiece and has to glide cleanly — that needs uncompressed audio, so get the WAV (Premium Lease, $99.99). Stems ($199.99) give you control over the 808 glide and the eerie melodic layer, the two elements that define the sound.</p>
+<h2>License and use</h2>
+<p>Non-exclusive lease by default; Exclusive pulls the beat from the store. Lease ($29.99) for SoundCloud/YouTube; Premium Lease ($99.99) for unlimited DSP streams. <a href="/blog/lease-vs-exclusive-beat-license-guide">License breakdown</a>. New UK drill drops weekly — <a href="/#free-signup">free beat every Friday</a>.</p>
+<h2>Related lanes</h2>
+<p>Explore the <a href="/central-cee-type-beat">Central Cee type beat</a> page, <a href="/dave-type-beat">Dave type beats</a>, <a href="/dark-trap-beats">dark trap beats</a>, and <a href="/trap-beats">trap beats</a>.</p>` },
 ];
 
 // Featured one-off landing pages — keyword-targeted pages that don't fit the
