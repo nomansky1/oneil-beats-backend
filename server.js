@@ -3634,6 +3634,218 @@ app.delete('/coverloop/data', async (req, res) => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// COVERLOOP — connect external platforms (OAuth) → encrypted token vault → sync.
+// Each artist links their OWN YouTube / Spotify account; tokens are stored
+// AES-256-GCM encrypted, and a sync pulls their metrics into coverloop_data_points
+// so they flow onto the dashboard. The OAuth `state` carries the user's email
+// signed by SESSION_SECRET, so the callback knows who connected (no client param).
+// DistroKid / Apple Music have NO data API anywhere → those stay CSV import.
+// ──────────────────────────────────────────────────────────────────────────────
+const { google: clGoogle } = require('googleapis');
+const clCrypto = require('crypto');
+const { signSession: clSignSession, verifySession: clVerifySession } = require('./auth');
+const CL_ENC_KEY = clCrypto.createHash('sha256').update(process.env.SESSION_SECRET || 'dev-fallback').digest();
+function clEnc(plain) {
+  if (plain == null) return null;
+  const iv = clCrypto.randomBytes(12);
+  const c = clCrypto.createCipheriv('aes-256-gcm', CL_ENC_KEY, iv);
+  const ct = Buffer.concat([c.update(String(plain), 'utf8'), c.final()]);
+  return Buffer.concat([iv, c.getAuthTag(), ct]).toString('base64');
+}
+function clDec(blob) {
+  if (!blob) return null;
+  try {
+    const b = Buffer.from(blob, 'base64');
+    const d = clCrypto.createDecipheriv('aes-256-gcm', CL_ENC_KEY, b.subarray(0, 12));
+    d.setAuthTag(b.subarray(12, 28));
+    return Buffer.concat([d.update(b.subarray(28)), d.final()]).toString('utf8');
+  } catch { return null; }
+}
+const CL_PUBLIC = (process.env.COVERLOOP_PUBLIC_URL || 'https://oneilbeats.store').replace(/\/$/, '');
+const clRedirect = (platform) => `${CL_PUBLIC}/coverloop/connect/${platform}/callback`;
+const CL_YT_SCOPES = [
+  'https://www.googleapis.com/auth/youtube.readonly',
+  'https://www.googleapis.com/auth/yt-analytics.readonly',
+  'https://www.googleapis.com/auth/yt-analytics-monetary.readonly',
+];
+function clAuthUrl(platform, state) {
+  if (platform === 'youtube') {
+    if (!process.env.GOOGLE_OAUTH_CLIENT_ID) return null;
+    const o = new clGoogle.auth.OAuth2(process.env.GOOGLE_OAUTH_CLIENT_ID, process.env.GOOGLE_OAUTH_CLIENT_SECRET, clRedirect('youtube'));
+    return o.generateAuthUrl({ access_type: 'offline', prompt: 'consent', scope: ['openid', 'email', ...CL_YT_SCOPES], state });
+  }
+  if (platform === 'spotify') {
+    if (!process.env.COVERLOOP_SPOTIFY_ID) return null;
+    const u = new URL('https://accounts.spotify.com/authorize');
+    u.searchParams.set('client_id', process.env.COVERLOOP_SPOTIFY_ID);
+    u.searchParams.set('response_type', 'code');
+    u.searchParams.set('redirect_uri', clRedirect('spotify'));
+    u.searchParams.set('scope', 'user-read-private user-read-email user-follow-read user-top-read');
+    u.searchParams.set('state', state);
+    return u.toString();
+  }
+  return null;
+}
+const clDonePage = (msg, ok = true) => `<!doctype html><meta charset=utf8><body style="font-family:system-ui;background:#0a0e17;color:#e5e7eb;text-align:center;padding:14vh 8vw"><h2>${ok ? '✓ ' : ''}${msg}</h2><p>You can close this tab and return to CoverLoop.</p></body>`;
+async function clStoreAccount(email, platform, a) {
+  await pgQuery(
+    `INSERT INTO coverloop_platform_accounts (email, platform, account_id, account_name, access_token, refresh_token, expires_at, scopes, profile, connected_at, last_error)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, now(), NULL)
+     ON CONFLICT (email, platform) DO UPDATE SET
+       account_id=$3, account_name=$4, access_token=$5,
+       refresh_token=COALESCE($6, coverloop_platform_accounts.refresh_token),
+       expires_at=$7, scopes=$8, profile=$9, connected_at=now(), last_error=NULL`,
+    [email, platform, a.accountId || null, a.accountName || null, clEnc(a.accessToken), clEnc(a.refreshToken), a.expiresAt || null, a.scopes || null, a.profile ? JSON.stringify(a.profile) : null]
+  );
+}
+async function clGetAccount(email, platform) {
+  const { rows } = await pgQuery('SELECT * FROM coverloop_platform_accounts WHERE email=$1 AND platform=$2 LIMIT 1', [email, platform]);
+  return rows[0] || null;
+}
+const clMonth = () => new Date().toISOString().slice(0, 7) + '-01';
+async function clSnapshot(email, metric, source, period, value) {
+  await pgQuery(`DELETE FROM coverloop_data_points WHERE email=$1 AND metric=$2 AND source=$3 AND period=$4`, [email, metric, source, period]);
+  await pgQuery(`INSERT INTO coverloop_data_points (email, metric, source, period, value, meta) VALUES ($1,$2,$3,$4,$5,$6)`, [email, metric, source, period, value, JSON.stringify({ via: 'sync' })]);
+}
+
+// POST /coverloop/connect/start { platform } (Bearer) → { url }
+app.post('/coverloop/connect/start', async (req, res) => {
+  try {
+    const email = coverloopEmail(req);
+    if (!email) return res.status(401).json({ error: 'sign in required' });
+    const platform = ((req.body && req.body.platform) || '').toString();
+    if (!['youtube', 'spotify'].includes(platform)) return res.status(400).json({ error: 'unsupported platform' });
+    const state = clSignSession({ email, platform, nonce: clCrypto.randomBytes(12).toString('hex') });
+    const url = clAuthUrl(platform, state);
+    if (!url) return res.status(503).json({ error: `${platform} connect is not configured yet` });
+    return res.json({ url });
+  } catch (e) { console.error('connect start error:', e.message); return res.status(500).json({ error: 'start failed' }); }
+});
+
+// GET /coverloop/connect/youtube/callback
+app.get('/coverloop/connect/youtube/callback', async (req, res) => {
+  try {
+    const { code, state, error } = req.query || {};
+    if (error) return res.status(400).send(clDonePage('Connection cancelled.', false));
+    const st = clVerifySession(String(state || ''));
+    if (!st || !st.email || st.platform !== 'youtube' || !code) return res.status(400).send(clDonePage('Invalid connection request.', false));
+    const o = new clGoogle.auth.OAuth2(process.env.GOOGLE_OAUTH_CLIENT_ID, process.env.GOOGLE_OAUTH_CLIENT_SECRET, clRedirect('youtube'));
+    const { tokens } = await o.getToken(String(code));
+    o.setCredentials(tokens);
+    const yt = clGoogle.youtube({ version: 'v3', auth: o });
+    const ch = await yt.channels.list({ part: ['snippet', 'statistics'], mine: true });
+    const c = (ch.data.items || [])[0];
+    await clStoreAccount(st.email, 'youtube', {
+      accountId: c && c.id, accountName: c && c.snippet && c.snippet.title,
+      accessToken: tokens.access_token, refreshToken: tokens.refresh_token,
+      expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
+      scopes: CL_YT_SCOPES.join(' '),
+      profile: c ? { thumbnail: c.snippet && c.snippet.thumbnails && c.snippet.thumbnails.default && c.snippet.thumbnails.default.url, subscribers: Number((c.statistics || {}).subscriberCount || 0), views: Number((c.statistics || {}).viewCount || 0), videos: Number((c.statistics || {}).videoCount || 0) } : null,
+    });
+    try { await clSyncYouTube(st.email); } catch (_) {}
+    return res.send(clDonePage('Connected your YouTube channel'));
+  } catch (e) { console.error('youtube connect callback error:', e.message); return res.status(500).send(clDonePage('YouTube connection failed: ' + e.message, false)); }
+});
+
+// GET /coverloop/connect/spotify/callback
+app.get('/coverloop/connect/spotify/callback', async (req, res) => {
+  try {
+    const { code, state, error } = req.query || {};
+    if (error) return res.status(400).send(clDonePage('Connection cancelled.', false));
+    const st = clVerifySession(String(state || ''));
+    if (!st || !st.email || st.platform !== 'spotify' || !code) return res.status(400).send(clDonePage('Invalid connection request.', false));
+    const basic = Buffer.from(`${process.env.COVERLOOP_SPOTIFY_ID}:${process.env.COVERLOOP_SPOTIFY_SECRET}`).toString('base64');
+    const tok = await (await fetch('https://accounts.spotify.com/api/token', { method: 'POST', headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'authorization_code', code: String(code), redirect_uri: clRedirect('spotify') }) })).json();
+    if (!tok.access_token) throw new Error(tok.error_description || 'token exchange failed');
+    const me = await (await fetch('https://api.spotify.com/v1/me', { headers: { Authorization: `Bearer ${tok.access_token}` } })).json();
+    await clStoreAccount(st.email, 'spotify', {
+      accountId: me.id, accountName: me.display_name || me.id,
+      accessToken: tok.access_token, refreshToken: tok.refresh_token,
+      expiresAt: new Date(Date.now() + (tok.expires_in || 3600) * 1000).toISOString(),
+      scopes: tok.scope, profile: { followers: (me.followers && me.followers.total) || 0, url: me.external_urls && me.external_urls.spotify },
+    });
+    try { await clSyncSpotify(st.email); } catch (_) {}
+    return res.send(clDonePage('Connected your Spotify'));
+  } catch (e) { console.error('spotify connect callback error:', e.message); return res.status(500).send(clDonePage('Spotify connection failed: ' + e.message, false)); }
+});
+
+// GET /coverloop/connect/status (Bearer) → connected platforms
+app.get('/coverloop/connect/status', async (req, res) => {
+  try {
+    const email = coverloopEmail(req);
+    if (!email) return res.status(401).json({ error: 'sign in required' });
+    const { rows } = await pgQuery(`SELECT platform, account_name, profile, connected_at, last_sync, last_error FROM coverloop_platform_accounts WHERE email=$1 ORDER BY connected_at DESC`, [email]);
+    return res.json({ accounts: rows });
+  } catch (e) { console.error('connect status error:', e.message); return res.status(500).json({ error: 'status failed' }); }
+});
+
+// POST /coverloop/connect/sync { platform? } (Bearer) → pull metrics now
+app.post('/coverloop/connect/sync', async (req, res) => {
+  try {
+    const email = coverloopEmail(req);
+    if (!email) return res.status(401).json({ error: 'sign in required' });
+    const platform = ((req.body && req.body.platform) || '').toString();
+    const results = {};
+    if (!platform || platform === 'youtube') { try { results.youtube = await clSyncYouTube(email); } catch (e) { results.youtube = { error: e.message }; } }
+    if (!platform || platform === 'spotify') { try { results.spotify = await clSyncSpotify(email); } catch (e) { results.spotify = { error: e.message }; } }
+    return res.json({ ok: true, results });
+  } catch (e) { console.error('connect sync error:', e.message); return res.status(500).json({ error: 'sync failed' }); }
+});
+
+// DELETE /coverloop/connect/:platform (Bearer) → disconnect
+app.delete('/coverloop/connect/:platform', async (req, res) => {
+  try {
+    const email = coverloopEmail(req);
+    if (!email) return res.status(401).json({ error: 'sign in required' });
+    await pgQuery('DELETE FROM coverloop_platform_accounts WHERE email=$1 AND platform=$2', [email, req.params.platform]);
+    return res.json({ ok: true });
+  } catch (e) { console.error('connect disconnect error:', e.message); return res.status(500).json({ error: 'disconnect failed' }); }
+});
+
+// ── sync helpers (hoisted): pull metrics → coverloop_data_points snapshot ──
+async function clSyncYouTube(email) {
+  const acc = await clGetAccount(email, 'youtube');
+  if (!acc) throw new Error('not connected');
+  const o = new clGoogle.auth.OAuth2(process.env.GOOGLE_OAUTH_CLIENT_ID, process.env.GOOGLE_OAUTH_CLIENT_SECRET, clRedirect('youtube'));
+  o.setCredentials({ access_token: clDec(acc.access_token), refresh_token: clDec(acc.refresh_token) });
+  const yt = clGoogle.youtube({ version: 'v3', auth: o });
+  const ch = await yt.channels.list({ part: ['statistics'], mine: true });
+  const subs = Number(((ch.data.items || [])[0] || {}).statistics ? (ch.data.items[0].statistics.subscriberCount || 0) : 0);
+  await clSnapshot(email, 'followers', 'youtube', clMonth(), subs);
+  let revenueMonths = 0;
+  try {
+    const yta = clGoogle.youtubeAnalytics({ version: 'v2', auth: o });
+    const end = new Date().toISOString().slice(0, 10);
+    const start = new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10);
+    const r = await yta.reports.query({ ids: 'channel==MINE', startDate: start, endDate: end, metrics: 'estimatedRevenue', dimensions: 'month' });
+    for (const row of (r.data.rows || [])) {
+      const rev = Number(row[1] || 0);
+      if (rev > 0) { await clSnapshot(email, 'revenue', 'youtube', row[0] + '-01', rev); revenueMonths++; }
+    }
+  } catch (_) { /* analytics unavailable (channel not monetized / scope) */ }
+  await pgQuery(`UPDATE coverloop_platform_accounts SET last_sync=now(), last_error=NULL WHERE email=$1 AND platform='youtube'`, [email]);
+  return { subscribers: subs, revenueMonths };
+}
+async function clSyncSpotify(email) {
+  const acc = await clGetAccount(email, 'spotify');
+  if (!acc) throw new Error('not connected');
+  let token = clDec(acc.access_token);
+  if (!acc.expires_at || new Date(acc.expires_at).getTime() < Date.now() + 60000) {
+    const rt = clDec(acc.refresh_token);
+    if (rt) {
+      const basic = Buffer.from(`${process.env.COVERLOOP_SPOTIFY_ID}:${process.env.COVERLOOP_SPOTIFY_SECRET}`).toString('base64');
+      const tok = await (await fetch('https://accounts.spotify.com/api/token', { method: 'POST', headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: rt }) })).json();
+      if (tok.access_token) { token = tok.access_token; await pgQuery(`UPDATE coverloop_platform_accounts SET access_token=$2, expires_at=$3 WHERE email=$1 AND platform='spotify'`, [email, clEnc(token), new Date(Date.now() + (tok.expires_in || 3600) * 1000).toISOString()]); }
+    }
+  }
+  const me = await (await fetch('https://api.spotify.com/v1/me', { headers: { Authorization: `Bearer ${token}` } })).json();
+  const followers = (me.followers && me.followers.total) || 0;
+  await clSnapshot(email, 'followers', 'spotify', clMonth(), followers);
+  await pgQuery(`UPDATE coverloop_platform_accounts SET last_sync=now(), last_error=NULL WHERE email=$1 AND platform='spotify'`, [email]);
+  return { followers };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // PURCHASES & ORDERS
 // ──────────────────────────────────────────────────────────────────────────────
 
