@@ -1,0 +1,30 @@
+{
+  "LOG": true,
+  "Providers": [
+    {
+      "name": "ollama",
+      "api_base_url": "http://localhost:11434/v1/chat/completions",
+      "api_key": "ollama",
+      "models": ["qwen3-coder:7b"]
+    },
+    {
+      "name": "anthropic",
+      "api_base_url": "https://api.anthropic.com/v1/messages",
+      "api_key": "PASTE_YOUR_ANTHROPIC_KEY_HERE",
+      "models": [
+        "claude-sonnet-4-6",
+        "claude-opus-4-8",
+        "claude-haiku-4-5-20251001"
+      ],
+      "transformer": { "use": ["Anthropic"] }
+    }
+  ],
+  "Router": {
+    "default": "anthropic,claude-sonnet-4-6",
+    "background": "ollama,qwen3-coder:7b",
+    "think": "anthropic,claude-opus-4-8",
+    "longContext": "anthropic,claude-sonnet-4-6",
+    "longContextThreshold": 60000,
+    "webSearch": "anthropic,claude-sonnet-4-6"
+  }
+}
