@@ -3792,6 +3792,53 @@ app.post('/coverloop/connect/sync', async (req, res) => {
   } catch (e) { console.error('connect sync error:', e.message); return res.status(500).json({ error: 'sync failed' }); }
 });
 
+// GET /coverloop/connect/youtube/videos (Bearer) → channel stats + recent uploads
+app.get('/coverloop/connect/youtube/videos', async (req, res) => {
+  try {
+    const email = coverloopEmail(req);
+    if (!email) return res.status(401).json({ error: 'sign in required' });
+    const acc = await clGetAccount(email, 'youtube');
+    if (!acc) return res.json({ connected: false, channel: null, videos: [] });
+    const o = new clGoogle.auth.OAuth2(process.env.GOOGLE_OAUTH_CLIENT_ID, process.env.GOOGLE_OAUTH_CLIENT_SECRET, clRedirect('youtube'));
+    o.setCredentials({ access_token: clDec(acc.access_token), refresh_token: clDec(acc.refresh_token) });
+    const yt = clGoogle.youtube({ version: 'v3', auth: o });
+    const chRes = await yt.channels.list({ part: ['snippet', 'statistics', 'contentDetails'], mine: true });
+    const ch = ((chRes.data && chRes.data.items) || [])[0] || {};
+    const chSnip = ch.snippet || {};
+    const chStats = ch.statistics || {};
+    const uploads = (((ch.contentDetails || {}).relatedPlaylists) || {}).uploads;
+    const channel = {
+      title: chSnip.title || '',
+      thumbnail: (((chSnip.thumbnails || {}).default) || {}).url || '',
+      subscribers: Number(chStats.subscriberCount || 0),
+      views: Number(chStats.viewCount || 0),
+      videoCount: Number(chStats.videoCount || 0),
+    };
+    let videos = [];
+    if (uploads) {
+      const plRes = await yt.playlistItems.list({ part: ['contentDetails'], playlistId: uploads, maxResults: 12 });
+      const ids = ((plRes.data && plRes.data.items) || []).map(it => ((it.contentDetails || {}).videoId)).filter(Boolean);
+      if (ids.length) {
+        const vidRes = await yt.videos.list({ part: ['snippet', 'statistics'], id: ids.join(',') });
+        videos = ((vidRes.data && vidRes.data.items) || []).map(v => {
+          const snip = v.snippet || {};
+          const stats = v.statistics || {};
+          return {
+            id: v.id,
+            title: snip.title || '',
+            thumbnail: (((snip.thumbnails || {}).medium) || {}).url || '',
+            publishedAt: snip.publishedAt || null,
+            views: Number(stats.viewCount || 0),
+            likes: Number(stats.likeCount || 0),
+            comments: Number(stats.commentCount || 0),
+          };
+        });
+      }
+    }
+    return res.json({ connected: true, channel, videos });
+  } catch (e) { console.error('youtube videos error:', e.message); return res.status(500).json({ error: 'youtube videos failed' }); }
+});
+
 // DELETE /coverloop/connect/:platform (Bearer) → disconnect
 app.delete('/coverloop/connect/:platform', async (req, res) => {
   try {
