@@ -1,0 +1,60 @@
+# ---- Unity generated ----
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# Never commit the Unity package cache
+/[Aa]ssets/[Aa]ssetStoreTools*
+/[Aa]ssets/[Pp]lugins/[Ee]ditor/JetBrains*
+
+# ---- IDE ----
+.vs/
+.idea/
+.vscode/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# ---- OS ----
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ---- Build artifacts ----
+*.apk
+*.aab
+*.unitypackage
+*.app
+crashlytics-build.properties
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# ---- Signing: NEVER commit keystores or passwords ----
+*.keystore
+*.jks
+keystore.properties
+/Build/signing/
+
+# ---- Raw asset staging ----
+# Rodin/Blender source files live outside the repo or in Art/_Source (LFS if needed)
+/[Aa]ssets/_Project/[Aa]rt/_[Ss]ource/**/*.blend1
