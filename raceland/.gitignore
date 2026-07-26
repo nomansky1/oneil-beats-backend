@@ -58,3 +58,20 @@ keystore.properties
 # ---- Raw asset staging ----
 # Rodin/Blender source files live outside the repo or in Art/_Source (LFS if needed)
 /[Aa]ssets/_Project/[Aa]rt/_[Ss]ource/**/*.blend1
+
+# ---- LICENSED THIRD-PARTY ART — DO NOT COMMIT ----
+#
+# This repository is PUBLIC. The Atomic Realm Modular Roads licence permits
+# commercial use and editing, but explicitly forbids repackaging, reselling or
+# redistributing the assets "no matter how much they are modified". Pushing the
+# meshes or textures here publishes them to anyone, which is redistribution.
+#
+# The same caution applies to the itch.io voxel car pack, which ships no licence
+# file at all — absent written terms, assume redistribution is not permitted.
+#
+# The import rules and builders that USE these assets are ours and are committed.
+# The assets themselves stay on your machine. Drop the packs into the folders
+# below locally; Unity will import them with the right settings automatically.
+/[Aa]ssets/_Project/[Aa]rt/ModularRoads/
+/[Aa]ssets/_Project/[Aa]rt/Voxel/
+/[Aa]ssets/_Project/[Aa]rt/Rodin/
