@@ -32,3 +32,4 @@ public/instrumentales-*.html
 # from scripts/build-beat-pages.js. ~600 KB × 46+ beats; never committed so the
 # repo stays lean. The build step regenerates them with the canonical layout.
 public/og/
+jdm-lowpoly-cars.zip

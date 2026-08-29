@@ -1,0 +1,5 @@
+# Generated output (models/renders) — large binaries, reproducible via generate_cars.py
+output/
+# Build artifacts
+__pycache__/
+*.pyc
