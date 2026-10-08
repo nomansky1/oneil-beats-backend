@@ -9,7 +9,7 @@ function install() {
     calls.push(String(url));
     const hit = ROUTES.find(([re]) => re.test(String(url)));
     if (!hit) return new Response('not in fixtures', { status: 503 });
-    const body = hit[1]();
+    const body = hit[1](String(url));
     return new Response(typeof body === 'string' ? body : JSON.stringify(body), { status: 200 });
   };
   return calls;

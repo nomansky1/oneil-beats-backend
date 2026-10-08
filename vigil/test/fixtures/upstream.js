@@ -8,9 +8,14 @@ const iso = (m) => minsAgo(m).toISOString();
 const rfc822 = (m) => minsAgo(m).toUTCString();
 const gdelt = (m) => minsAgo(m).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 
-const nominatimReverse = () => ({
-  address: { city: 'Muskegon', county: 'Muskegon County', state: 'Michigan', 'ISO3166-2-lvl4': 'US-MI', country_code: 'us' },
-});
+// Muskegon, MI unless the point is in one of the registry test cities.
+const nominatimReverse = (url = '') => {
+  const lat = Number((/[?&]lat=([-\d.]+)/.exec(url) || [])[1]);
+  if (lat > 41 && lat < 42) return { address: { city: 'Des Moines', county: 'Polk County', state: 'Iowa', 'ISO3166-2-lvl4': 'US-IA', country_code: 'us' } };
+  if (lat > 36 && lat < 37) return { address: { city: 'Nashville', county: 'Davidson County', state: 'Tennessee', 'ISO3166-2-lvl4': 'US-TN', country_code: 'us' } };
+  if (lat > 38.8 && lat < 39) return { address: { city: 'Washington', state: 'District of Columbia', 'ISO3166-2-lvl4': 'US-DC', country_code: 'us' } };
+  return { address: { city: 'Muskegon', county: 'Muskegon County', state: 'Michigan', 'ISO3166-2-lvl4': 'US-MI', country_code: 'us' } };
+};
 
 const nominatimSearch = () => ([
   { lat: '43.2342', lon: '-86.2484', name: 'Muskegon', display_name: 'Muskegon, Muskegon County, Michigan, United States', address: { city: 'Muskegon', state: 'Michigan', 'ISO3166-2-lvl4': 'US-MI', country_code: 'us' } },
@@ -152,6 +157,29 @@ const articlePage = () => `<!doctype html><html><head><title>Fixture</title>
 <meta content="/img/story.jpg?w=1200&amp;h=630" property="og:image">
 </head><body>Story</body></html>`;
 
+// Registry fixtures. Invented test records, not real people.
+const iowaRegistry = () => ({
+  records: [
+    { registrant: '90001', first_name: 'Test', last_name: 'Registrant A', photo: 'https://www.iowasexoffender.gov/images/photos/90001.jpg', lat: 41.5900, lon: -93.6200, address: '100 Example St', city: 'Des Moines', state: 'IA', tier: 'Tier II', convictions: [{ description: 'Fixture offense one' }, { description: 'Fixture offense two' }], last_updated: '2026-10-01' },
+    { registrant: '90002', name: 'Test Registrant B', photo: 'http://insecure.example/b.jpg', lat: '41.6000', lon: '-93.6100', city: 'Des Moines' },
+    { registrant: '90003', name: 'Test Registrant Far', lat: 42.5, lon: -93.0 },
+  ],
+});
+
+const tennesseeRegistry = () => ({
+  type: 'FeatureCollection',
+  features: [
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [-86.7810, 36.1630] }, properties: { TID: '00900001', FIRST_NAME: 'Test', LAST_NAME: 'Registrant C', ADDRESS: '200 Fixture Ave', CITY: 'Nashville', OFFENSE: 'Fixture offense three', PHOTO_URL: 'https://sor.tbi.tn.gov/photos/00900001.jpg' } },
+  ],
+});
+
+const dcRegistry = () => ({
+  type: 'FeatureCollection',
+  features: [
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [-77.0300, 38.9000] }, properties: { OBJECTID: 5, BLOCK_ADDRESS: '1200 BLOCK OF FIXTURE ST NW', SEXOFFENDERCODE: 'Class A' } },
+  ],
+});
+
 // URL -> body. Order matters; first match wins.
 const ROUTES = [
   [/nominatim\.openstreetmap\.org\/reverse/, nominatimReverse],
@@ -169,6 +197,9 @@ const ROUTES = [
   [/data\.seattle\.gov/, seattleFire],
   [/overpass-api\.de\/api\/interpreter/, overpass],
   [/www\.example-station\.com\/news\//, articlePage],
+  [/iowasexoffender\.gov\/api\/search\/results\.json/, iowaRegistry],
+  [/TBI_SEX_OFFENDER_REGISTRY\/MapServer\/0\/query/, tennesseeRegistry],
+  [/FEEDS\/MPD\/MapServer\/20\/query/, dcRegistry],
 ];
 
-module.exports = { ROUTES, articlePage, overpass, mesaCalls, gilbertCalls, wfigs, firmsCsv, ipaws, nominatimReverse, nwsAlerts, usgs, fema, googleNews, gdeltDoc, seattleFire };
+module.exports = { ROUTES, articlePage, iowaRegistry, tennesseeRegistry, dcRegistry, overpass, mesaCalls, gilbertCalls, wfigs, firmsCsv, ipaws, nominatimReverse, nwsAlerts, usgs, fema, googleNews, gdeltDoc, seattleFire };

@@ -20,9 +20,10 @@ function cacheSet(key, value, ttlSec) {
   cache.set(key, { expires: Date.now() + ttlSec * 1000, value });
 }
 
+// ttl 0 means never cache (some sources forbid storing their data).
 async function request(url, { headers = {}, ttl = 60, timeoutMs = 8000, as = 'json' } = {}) {
   const key = `${as}:${url}:${headers.Authorization ? 'auth' : ''}`;
-  const cached = cacheGet(key);
+  const cached = ttl > 0 ? cacheGet(key) : undefined;
   if (cached !== undefined) return cached;
   const res = await fetch(url, {
     headers: { 'User-Agent': USER_AGENT, ...headers },
@@ -34,7 +35,7 @@ async function request(url, { headers = {}, ttl = 60, timeoutMs = 8000, as = 'js
     throw err;
   }
   const value = as === 'json' ? await res.json() : await res.text();
-  cacheSet(key, value, ttl);
+  if (ttl > 0) cacheSet(key, value, ttl);
   return value;
 }
 

@@ -10,6 +10,7 @@ const sample = require('../data/sample');
 const cities = require('../data/cities');
 const xAccounts = require('../data/x-accounts');
 const { REGISTRIES, registryFor } = require('../data/registries');
+const { WARNING } = require('../lib/sources/registry');
 
 const root = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
@@ -40,7 +41,8 @@ world.objects = {
 const preview = {
   home: sample.HOME,
   sampleAreas: sample.SAMPLE_AREAS,
-  sample: { items, sources, cameras: sample.cameras() },
+  sample: { items, sources, cameras: sample.cameras(), registrants: sample.registrants() },
+  registryWarning: WARNING,
   cities,
   xAccounts: xAccounts.map(({ handle, name, kind, area }) => ({ handle, name, kind, area })),
   registries: Object.fromEntries(Object.keys(REGISTRIES).map((st) => [st, registryFor(st)])),

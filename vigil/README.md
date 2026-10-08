@@ -17,6 +17,7 @@ imported by it. It should become its own repo and its own Vercel project.
 | `api/feed.js` | `GET /api/feed?lat=&lon=&radius_mi=&hours=`: everything near a point, with sources and a truth label on each item. |
 | `api/national.js` | `GET /api/national`: severe alerts, big quakes and top safety stories across the US and territories. |
 | `api/geocode.js` | `GET /api/geocode?q=`: place search limited to US states and territories. |
+| `api/registry.js` | `GET /api/registry?lat=&lon=&radius_mi=`: registered sex offenders nearby where the state allows apps, plus the official registry link. Never cached. |
 | `lib/sources/` | One adapter per data source (below). |
 | `lib/verify.js` | The truth meter: Official record / Corroborated / Single source / Unverified. |
 | `lib/cluster.js` | Groups articles about the same event so a story shows "reported by 3 outlets". |
@@ -47,6 +48,7 @@ runs.
 | City police and fire open data | Block-level dispatch calls and crime reports: 46 feeds in 35 places in 20 states (Seattle, LA, San Francisco, Chicago, Detroit, Austin, Cincinnati, Memphis, Tacoma, Montgomery County MD and more), matched to your city or county. | 1 min | Real time to a few days, by city | Official |
 | Google News RSS + GDELT | Local news, clustered across outlets, with each article's own picture when it has one | 2–3 min | Minutes | Corroborated or Single source |
 | License plate cameras (OpenStreetMap) | Flock and other plate readers mapped by volunteers, with vendor, operator and direction. A map layer, not incidents. | 6 hours | As fast as volunteers map them | Not rated |
+| Sex offender registries | Iowa (with photos), Tennessee and DC on the map, with alerts when someone is newly listed nearby. Every other state, DC and territory: a link to its official registry. | Iowa: every request; TN, DC: 1 hour. The app re-checks every 15 min. | Daily | Official registry |
 | Official agency accounts on X (free) | Public posts from police, fire, NWS, FEMA and USGS accounts near you, shown with X's own embed. No X account, no Premium, no API key. Listed in `data/x-accounts.js`. | Live (X's embed) | None | Shown as posted; not rated |
 | X search (paid, off by default) | Searches all recent posts naming your city. Government-verified accounts count as official; everyone else is Unverified. Needs an X developer API key (not X Premium), billed per post read. | 2 min | None | Official or Unverified |
 | Community reports | What people nearby post in the app | Instant | None | Unverified until confirmed |
@@ -66,7 +68,7 @@ in the list with their distance, but the "within 2 mi" counts leave them out.
 ```bash
 cd vigil
 npm install
-npm test                 # 24 tests: parsers, truth meter, every source adapter, API
+npm test                 # 30 tests: parsers, truth meter, every source adapter, API
 npm run dev              # http://localhost:3000 with live upstream data
 npm run dev:fixtures     # same, with canned upstream data (no network)
 npm run build:preview    # writes preview/vigil-preview.html
@@ -144,12 +146,29 @@ people watching them.
   display, deletions and commercial use.
 - Nominatim (place search) allows about 1 request per second. Heavy use needs
   a hosted geocoder.
-- Sex offender data: the app links to each state's, DC's and territory's
-  official registry (`data/registries.js`, from the DOJ's list) and to the
-  national NSOPW search, instead of copying records. Recheck the four
-  entries marked `checked: false` before launch. NSOPW has no API and
-  forbids automated searching.
-  Republishing registry data has state-specific rules (for example CA Penal
-  Code 290.46, NV NRS 179B, NJ 2C:7-16), and the federal warning in 34 U.S.C.
-  §20920(f) must be shown. Showing registry records on the map is on hold
-  until the owner picks a data source; see the PR description.
+- Sex offender registry:
+  - **On the map** (`lib/sources/registry.js`, `GET /api/registry`): only
+    registries that let apps read their data.
+    - Iowa's data API: stay under 50 requests an hour, never cache
+      coordinates, keep nothing over 14 days. Vigil asks Iowa on every
+      request, sends `Cache-Control: no-store` and caps itself at 45 an hour
+      per server. Busy use needs Iowa DPS's OK for a higher limit.
+    - Tennessee's TBI map service (no published license; TBI asked for
+      credit).
+    - DC open data (CC BY 4.0, block-level, no names).
+  - **Everywhere else**: a link to the official registry for every state,
+    DC and territory (`data/registries.js`, from the DOJ's list), plus the
+    national NSOPW search. NSOPW and most state sites forbid automated
+    collection; Michigan says its list isn't available for download.
+    Recheck the four entries marked `checked: false`.
+  - **Every state on the map** needs a licensed provider whose contract
+    allows public display; standard API licenses are internal-use only.
+  - The federal warning (34 U.S.C. §20920) is shown on every record. Some
+    states restrict use for jobs, housing, loans and insurance (CA Penal
+    Code 290.46, NV NRS 179B, NJ 2C:7-16); the app is not a background check.
+  - "Newly listed" alerts compare against listing IDs saved on the phone
+    (IDs only, dropped after 14 days). They fire while the app is open;
+    alerts with the app closed need the push server (roadmap).
+  - Field names in the three readers come from each agency's documentation
+    and could not be checked live from here; check the Source status on the
+    first deploy.
