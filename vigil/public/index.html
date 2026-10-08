@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0f15">
+<meta name="description" content="Free, sourced, local safety news for every US state and territory.">
+<title>Vigil</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<!-- app:start -->
+<div id="app" class="app" data-tab="map">
+  <div id="map" class="map" role="application" aria-label="Map of nearby incidents"></div>
+  <div class="map-vignette"></div>
+
+  <header class="top" id="top">
+    <div class="deck">
+      <div class="brand">
+        <span class="wordmark"><span class="beacon"></span>Vigil</span>
+        <span class="place" id="place-label">Finding your area…</span>
+        <span class="sample-chip ribbon" id="ribbon" title="This preview runs on sample data" hidden>SAMPLE DATA</span>
+      </div>
+      <div class="search">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+        <input id="search" type="search" placeholder="Search any US city, county or territory" autocomplete="off" enterkeyhint="search" aria-label="Search location">
+        <button id="locate" class="icon-btn" type="button" aria-label="Use my location">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><circle cx="12" cy="12" r="7"/></svg>
+        </button>
+      </div>
+      <ul id="suggest" class="suggest" hidden></ul>
+      <div class="chips" role="toolbar" aria-label="Filters">
+        <button class="chip" id="chip-layers" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>Layers <span class="count" id="layers-count"></span></button>
+        <button class="chip" id="chip-time" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span id="time-label">Last 24h</span></button>
+        <button class="chip" id="chip-radius" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="1.5"/></svg><span id="radius-label">2 mi</span></button>
+        <button class="chip" id="chip-verified" type="button" aria-pressed="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M8.8 12.2l2.2 2.2 4.2-4.4"/></svg>Confirmed only</button>
+        <button class="chip" id="chip-calm" type="button" aria-pressed="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c0-8 5-13 14-14-1 9-6 14-14 14z"/><path d="M5 19l7-7"/></svg>Calm</button>
+      </div>
+    </div>
+    <button id="area-banner" class="area-banner" type="button" hidden></button>
+  </header>
+
+  <div class="stats" id="stats">
+    <div class="stat">
+      <b class="num" id="stat-near">0</b>
+      <span>Reports within <span id="stat-radius">2 mi</span> · <span id="stat-window">24h</span></span>
+    </div>
+    <div class="stat right">
+      <div class="ring" aria-hidden="true"><svg viewBox="0 0 58 58"><circle class="track" cx="29" cy="29" r="24"/><circle class="bar" id="stat-ring" cx="29" cy="29" r="24" stroke-dasharray="150.8" stroke-dashoffset="150.8"/></svg><b id="stat-verified">0%</b></div>
+      <span class="why">confirmed by an agency or 2+ outlets</span>
+    </div>
+  </div>
+  <div class="fab-stack">
+    <button class="fab" id="fab-explain" type="button" aria-label="How Vigil verifies reports">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M12 8v4M12 15.5v.5"/></svg>
+    </button>
+    <button class="fab" id="fab-home" type="button" aria-label="Back to my area">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>
+    </button>
+  </div>
+
+  <section class="view feed" id="view-feed" aria-label="Feed" inert>
+    <div class="feed-head">
+      <div class="seg" role="tablist" aria-label="Feed scope">
+        <button type="button" role="tab" data-scope="local" aria-selected="true">Near me</button>
+        <button type="button" role="tab" data-scope="national" aria-selected="false">All US &amp; territories</button>
+      </div>
+      <div id="feed-context"></div>
+    </div>
+    <ol class="feed-list" id="feed-list"></ol>
+  </section>
+
+  <section class="view panel" id="view-alerts" aria-label="Alerts" inert></section>
+  <section class="view panel" id="view-safety" aria-label="Safety" inert></section>
+
+  <nav class="dock" aria-label="Main">
+    <button type="button" data-tab="map" aria-current="page"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4L3.5 6v14L9 18l6 2 5.5-2V4L15 6z"/><path d="M9 4v14M15 6v14"/></svg>Map</button>
+    <button type="button" data-tab="feed"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg>Feed</button>
+    <button type="button" class="report-btn" id="report-open" aria-label="Report something"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Report</span></button>
+    <button type="button" data-tab="alerts"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>Alerts<b class="dot-badge" id="alerts-badge" hidden></b></button>
+    <button type="button" data-tab="safety"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><circle cx="5.5" cy="16" r="2.4"/><circle cx="18.5" cy="16" r="2.4"/><path d="M12 11.2v2.3M9.7 14.5l-2.3 1M14.3 14.5l2.3 1"/></svg>Safety</button>
+  </nav>
+
+  <div class="scrim" id="scrim" hidden></div>
+  <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Details">
+    <div class="sheet-grip" id="sheet-grip"></div>
+    <button class="sheet-close" id="sheet-close" type="button" aria-label="Close"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div class="sheet-body" id="sheet-body"></div>
+  </section>
+
+  <section class="report" id="report" role="dialog" aria-modal="true" aria-label="Report something" hidden></section>
+  <div class="toast-wrap" id="toasts" role="status" aria-live="polite"></div>
+</div>
+<!-- app:end -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
