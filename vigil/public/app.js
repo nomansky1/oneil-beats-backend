@@ -132,7 +132,10 @@
     radiusMi: store.get('radius', 2),
     hours: store.get('hours', 24),
     cats: new Set(store.get('cats', Object.keys(CATS))),
-    overlays: Object.assign({ cameras: true }, store.get('overlays', {})),
+    overlays: Object.assign({ cameras: true, registry: true }, store.get('overlays', {})),
+    registry: { coverage: 'link', registrants: [], official: null, warning: '' },
+    registryKey: '',
+    registryAt: 0,
     lastUpdated: null,
     lastError: null,
     verifiedOnly: store.get('verifiedOnly', false),
@@ -144,7 +147,7 @@
     reports: store.get('reports', []),
     following: new Set(store.get('following', [])),
     alertPrefs: Object.assign(
-      { radiusMi: 2, minSeverity: 2, confirmedOnly: true, cats: ['crime', 'fire', 'hazard', 'missing', 'weather', 'quake'], quiet: true, quietFrom: '22:00', quietTo: '07:00', digest: true, digestAt: '18:00' },
+      { radiusMi: 2, minSeverity: 2, confirmedOnly: true, cats: ['crime', 'fire', 'hazard', 'missing', 'weather', 'quake'], quiet: true, quietFrom: '22:00', quietTo: '07:00', digest: true, digestAt: '18:00', registry: true },
       store.get('alertPrefs', {})
     ),
     contacts: store.get('contacts', []),
@@ -171,6 +174,12 @@
       const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
       if (!res.ok) return [];
       return (await res.json()).results || [];
+    },
+    async registry() {
+      const c = S.center;
+      const res = await fetch(`/api/registry?lat=${c.lat}&lon=${c.lon}&radius_mi=${S.radiusMi}`);
+      if (!res.ok) throw new Error(`the server answered ${res.status}`);
+      return res.json();
     },
   };
 
@@ -202,6 +211,16 @@
     async national() {
       const items = this.all().sort((a, b) => b.severity - a.severity || new Date(b.time) - new Date(a.time));
       return { items, sources: PREVIEW.sample.sources };
+    },
+    async registry() {
+      const c = S.center;
+      const registrants = (PREVIEW.sample.registrants || [])
+        .filter((r) => this.released(r))
+        .map((r) => ({ ...r, distanceMi: Math.round(dist(c, r) * 10) / 10 }))
+        .filter((r) => r.distanceMi <= S.radiusMi)
+        .sort((a, b) => a.distanceMi - b.distanceMi);
+      const st = (/,\s*([A-Z]{2})$/.exec(c.label || nearestCity(c)) || [])[1];
+      return { coverage: 'map', registrants, official: (st && PREVIEW.registries[st]) || null, warning: PREVIEW.registryWarning };
     },
     async search(q) { return gazetteer(q); },
   };
@@ -511,6 +530,119 @@
         overlayLayer.addLayer(m);
       }
     }
+    if (S.overlays.registry) {
+      for (const r of S.registry.registrants || []) {
+        const m = L.circleMarker([r.lat, r.lon], { radius: z >= 15 ? 8 : 6, color: REG_COLOR, weight: 2.5, fillColor: '#3b0d18', fillOpacity: 0.95 });
+        m.on('click', () => openRegistrant(r));
+        overlayLayer.addLayer(m);
+      }
+    }
+  }
+
+  /* ---------- Sex offender registry ---------- */
+  const REG_COLOR = '#fb7185';
+  const SILHOUETTE = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="4" fill="currentColor"/><path d="M4 21c.8-4.2 4-6.5 8-6.5s7.2 2.3 8 6.5z" fill="currentColor"/></svg>`;
+
+  function regPhoto(r, cls) {
+    const ok = r.photo && (/^https:\/\//.test(r.photo) || (r.sample && /^data:image\/svg\+xml/.test(r.photo)));
+    return `<span class="${cls}">${ok ? `<img src="${esc(r.photo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}${SILHOUETTE}</span>`;
+  }
+
+  function openRegistrant(r) {
+    const official = S.registry.official;
+    const offenses = (r.offenses || []).length ? `<ul>${r.offenses.map((o) => `<li>${esc(o)}</li>`).join('')}</ul>` : '<p class="none">Not listed in the data the registry shares. See the official record.</p>';
+    openSheet(`
+      <div class="reg-head">
+        ${regPhoto(r, 'reg-photo big')}
+        <div><div class="eyebrow" style="color:${REG_COLOR}">Registered sex offender${r.sample ? ' · sample' : ''}</div><h2 class="d-title">${esc(r.name || 'Name not published by this registry')}</h2></div>
+      </div>
+      ${r.sample ? '<p class="note"><span class="sample-chip">SAMPLE</span> Placeholder record for the preview. Not a real person. The live app shows official records where the state lets apps read its registry (Iowa, Tennessee, DC) and links to the official registry everywhere else.</p>' : ''}
+      <dl class="d-meta">
+        <div><dt>${r.precision === 'block' ? 'Block' : 'Address'}</dt><dd>${esc(r.address || 'Not listed')}<span>${r.precision === 'block' ? 'Block-level, as published' : 'As registered'}</span></dd></div>
+        <div><dt>Distance</dt><dd>${miles(r.distanceMi)}<span>from map center</span></dd></div>
+        <div><dt>Level</dt><dd>${esc(r.level || 'Not listed')}<span>${r.updated ? `Updated ${esc(r.updated)}` : 'Per the registry'}</span></dd></div>
+      </dl>
+      <section class="sec"><h3>Offenses, as the registry lists them</h3>${offenses}</section>
+      <section class="truth lv4"><div class="truth-top"><span class="badge lv4">${icon('shield')}Official registry</span></div><p>${esc(S.registry.warning || '')}</p></section>
+      <div class="res">
+        ${r.recordUrl ? `<a href="${esc(r.recordUrl)}" target="_blank" rel="noopener noreferrer">${icon('registry')}<b>Full official record</b><small>${esc((r.source && r.source.name) || 'State registry')}</small></a>` : ''}
+        ${official ? `<a href="${esc(official.url)}" target="_blank" rel="noopener noreferrer">${icon('pin')}<b>${esc(official.name)} registry map</b><small>${esc(official.agency)}</small></a>` : ''}
+      </div>`, 'Registered sex offender');
+  }
+
+  function openRegistrantList() {
+    const list = S.registry.registrants || [];
+    openSheet(`<h2 class="sheet-title">Registered sex offenders</h2>
+      <p class="sheet-sub">${plural(list.length, 'listing')} within ${radiusText(S.radiusMi)}, closest first, from the official registry.</p>
+      <ol class="feed-list reg-list">${list.map((r, i) => `<li class="card" style="--c:${REG_COLOR};--i:${Math.min(i, 12)}"><button class="card-btn" type="button" data-reg="${esc(r.id)}">
+        ${regPhoto(r, 'reg-photo')}<span class="card-main"><span class="card-meta mono"><span>${miles(r.distanceMi)}</span>${r.level ? `<span>${esc(r.level)}</span>` : ''}${r.sample ? '<span class="sample-chip">SAMPLE</span>' : ''}</span><span class="card-title">${esc(r.name || 'Name not published')}</span><span class="src">${esc(r.address || '')}</span></span>
+      </button></li>`).join('')}</ol>
+      <p class="note">${esc(S.registry.warning || '')}</p>`, 'Registered sex offenders');
+    sheetBody.onclick = (e) => {
+      const b = e.target.closest('[data-reg]');
+      if (b) openRegistrant(list.find((r) => r.id === b.dataset.reg));
+    };
+  }
+
+  // Which listings this device has already seen, per area, so "newly
+  // listed" alerts fire only for real changes. IDs only, dropped after 14
+  // days; the preview keeps them in memory.
+  const regSeenMem = {};
+  const regSeen = {
+    get() { return PREVIEW ? regSeenMem : store.get('regSeen', {}); },
+    set(v) { if (!PREVIEW) store.set('regSeen', v); },
+  };
+
+  function diffRegistry(list) {
+    const key = `${S.center.lat.toFixed(2)},${S.center.lon.toFixed(2)},${S.radiusMi}`;
+    const all = regSeen.get();
+    const now = Date.now();
+    const seen = all[key];
+    const fresh = seen ? list.filter((r) => !seen[r.id]) : [];
+    const next = Object.assign({}, seen || {});
+    list.forEach((r) => { next[r.id] = now; });
+    for (const [id, t] of Object.entries(next)) if (now - t > 14 * 86400e3) delete next[id];
+    all[key] = next;
+    const keys = Object.keys(all);
+    if (keys.length > 6) keys.sort((a, b) => Math.max(...Object.values(all[a]), 0) - Math.max(...Object.values(all[b]), 0)).slice(0, keys.length - 6).forEach((k) => delete all[k]);
+    regSeen.set(all);
+    return fresh;
+  }
+
+  function registryAlert(fresh) {
+    const r = fresh[0];
+    toast(`Registry update: ${fresh.length === 1 ? 'a registered sex offender now lists an address' : `${fresh.length} registered sex offenders now list addresses`} ${miles(r.distanceMi)} away`, 'registry', 6000);
+    const badge = $('#alerts-badge');
+    badge.hidden = false;
+    badge.textContent = String(Math.min(9, Number(badge.textContent || 0) + fresh.length));
+    if (PREVIEW || !S.alertPrefs.registry || !('Notification' in window) || Notification.permission !== 'granted') return;
+    try {
+      const n = new Notification('Registry update near you', { body: `A registered sex offender now lists an address ${miles(r.distanceMi)} away. Tap to view.`, tag: r.id });
+      n.onclick = () => { window.focus(); openRegistrant(r); };
+    } catch (e) { /* some browsers only allow notifications from a service worker */ }
+  }
+
+  // Registries change daily at most, so this re-checks every 15 minutes
+  // (20 seconds in the preview, to show an alert) or when the area changes.
+  async function loadRegistry({ quiet = false } = {}) {
+    if (!S.center) return;
+    const key = `${S.center.lat},${S.center.lon},${S.radiusMi}`;
+    if (key === S.registryKey && Date.now() - S.registryAt < (PREVIEW ? 20e3 : 15 * 60e3)) return;
+    S.registryKey = key;
+    S.registryAt = Date.now();
+    try {
+      const data = await API.registry();
+      if (key !== `${S.center.lat},${S.center.lon},${S.radiusMi}`) return;
+      S.registry = { coverage: data.coverage, registrants: data.registrants || [], official: data.official, warning: data.warning, sources: data.sources || [] };
+      const fresh = diffRegistry(S.registry.registrants);
+      renderOverlays();
+      if (S.tab === 'feed') renderFeed();
+      // A first visit to an area only records what's there; later visits
+      // alert on anything listed since.
+      if (fresh.length && !quiet) registryAlert(fresh);
+    } catch (err) {
+      S.registryAt = 0;
+    }
   }
 
   function openCamera(c) {
@@ -544,11 +676,14 @@
 
   function aroundYouHtml() {
     const cams = (S.feed.cameras || []).length;
-    const reg = S.feed.registry;
+    const reg = S.registry.official || S.feed.registry;
+    const regs = S.registry.registrants || [];
+    const onMap = S.registry.coverage === 'map';
     return `<li class="group-label">Around you</li>
       <li class="xacc"><ul class="xacc-list">
         <li class="xacc-row" style="--c:#c084fc"><span class="glyph">${icon('camera')}</span><span class="grow"><b>${plural(cams, 'license plate camera')}</b><small>Mapped on OpenStreetMap near you</small></span><button class="btn small" type="button" data-overlay="cameras" aria-pressed="${S.overlays.cameras}">${S.overlays.cameras ? 'On map' : 'Show'}</button></li>
-        ${reg ? `<li class="xacc-row" style="--c:#fb7185"><span class="glyph">${icon('registry')}</span><span class="grow"><b>Sex offenders near you</b><small>${esc(reg.name)} official registry map and photos</small></span><a class="btn small" href="${esc(reg.url)}" target="_blank" rel="noopener noreferrer">Open</a></li>` : ''}
+        ${onMap ? `<li class="xacc-row" style="--c:${REG_COLOR}"><span class="glyph">${icon('registry')}</span><button class="grow linkish" type="button" data-reglist="1"><b>${plural(regs.length, 'registered sex offender')}</b><small>Within ${radiusText(S.radiusMi)} · tap to see the list</small></button><button class="btn small" type="button" data-overlay="registry" aria-pressed="${S.overlays.registry}">${S.overlays.registry ? 'On map' : 'Show'}</button></li>` : ''}
+        ${reg ? `<li class="xacc-row" style="--c:${REG_COLOR}"><span class="glyph">${icon('registry')}</span><span class="grow"><b>${onMap ? `${esc(reg.name)} registry` : 'Sex offenders near you'}</b><small>${onMap ? 'Official map, photos and full records' : `${esc(reg.name)} official registry map and photos`}</small></span><a class="btn small" href="${esc(reg.url)}" target="_blank" rel="noopener noreferrer">Open</a></li>` : ''}
       </ul></li>`;
   }
 
@@ -689,6 +824,7 @@
     list.onclick = (e) => {
       const ovb = e.target.closest('[data-overlay]');
       if (ovb) { toggleOverlay(ovb.dataset.overlay); return; }
+      if (e.target.closest('[data-reglist]')) { openRegistrantList(); return; }
       const xv = e.target.closest('[data-xview]');
       if (xv) { showXPosts(xv.dataset.xview, xv); return; }
       const btn = e.target.closest('[data-id]');
@@ -991,6 +1127,7 @@
         </button>`).join('')}</div>
       <section class="sec"><h3>Map overlays</h3><div class="list">
         <button class="opt" type="button" role="checkbox" aria-checked="${S.overlays.cameras}" data-ov="cameras"><span class="glyph" style="--c:#c084fc">${icon('camera')}</span><span class="grow">License plate cameras<small>${plural((S.feed.cameras || []).length, 'camera')} mapped on OpenStreetMap</small></span><span class="tick">${icon('check')}</span></button>
+        <button class="opt" type="button" role="checkbox" aria-checked="${S.overlays.registry}" data-ov="registry"><span class="glyph" style="--c:${REG_COLOR}">${icon('registry')}</span><span class="grow">Registered sex offenders<small>${S.registry.coverage === 'map' ? `${plural((S.registry.registrants || []).length, 'listing')} from the official registry` : 'This state only shares its registry on its own site; see Around you in the feed'}</small></span><span class="tick">${icon('check')}</span></button>
       </div></section>`;
     openSheet(render(), 'Layers');
     sheetBody.onclick = (e) => {
@@ -1054,6 +1191,7 @@
     S.center = { lat: c.lat, lon: c.lon, label: c.label || '' };
     store.set('center', S.center);
     S.feed = { items: [], area: [], sources: [], place: { label: S.center.label } };
+    S.registry = { coverage: 'link', registrants: [], official: null, warning: '' };
     S.known = new Set();
     S.firstLoad = true;
     S.selectedId = null;
@@ -1131,6 +1269,7 @@
         <div class="field"><span>Minimum severity</span>${seg('minSeverity', [1, 2, 3], (v) => ({ 1: 'Everything', 2: 'Serious and up', 3: 'Critical only' })[v])}</div>
         ${sw('confirmedOnly', 'Confirmed reports only', 'Skip single-source and unverified reports')}
         <div class="field"><span>Topics</span><div class="segs">${Object.entries(CATS).map(([id, c]) => `<button type="button" data-cat-pref="${id}" aria-pressed="${p.cats.includes(id)}">${esc(c.label)}</button>`).join('')}</div></div>
+        ${sw('registry', 'Sex offender registry changes', 'When someone is newly listed within your map radius. Iowa, Tennessee and DC for now')}
       </div>
       <div class="block">
         <h2>Quiet time</h2>
@@ -1412,6 +1551,7 @@
       const mode = S.firstLoad ? 'reveal' : freshIds.size ? 'new' : 'static';
       if (S.firstLoad && sweepMarker) { map.removeLayer(sweepMarker); sweepMarker = null; drawCenter(); }
       renderAll(mode, freshIds);
+      loadRegistry();
       if (freshIds.size && !quiet) {
         const fresh = localItems().filter((it) => freshIds.has(it.id) && passes(it));
         if (fresh.length) {

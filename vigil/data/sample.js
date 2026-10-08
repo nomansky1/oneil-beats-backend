@@ -262,6 +262,21 @@ function cameras() {
   }));
 }
 
+// Placeholder registry records for the preview only. Not real people: no
+// names, photos or addresses of anyone. The last one appears 25 seconds
+// after the page opens to show the "newly listed" alert.
+function registrants() {
+  const C = HOME;
+  const spots = [[-0.6, 0.4, 'A', 'Tier II'], [-1.3, -0.5, 'B', 'Tier III'], [0.4, 1.1, 'C', 'Tier I'], [-0.9, 1.5, 'D', 'Tier II', 25]];
+  return spots.map(([n, e, letter, level, releaseAfter]) => ({
+    id: `sample:reg-${letter}`, kind: 'registrant', ...at(C, n, e),
+    name: `Sample Registrant ${letter}`, photo: '', precision: 'address',
+    address: 'Sample address (placeholder)', offenses: ['Sample offense (placeholder text)'], level,
+    updated: '', recordUrl: '', source: { name: 'State registry (sample)', url: '' }, sample: true,
+    ...(releaseAfter ? { releaseAfter } : {}),
+  }));
+}
+
 const SAMPLE_AREAS = [
   HOME,
   { label: 'Seattle, WA', lat: 47.6097, lon: -122.3331 },
@@ -270,4 +285,4 @@ const SAMPLE_AREAS = [
   { label: 'Hagåtña, GU', lat: 13.4757, lon: 144.7489 },
 ];
 
-module.exports = { HOME, SAMPLE_AREAS, items: () => muskegon().concat(nationwide()), cameras };
+module.exports = { HOME, SAMPLE_AREAS, items: () => muskegon().concat(nationwide()), cameras, registrants };
