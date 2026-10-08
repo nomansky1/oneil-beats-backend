@@ -67,7 +67,7 @@ const googleNews = () => `<?xml version="1.0" encoding="UTF-8"?><rss version="2.
 
 const gdeltDoc = () => ({
   articles: [
-    { url: 'https://fox17online.com/news/fixture-stabbing', title: 'Police: Man stabbed overnight in Muskegon, hospitalized', seendate: gdelt(240), domain: 'fox17online.com', language: 'English', sourcecountry: 'United States' },
+    { url: 'https://fox17online.com/news/fixture-stabbing', title: 'Police: Man stabbed overnight in Muskegon, hospitalized', seendate: gdelt(240), domain: 'fox17online.com', language: 'English', sourcecountry: 'United States', socialimage: 'https://fox17online.com/img/fixture-stabbing.jpg' },
   ],
 });
 
@@ -75,16 +75,100 @@ const seattleFire = () => ([
   { address: '3rd Ave / Pine St', type: 'Aid Response', datetime: new Date(Date.now() - 10 * 60000 - 7 * 3600e3).toISOString().slice(0, 19), latitude: '47.6105', longitude: '-122.3381', incident_number: 'F260000001' },
 ]);
 
+const overpass = () => ({
+  elements: [
+    { type: 'node', id: 1001, lat: 43.2300, lon: -86.2400, tags: { man_made: 'surveillance', 'surveillance:type': 'ALPR', manufacturer: 'Flock Safety', operator: 'Fixture Police Department', direction: '90' } },
+    { type: 'node', id: 1002, lat: 43.2250, lon: -86.2550, tags: { man_made: 'surveillance', 'surveillance:type': 'ALPR', brand: 'Flock Safety', 'camera:direction': '315;135' } },
+    { type: 'node', id: 1003, lat: 43.5000, lon: -86.9000, tags: { 'surveillance:type': 'ALPR' } },
+  ],
+});
+
+// Mesa, AZ (Socrata): floating local time, Arizona has no DST (UTC-7).
+const mesaCalls = () => ([
+  { event_number: 'M26000001', call_type: 'SHOTS FIRED', received_date_time: new Date(Date.now() - 12 * 60000 - 7 * 3600e3).toISOString().slice(0, 23), address: '100 BLOCK W MAIN ST', latitude: '33.4152', longitude: '-111.8315' },
+  { event_number: 'M26000002', call_type: 'WELFARE CHECK', received_date_time: new Date(Date.now() - 40 * 60000 - 7 * 3600e3).toISOString().slice(0, 23), address: '', location_1: { type: 'Point', coordinates: [-111.8200, 33.4200] } },
+  { event_number: 'M26000003', call_type: 'ALARM', received_date_time: new Date(Date.now() - 50 * 60000 - 7 * 3600e3).toISOString().slice(0, 23), address: 'UNKNOWN' },
+]);
+
+// Gilbert, AZ (ArcGIS GeoJSON): dates come back as epoch milliseconds.
+const gilbertCalls = () => ({
+  type: 'FeatureCollection',
+  features: [
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [-111.7890, 33.3528] }, properties: { OBJECTID: 77, EventDate: minsAgo(25).getTime(), CallType: 'TRAFFIC ACCIDENT INJURY', Block: '300 N GILBERT RD' } },
+    { type: 'Feature', geometry: null, properties: { OBJECTID: 78, EventDate: minsAgo(30).getTime(), CallType: 'THEFT' } },
+  ],
+});
+
+// NIFC WFIGS current incidents (GeoJSON, outSR 4326).
+const wfigs = () => ({
+  type: 'FeatureCollection',
+  features: [
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [-86.0100, 43.4400] }, properties: { IrwinID: '{FIXTURE-1}', IncidentName: 'Fixture Ridge', IncidentSize: 2350.4, PercentContained: 15, FireDiscoveryDateTime: minsAgo(60 * 30).getTime(), ModifiedOnDateTime_dt: minsAgo(45).getTime(), POOState: 'US-MI', POOCounty: 'Newaygo', FireCause: 'Undetermined', IncidentTypeCategory: 'WF' } },
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [-86.3000, 43.2000] }, properties: { IrwinID: '{FIXTURE-2}', IncidentName: 'Dune Road Fire', IncidentSize: 0.3, PercentContained: 100, FireDiscoveryDateTime: minsAgo(300).getTime(), ModifiedOnDateTime_dt: minsAgo(120).getTime(), POOState: 'US-MI', POOCounty: 'Muskegon', IncidentTypeCategory: 'WF' } },
+  ],
+});
+
+// NASA FIRMS area CSV (VIIRS columns).
+const firmsCsv = () => {
+  const d = minsAgo(90);
+  const date = d.toISOString().slice(0, 10);
+  const hhmm = d.toISOString().slice(11, 16).replace(':', '');
+  return [
+    'latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,instrument,confidence,version,bright_ti5,frp,daynight',
+    `43.4410,-86.0120,345.1,0.39,0.36,${date},${hhmm},N,VIIRS,h,2.0NRT,295.2,18.4,D`,
+    `43.4420,-86.0110,338.9,0.39,0.36,${date},${hhmm},N,VIIRS,n,2.0NRT,293.0,9.1,D`,
+    `43.3000,-86.5000,301.0,0.39,0.36,${date},${hhmm},N,VIIRS,l,2.0NRT,290.0,1.2,D`,
+  ].join('\n');
+};
+
+// OpenFEMA IPAWS archive. One alert covers Muskegon, one does not, one was
+// cancelled. FEMA has used both "info" and "infos" for the nested list.
+const ipaws = () => ({
+  IpawsArchivedAlerts: [
+    {
+      identifier: 'urn:oid:fixture.ipaws.1', sender: 'w-nws.webmaster@noaa.gov', sent: iso(60 * 30), status: 'Actual', msgType: 'Alert',
+      searchGeometry: { type: 'Polygon', coordinates: [[[-86.5, 43.0], [-86.0, 43.0], [-86.0, 43.5], [-86.5, 43.5], [-86.5, 43.0]]] },
+      info: [{ language: 'en-US', event: 'Flood Warning', severity: 'Severe', senderName: 'NWS Grand Rapids MI', headline: 'Flood Warning for the Muskegon River', description: 'Minor flooding is occurring.', area: [{ areaDesc: 'Muskegon, MI' }] }],
+    },
+    {
+      identifier: 'urn:oid:fixture.ipaws.2', sent: iso(60 * 40), status: 'Actual', msgType: 'Alert',
+      searchGeometry: { type: 'Polygon', coordinates: [[[-85.0, 42.0], [-84.5, 42.0], [-84.5, 42.5], [-85.0, 42.5], [-85.0, 42.0]]] },
+      infos: [{ event: 'Boil Water Notice', severity: 'Moderate', senderName: 'Elsewhere County', areas: [{ areaDesc: 'Elsewhere, MI' }] }],
+    },
+    {
+      identifier: 'urn:oid:fixture.ipaws.3', sent: iso(60 * 35), status: 'Actual', msgType: 'Cancel',
+      infos: [{ event: 'Evacuation Immediate', severity: 'Extreme', areas: [{ areaDesc: 'Muskegon, MI' }] }],
+    },
+    {
+      identifier: 'urn:oid:fixture.ipaws.4', sent: iso(60 * 50), status: 'Actual', msgType: 'Alert',
+      infos: [{ event: 'Shelter In Place Warning', severity: 'Extreme', senderName: 'Muskegon County Emergency Management', headline: 'Chemical release near the harbor', areas: [{ areaDesc: 'Muskegon County, MI' }] }],
+    },
+  ],
+});
+
+// A publisher article page with a share image (relative URL, escaped &).
+const articlePage = () => `<!doctype html><html><head><title>Fixture</title>
+<meta name="twitter:image" content="https://cdn.example-station.com/tw.jpg">
+<meta content="/img/story.jpg?w=1200&amp;h=630" property="og:image">
+</head><body>Story</body></html>`;
+
 // URL -> body. Order matters; first match wins.
 const ROUTES = [
   [/nominatim\.openstreetmap\.org\/reverse/, nominatimReverse],
   [/nominatim\.openstreetmap\.org\/search/, nominatimSearch],
   [/api\.weather\.gov\/alerts/, nwsAlerts],
   [/earthquake\.usgs\.gov/, usgs],
+  [/fema\.gov\/api\/open\/v1\/IpawsArchivedAlerts/, ipaws],
   [/fema\.gov\/api\/open/, fema],
+  [/WFIGS_Incident_Locations_Current/, wfigs],
+  [/firms\.modaps\.eosdis\.nasa\.gov\/api\/area/, firmsCsv],
+  [/data\.mesaaz\.gov\/resource\/izhu-764k/, mesaCalls],
+  [/maps\.gilbertaz\.gov\/arcgis/, gilbertCalls],
   [/news\.google\.com\/rss/, googleNews],
   [/api\.gdeltproject\.org/, gdeltDoc],
   [/data\.seattle\.gov/, seattleFire],
+  [/overpass-api\.de\/api\/interpreter/, overpass],
+  [/www\.example-station\.com\/news\//, articlePage],
 ];
 
-module.exports = { ROUTES, nominatimReverse, nwsAlerts, usgs, fema, googleNews, gdeltDoc, seattleFire };
+module.exports = { ROUTES, articlePage, overpass, mesaCalls, gilbertCalls, wfigs, firmsCsv, ipaws, nominatimReverse, nwsAlerts, usgs, fema, googleNews, gdeltDoc, seattleFire };

@@ -49,6 +49,7 @@
     globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.5 5.5 3.5 8.5s-1 5.9-3.5 8.5c-2.5-2.6-3.5-5.5-3.5-8.5s1-5.9 3.5-8.5z"/>',
     leaf: '<path d="M5 19c0-8 5-13 14-14-1 9-6 14-14 14z"/><path d="M5 19l7-7"/>',
     lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>',
+    camera: '<path d="M3 8.5l11.5-3 1.6 5.6-11.5 3z"/><path d="M16.1 9.4l3.4-1v4.4l-3 .2"/><path d="M7.5 13.6V19M5 19h5"/>',
   };
   const icon = (name, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[name] || ''}</svg>`;
 
@@ -131,6 +132,9 @@
     radiusMi: store.get('radius', 2),
     hours: store.get('hours', 24),
     cats: new Set(store.get('cats', Object.keys(CATS))),
+    overlays: Object.assign({ cameras: true }, store.get('overlays', {})),
+    lastUpdated: null,
+    lastError: null,
     verifiedOnly: store.get('verifiedOnly', false),
     calm: store.get('calm', false),
     tab: 'map',
@@ -189,7 +193,8 @@
       const all = this.all().map((it) => ({ ...it, distanceMi: dist(c, it) }));
       const items = all.filter((it) => it.kind !== 'area' && it.distanceMi <= (it.category === 'quake' ? Math.max(S.radiusMi, 100) : S.radiusMi) && new Date(it.time) >= cutoff);
       const area = all.filter((it) => it.kind === 'area' && it.distanceMi <= (it.areaRadiusMi || 30));
-      return { items, area, xAccounts: previewAccounts(c), sources: PREVIEW.sample.sources, place: { label: c.label || nearestCity(c) }, generatedAt: new Date().toISOString() };
+      const cameras = (PREVIEW.sample.cameras || []).filter((cam) => dist(c, cam) <= S.radiusMi);
+      return { items, area, cameras, xAccounts: previewAccounts(c), sources: PREVIEW.sample.sources, place: { label: c.label || nearestCity(c) }, generatedAt: new Date().toISOString() };
     },
     async national() {
       const items = this.all().sort((a, b) => b.severity - a.severity || new Date(b.time) - new Date(a.time));
@@ -261,10 +266,13 @@
   }
   const visibleLocal = () => localItems().filter(passes);
   const visibleArea = () => (S.feed.area || []).filter((it) => S.cats.has(it.category));
+  // Fires and quakes are searched farther out than the radius; counts that
+  // say "within X mi" use only what is really inside it.
+  const inRadius = (it) => it.distanceMi == null || it.precision === 'city' || it.precision === 'area' || it.distanceMi <= S.radiusMi + 0.05;
 
   /* ---------- Map ---------- */
   const app = $('#app');
-  let map, pinLayer, labelLayer, radiusCircle, meMarker, sweepMarker;
+  let map, pinLayer, overlayLayer, labelLayer, radiusCircle, meMarker, sweepMarker;
   const labels = [];
   const SWEEP_MS = 1600;
 
@@ -333,20 +341,29 @@
     map = L.map('map', { zoomControl: false, preferCanvas: true, minZoom: 3, maxZoom: PREVIEW ? 15 : 18, zoomSnap: 0.25, worldCopyJump: true, fadeAnimation: !REDUCED });
     map.attributionControl.setPrefix('');
     if (PREVIEW) drawVectorBasemap();
-    else {
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd', maxZoom: 20,
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
-      }).addTo(map);
-    }
+    else addStreetMap();
     map.createPane('sweep');
     map.getPane('sweep').style.zIndex = 450;
+    overlayLayer = L.layerGroup().addTo(map);
     pinLayer = L.layerGroup().addTo(map);
     const c = S.center || { lat: 39.5, lon: -98.35 };
     map.setView([c.lat, c.lon], S.center ? 13 : 4);
     if (S.center) fitRadius(false);
-    map.on('zoomend', () => { renderPins('static'); sizeSweep(); });
+    map.on('zoomend', () => { renderPins('static'); renderOverlays(); sizeSweep(); });
     if (PREVIEW) updateLabels();
+  }
+
+  // Street map: OpenFreeMap vector tiles (free, no key, OpenStreetMap data)
+  // drawn by MapLibre inside Leaflet, with Vigil's own dark style.
+  function addStreetMap() {
+    const credit = '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
+    const webgl = (() => { try { const cv = document.createElement('canvas'); return Boolean(cv.getContext('webgl2') || cv.getContext('webgl')); } catch (e) { return false; } })();
+    if (!L.maplibreGL || !window.maplibregl || !webgl) {
+      map.attributionControl.addAttribution(credit);
+      toast('This browser can’t draw the street map. Reports still show on the map.', 'pin', 5000);
+      return;
+    }
+    L.maplibreGL({ style: '/map-style.json', attribution: credit, interactive: false }).addTo(map);
   }
 
   function fitRadius(animate = true) {
@@ -407,7 +424,8 @@
     pinLayer.clearLayers();
     if (!S.center) return;
     const items = visibleLocal();
-    const points = items.filter((it) => it.lat != null && it.precision !== 'city');
+    // Area-wide alerts (FEMA archive) cover a whole region, so they get no pin.
+    const points = items.filter((it) => it.lat != null && it.precision !== 'city' && it.precision !== 'area');
     const stacks = items.filter((it) => it.lat != null && it.precision === 'city');
     const zoom = map.getZoom();
     const clusters = [];
@@ -464,6 +482,85 @@
     }
   }
 
+  /* ---------- Overlay: plate cameras ---------- */
+  const COMPASS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'];
+  const facing = (deg) => (deg == null ? 'Direction not mapped' : `Faces ${COMPASS[Math.round(deg / 45) % 8]} (${Math.round(deg)}°)`);
+
+  function wedge(c) {
+    // ~60° view cone, about 45 m long, drawn only when zoomed in.
+    const pts = [[c.lat, c.lon]];
+    for (let a = c.direction - 30; a <= c.direction + 30; a += 10) {
+      const r = toRad(a), d = 45 / 111320;
+      pts.push([c.lat + d * Math.cos(r), c.lon + (d * Math.sin(r)) / Math.cos(toRad(c.lat))]);
+    }
+    return L.polygon(pts, { stroke: false, fillColor: '#c084fc', fillOpacity: 0.22, interactive: false });
+  }
+
+  function renderOverlays() {
+    if (!overlayLayer) return;
+    overlayLayer.clearLayers();
+    const z = map.getZoom();
+    if (S.overlays.cameras) {
+      for (const c of S.feed.cameras || []) {
+        if (z >= 16 && c.direction != null) overlayLayer.addLayer(wedge(c));
+        const m = L.circleMarker([c.lat, c.lon], { radius: z >= 15 ? 6 : 4, color: '#c084fc', weight: 1.6, fillColor: '#24123a', fillOpacity: 0.95 });
+        m.on('click', () => openCamera(c));
+        overlayLayer.addLayer(m);
+      }
+    }
+  }
+
+  function openCamera(c) {
+    openSheet(`
+      <div class="d-head" style="--c:#c084fc">
+        <span class="glyph big">${icon('camera')}</span>
+        <div><div class="eyebrow" style="color:#c084fc">License plate reader${c.sample ? ' · sample' : ''}</div><h2 class="d-title">${esc(c.manufacturer || 'Automated plate camera')}</h2></div>
+      </div>
+      ${c.sample ? '<p class="note"><span class="sample-chip">SAMPLE</span> Example location for the preview. The live app loads real mapped cameras from OpenStreetMap.</p>' : ''}
+      <dl class="d-meta">
+        <div><dt>Operator</dt><dd>${esc(c.operator || 'Not mapped')}</dd></div>
+        <div><dt>Direction</dt><dd>${esc(facing(c.direction))}</dd></div>
+        <div><dt>Distance</dt><dd>${miles(dist(S.center, c))}<span>from map center</span></dd></div>
+      </dl>
+      <section class="sec"><h3>What it does</h3><p>Automated license plate readers photograph passing vehicles and log the plate number with the time and place. Agencies set their own rules for how long records are kept and who can search them.</p></section>
+      <section class="sec"><h3>Source</h3><p>Mapped by volunteers on OpenStreetMap, the same data the DeFlock map uses. Locations can be wrong or out of date.</p></section>
+      <div class="res">
+        ${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${icon('pin')}<b>View or fix this camera on OpenStreetMap</b><small>Anyone can correct the map</small></a>` : ''}
+        <a href="https://deflock.me" target="_blank" rel="noopener noreferrer">${icon('camera')}<b>DeFlock map</b><small>Every mapped plate camera in the US</small></a>
+        <a href="https://atlasofsurveillance.org" target="_blank" rel="noopener noreferrer">${icon('registry')}<b>Which agencies use them</b><small>EFF Atlas of Surveillance</small></a>
+      </div>`, 'License plate reader');
+  }
+
+  function registryLinksHtml() {
+    return `<a href="https://www.nsopw.gov/" target="_blank" rel="noopener noreferrer">${icon('registry')}<b>Sex offender registry search</b><small>U.S. Dept. of Justice NSOPW · every state, DC and territory</small></a>`;
+  }
+
+  function aroundYouHtml() {
+    const cams = (S.feed.cameras || []).length;
+    return `<li class="group-label">Around you</li>
+      <li class="xacc"><ul class="xacc-list">
+        <li class="xacc-row" style="--c:#c084fc"><span class="glyph">${icon('camera')}</span><span class="grow"><b>${plural(cams, 'license plate camera')}</b><small>Mapped on OpenStreetMap near you</small></span><button class="btn small" type="button" data-overlay="cameras" aria-pressed="${S.overlays.cameras}">${S.overlays.cameras ? 'On map' : 'Show'}</button></li>
+      </ul></li>`;
+  }
+
+  function toggleOverlay(key) {
+    S.overlays[key] = !S.overlays[key];
+    store.set('overlays', S.overlays);
+    renderOverlays();
+    if (S.tab === 'feed') renderFeed();
+  }
+
+  // "Live · updated 20 s ago" so freshness is always visible.
+  function renderLive() {
+    const el = $('#live');
+    if (!el) return;
+    if (!S.lastUpdated) { el.textContent = PREVIEW ? 'Sample data' : 'Connecting…'; el.className = 'live'; return; }
+    const secs = Math.round((Date.now() - S.lastUpdated) / 1000);
+    const ago = secs < 60 ? `${secs}s ago` : `${Math.round(secs / 60)} min ago`;
+    el.className = `live${S.lastError ? ' stale' : ''}`;
+    el.textContent = S.lastError ? `Offline · ${ago}` : `${PREVIEW ? 'Sample' : 'Live'} · ${ago}`;
+  }
+
   /* ---------- Rendering ---------- */
   function renderChrome() {
     app.classList.toggle('calm', S.calm);
@@ -483,7 +580,7 @@
   }
 
   function renderStats() {
-    const items = visibleLocal();
+    const items = visibleLocal().filter(inRadius);
     animateNumber($('#stat-near'), items.length);
     const confirmed = items.filter((it) => levelOf(it) >= 3).length;
     const pct = items.length ? Math.round((confirmed / items.length) * 100) : 0;
@@ -503,20 +600,37 @@
     el.onclick = () => (area.length > 1 ? openList('Area-wide alerts', 'Official alerts that cover your whole area rather than one spot.', area) : openItem(top, { fly: false }));
   }
 
+  // News pictures are the outlet's own article image, linked and credited.
+  function imageOf(it) {
+    const img = it.image;
+    if (!img || !img.url) return null;
+    return /^https:\/\//.test(img.url) || (it.sample && /^data:image\/svg\+xml/.test(img.url)) ? img : null;
+  }
+
+  function photoHtml(it) {
+    const pic = imageOf(it);
+    if (!pic) return '';
+    const img = `<img src="${esc(pic.url)}" alt="" decoding="async" referrerpolicy="no-referrer" onerror="this.closest('figure').remove()">`;
+    const credit = pic.sample ? `Sample image · ${esc(pic.credit)}` : `Photo: ${esc(pic.credit)} · from the article`;
+    return `<figure class="d-photo">${pic.link ? `<a href="${esc(pic.link)}" target="_blank" rel="noopener noreferrer">${img}</a>` : img}<figcaption>${credit}</figcaption></figure>`;
+  }
+
   function cardHtml(it, i, extraClass = '') {
     const cat = catOf(it);
     const lvl = levelOf(it);
     const sources = (it.sources || []).map((s) => s.name);
     const srcText = sources.length > 2 ? `${sources.slice(0, 2).join(', ')} +${sources.length - 2}` : sources.join(', ');
     const where = S.scope === 'national' || it.distanceMi == null || it.kind === 'area' ? esc((it.place || '').split(';')[0]) : miles(it.distanceMi);
+    const pic = imageOf(it);
     return `<li class="card ${extraClass}" style="--c:${cat.color};--i:${Math.min(i, 12)}">
-      <button class="card-btn" type="button" data-id="${esc(it.id)}">
+      <button class="card-btn${pic ? ' has-pic' : ''}" type="button" data-id="${esc(it.id)}">
         <span class="glyph">${icon(it.category in CATS ? it.category : 'community')}</span>
         <span class="card-main">
           <span class="card-meta mono"><span class="sev${it.severity}">${SEV[it.severity] || 'Info'}</span><span>${rel(it.time)}</span><span>${where}</span>${it.precision ? `<span>${PRECISION[it.precision] || ''}</span>` : ''}</span>
           <span class="card-title">${esc(it.title)}</span>
           <span class="card-foot"><span class="badge lv${lvl}">${icon('shield')}${LEVELS[lvl][0]}</span>${it.sample ? '<span class="sample-chip">SAMPLE</span>' : ''}${it.mine ? '<span class="sample-chip">YOUR REPORT</span>' : ''}<span class="src">${esc(srcText)}</span></span>
         </span>
+        ${pic ? `<img class="thumb" src="${esc(pic.url)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentNode.classList.remove('has-pic');this.remove()">` : ''}
       </button>
     </li>`;
   }
@@ -542,7 +656,7 @@
         html += '<li class="group-label">Area-wide alerts</li>';
         area.forEach((it, i) => { lookup.set(it.id, it); html += cardHtml(it, i, 'area'); });
       }
-      html += xAccountsHtml();
+      html += aroundYouHtml() + xAccountsHtml();
       let last = '';
       items.forEach((it, i) => {
         lookup.set(it.id, it);
@@ -564,6 +678,8 @@
     }
     list.innerHTML = html;
     list.onclick = (e) => {
+      const ovb = e.target.closest('[data-overlay]');
+      if (ovb) { toggleOverlay(ovb.dataset.overlay); return; }
       const xv = e.target.closest('[data-xview]');
       if (xv) { showXPosts(xv.dataset.xview, xv); return; }
       const btn = e.target.closest('[data-id]');
@@ -627,15 +743,18 @@
     }
   }
 
-  function contextLine(items) {
-    if (!items.length) return '';
+  function contextLine(all) {
+    const items = all.filter(inRadius);
+    const farther = all.length - items.length;
+    const fartherText = farther ? ` Also ${plural(farther, 'larger event')} farther out (fires, earthquakes).` : '';
+    if (!items.length) return farther ? `<p class="context">Nothing within ${radiusText(S.radiusMi)}.${fartherText}</p>` : '';
     const counts = {};
     items.forEach((it) => { counts[it.category] = (counts[it.category] || 0) + 1; });
     const routine = (counts.traffic || 0) + (counts.medical || 0);
     const critical = items.filter((it) => it.severity >= 3).length;
     const confirmed = items.filter((it) => levelOf(it) >= 3).length;
     const tf = (TIMEFRAMES.find((t) => t[0] === S.hours) || TIMEFRAMES[2])[1].toLowerCase();
-    return `<p class="context"><b>${plural(items.length, 'report')}</b> within ${radiusText(S.radiusMi)} in the ${tf}. ${confirmed} confirmed by an agency or 2+ outlets. ${routine ? `${routine} of them are traffic or medical calls. ` : ''}${critical ? `${critical} marked critical.` : 'None marked critical.'}</p>`;
+    return `<p class="context"><b>${plural(items.length, 'report')}</b> within ${radiusText(S.radiusMi)} in the ${tf}. ${confirmed} confirmed by an agency or 2+ outlets. ${routine ? (routine === 1 ? '1 is a traffic or medical call. ' : `${routine} are traffic or medical calls. `) : ''}${critical ? `${critical} marked critical.` : 'None marked critical.'}${fartherText}</p>`;
   }
 
   function emptyState() {
@@ -755,6 +874,7 @@
         <span class="glyph big">${icon(it.category in CATS ? it.category : 'community')}</span>
         <div><div class="eyebrow" style="color:${cat.color}">${esc(cat.label)} · ${SEV[it.severity] || 'Info'}</div><h2 class="d-title">${esc(it.title)}</h2></div>
       </div>
+      ${photoHtml(it)}
       ${it.sample ? '<p class="note"><span class="sample-chip">SAMPLE</span> Example data for the preview. Names of sources are placeholders.</p>' : ''}
       <dl class="d-meta">
         <div><dt>When</dt><dd>${abs(it.time)}<span>${rel(it.time)}</span></dd></div>
@@ -859,9 +979,14 @@
       <div class="list">${Object.entries(CATS).map(([id, c]) => `
         <button class="opt" type="button" role="checkbox" aria-checked="${S.cats.has(id)}" data-cat="${id}" style="--c:${c.color}">
           <span class="glyph" style="--c:${c.color}">${icon(id)}</span><span class="grow">${esc(c.label)}<small>${plural(counts[id] || 0, 'report')}</small></span><span class="tick">${icon('check')}</span>
-        </button>`).join('')}</div>`;
+        </button>`).join('')}</div>
+      <section class="sec"><h3>Map overlays</h3><div class="list">
+        <button class="opt" type="button" role="checkbox" aria-checked="${S.overlays.cameras}" data-ov="cameras"><span class="glyph" style="--c:#c084fc">${icon('camera')}</span><span class="grow">License plate cameras<small>${plural((S.feed.cameras || []).length, 'camera')} mapped on OpenStreetMap</small></span><span class="tick">${icon('check')}</span></button>
+      </div></section>`;
     openSheet(render(), 'Layers');
     sheetBody.onclick = (e) => {
+      const ov = e.target.closest('[data-ov]');
+      if (ov) { toggleOverlay(ov.dataset.ov); ov.setAttribute('aria-checked', String(S.overlays[ov.dataset.ov])); return; }
       const opt = e.target.closest('[data-cat]');
       const all = e.target.closest('[data-all]');
       if (!opt && !all) return;
@@ -1078,7 +1203,7 @@
         <h2>Free public records</h2>
         <p>Official sources, no paywall. We link to them instead of copying people's records.</p>
         <div class="res">
-          <a href="https://www.nsopw.gov/" target="_blank" rel="noopener noreferrer">${icon('registry')}<b>Sex offender registry search</b><small>U.S. Dept. of Justice NSOPW · every state, DC and territory</small></a>
+          ${registryLinksHtml()}
           <a href="https://www.broadcastify.com/listen/" target="_blank" rel="noopener noreferrer">${icon('radio')}<b>Police and fire scanner audio</b><small>Broadcastify · free live feeds by county</small></a>
           <a href="https://openmhz.com/" target="_blank" rel="noopener noreferrer">${icon('radio')}<b>Recorded radio calls</b><small>OpenMHz · trunked systems in many cities</small></a>
           <a href="https://alerts.weather.gov/" target="_blank" rel="noopener noreferrer">${icon('weather')}<b>Official weather and emergency alerts</b><small>National Weather Service</small></a>
@@ -1254,6 +1379,8 @@
     renderStats();
     renderAreaBanner();
     renderPins(mode, freshIds);
+    renderOverlays();
+    renderLive();
     if (S.tab === 'feed') renderFeed();
   }
 
@@ -1268,6 +1395,8 @@
       const data = await API.feed();
       if (key !== requestKey()) { pending = true; return; }
       S.feed = data;
+      S.lastUpdated = Date.now();
+      S.lastError = null;
       const ids = localItems().concat(data.area || []).map((it) => it.id);
       const freshIds = S.firstLoad ? new Set() : new Set(ids.filter((id) => !S.known.has(id)));
       ids.forEach((id) => S.known.add(id));
@@ -1283,6 +1412,8 @@
       }
       S.firstLoad = false;
     } catch (err) {
+      S.lastError = err.message;
+      renderLive();
       toast(`Couldn't refresh the feed: ${err.message}. Showing the last update.`, 'hazard', 5000);
     } finally {
       loading = false;
@@ -1347,6 +1478,10 @@
     syncDeck();
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh(); });
     setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, PREVIEW ? 15000 : 60000);
+    setInterval(() => {
+      if (document.visibilityState === 'visible' && S.tab === 'feed' && S.scope === 'national') { S.national = null; loadNational(); }
+    }, 120000);
+    setInterval(renderLive, 5000);
   }
 
   function start() {

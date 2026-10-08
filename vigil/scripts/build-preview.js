@@ -39,7 +39,7 @@ world.objects = {
 const preview = {
   home: sample.HOME,
   sampleAreas: sample.SAMPLE_AREAS,
-  sample: { items, sources },
+  sample: { items, sources, cameras: sample.cameras() },
   cities,
   xAccounts: xAccounts.map(({ handle, name, kind, area }) => ({ handle, name, kind, area })),
   basemap: { us, land: world },

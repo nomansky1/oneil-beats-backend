@@ -37,6 +37,20 @@ const SRC = {
 };
 const src = (key, ago, headline) => ({ ...SRC[key], ...(ago != null ? { ago } : {}), ...(headline ? { headline } : {}), url: '' });
 
+// Placeholder pictures for sample stories: simple drawings, not photos,
+// labeled SAMPLE IMAGE. The live app shows each outlet's own article image.
+const SCENES = {
+  fire: { sky: ['#2a0f08', '#140a0a'], glow: '#ff8a34', shape: '<path d="M60 200V128l60-42 60 42v72z" fill="#0b0708"/><path d="M150 112l40-30 40 30v88h-80z" fill="#120a0b"/><rect x="92" y="150" width="18" height="24" fill="#ffb15c" opacity=".8"/>' },
+  police: { sky: ['#0b1530', '#070a14'], glow: '#4b7bff', shape: '<rect x="0" y="160" width="320" height="40" fill="#0b0d14"/><rect x="118" y="132" width="84" height="28" rx="8" fill="#151a26"/><rect x="134" y="124" width="22" height="8" rx="2" fill="#ff4d5e"/><rect x="164" y="124" width="22" height="8" rx="2" fill="#4b7bff"/>' },
+  brush: { sky: ['#2b1406', '#120a06'], glow: '#ff6a1a', shape: '<path d="M0 170q60-50 120-20t110-30 90 10v70H0z" fill="#0d0907"/><path d="M0 186q80-30 160-8t160-6v28H0z" fill="#070505"/>' },
+  city: { sky: ['#10162b', '#080a12'], glow: '#ffb020', shape: '<path d="M0 200V120h30v-30h26v40h20V80h34v120zM120 200v-96h28v-24h24v120zM190 200v-70h40v-40h30v110zM270 200v-84h50v84z" fill="#0b0e18"/>' },
+};
+function photo(scene, credit) {
+  const sc = SCENES[scene];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200"><defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sc.sky[0]}"/><stop offset="1" stop-color="${sc.sky[1]}"/></linearGradient><radialGradient id="g" cx=".5" cy=".75" r=".6"><stop offset="0" stop-color="${sc.glow}" stop-opacity=".55"/><stop offset="1" stop-color="${sc.glow}" stop-opacity="0"/></radialGradient></defs><rect width="320" height="200" fill="url(#s)"/><rect width="320" height="200" fill="url(#g)"/>${sc.shape}<text x="12" y="22" font-family="sans-serif" font-size="11" font-weight="700" fill="#fff" opacity=".7" letter-spacing="1.5">SAMPLE IMAGE</text></svg>`;
+  return { url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, credit: SRC[credit].name, link: '', sample: true };
+}
+
 function item(id, center, n, e, fields) {
   return { id: `sample:${id}`, kind: 'incident', precision: 'block', confirmed: [], unconfirmed: [], updates: [], ...at(center, n, e), ...fields };
 }
@@ -73,6 +87,7 @@ function muskegon() {
       title: 'House fire: smoke showing from a two-story home',
       summary: 'Crews from two departments responded. Everyone is reported out of the home.',
       sources: [src('fire', 22), src('tvA', 15, 'Crews battle house fire; family safe'), src('paperB', 11, 'Two departments respond to Muskegon Heights house fire')],
+      image: photo('fire', 'tvA'),
       confirmed: ['Fire crews on scene', 'Residents are out of the home'], unconfirmed: ['Cause', 'Extent of damage'],
       updates: [{ ago: 22, text: 'First engine reports smoke showing' }, { ago: 14, text: 'Second alarm requested for more crews' }, { ago: 5, text: 'Fire under control; crews checking for hot spots' }],
     }),
@@ -173,6 +188,7 @@ function muskegon() {
       category: 'crime', severity: 2, ago: 600,
       title: 'Police investigate overnight stabbing; victim in stable condition',
       sources: [src('tvA', 600), src('paperB', 560, 'Man stabbed overnight, police say'), src('siteD', 520)],
+      image: photo('police', 'tvA'),
       confirmed: ['One person was stabbed', 'The victim is in stable condition'], unconfirmed: ['Where exactly it happened', 'Whether a suspect is in custody'] },
     { ...item('m-pursuit', C, 0, 0, {}), kind: 'story', precision: 'city', place,
       category: 'crime', severity: 2, ago: 210,
@@ -212,11 +228,11 @@ function nationwide() {
   const P = (lat, lon) => ({ lat, lon });
   return [
     item('sea-aid', P(47.6097, -122.3331), 0.3, 0.2, { category: 'medical', severity: 1, ago: 7, place: 'Downtown Seattle, WA', title: 'Aid response: medic unit dispatched', sources: [src('fire', 7)] }),
-    item('sea-fire', P(47.6097, -122.3331), -1.2, 0.8, { category: 'fire', severity: 2, ago: 26, place: 'Seattle, WA', title: 'Apartment fire: residents evacuated from third floor', sources: [src('fire', 26), src('tvA', 12), src('paperB', 9)] }),
+    item('sea-fire', P(47.6097, -122.3331), -1.2, 0.8, { category: 'fire', severity: 2, ago: 26, place: 'Seattle, WA', title: 'Apartment fire: residents evacuated from third floor', sources: [src('fire', 26), src('tvA', 12), src('paperB', 9)], image: photo('city', 'paperB') }),
     item('chi-rob', P(41.8781, -87.6298), 0.4, -0.3, { category: 'crime', severity: 2, ago: 33, place: 'The Loop, Chicago, IL', title: 'Robbery reported on a train platform; suspect in custody', sources: [src('police', 33), src('radioC', 20)] }),
     { ...item('hou-flood', P(29.7604, -95.3698), 0, 0, {}), kind: 'area', precision: 'area', areaRadiusMi: 30, place: 'Harris County, TX', category: 'weather', severity: 3, ago: 18, expiresIn: 120, title: 'Flash Flood Warning', summary: 'Heavy rain is flooding low-lying roads. Turn around, don’t drown.', sources: [src('weather', 18)] },
     item('hou-crash', P(29.7604, -95.3698), 1.5, -2.0, { category: 'traffic', severity: 2, ago: 41, place: 'Houston, TX', title: 'Multi-vehicle crash closes two freeway lanes', sources: [src('dispatch', 41), src('tvA', 30)] }),
-    item('la-brush', P(34.1184, -118.3004), 0.8, 0.5, { category: 'fire', severity: 3, ago: 52, place: 'Hillside neighborhood, Los Angeles, CA', title: 'Brush fire prompts evacuation orders for nearby streets', sources: [src('fire', 52), src('tvA', 40), src('paperB', 35), src('wireE', 25)], confirmed: ['Evacuation orders issued for several streets'], unconfirmed: ['Acres burned'] }),
+    item('la-brush', P(34.1184, -118.3004), 0.8, 0.5, { category: 'fire', severity: 3, ago: 52, place: 'Hillside neighborhood, Los Angeles, CA', title: 'Brush fire prompts evacuation orders for nearby streets', sources: [src('fire', 52), src('tvA', 40), src('paperB', 35), src('wireE', 25)], image: photo('brush', 'wireE'), confirmed: ['Evacuation orders issued for several streets'], unconfirmed: ['Acres burned'] }),
     item('la-quake', P(34.0522, -118.2437), 4, 6, { category: 'quake', severity: 1, ago: 130, place: 'Near Los Angeles, CA', precision: 'exact', title: 'M3.4 earthquake', summary: 'Light shaking reported. No damage expected at this size.', sources: [src('quakes', 128)], unconfirmed: ['Magnitude may be revised'] }),
     item('nyc-track', P(40.7831, -73.9712), 0.2, 0.1, { category: 'hazard', severity: 2, ago: 64, place: 'Manhattan, New York, NY', title: 'Subway service suspended after a track fire', sources: [src('fire', 64), src('radioC', 50), src('paperB', 44)] }),
     { ...item('mia-coast', P(25.7617, -80.1918), 0, 0, {}), kind: 'area', precision: 'area', areaRadiusMi: 30, place: 'Miami-Dade County, FL', category: 'weather', severity: 1, ago: 200, expiresIn: 300, title: 'Coastal Flood Advisory', summary: 'King tide flooding expected in low spots near the bay.', sources: [src('weather', 200)] },
@@ -235,6 +251,17 @@ function nationwide() {
   ];
 }
 
+// Sample plate-camera positions for the preview only (the live app loads
+// real mapped cameras from OpenStreetMap).
+function cameras() {
+  const C = HOME;
+  const spots = [[-0.35, 0.9, 90], [-1.1, 0.2, 180], [-0.6, -0.8, 270], [-1.7, 1.4, 0], [-0.2, 1.8, 45], [-1.35, -0.6, 135], [-2.1, 0.7, 315], [-0.9, 1.6, null]];
+  return spots.map(([n, e, dir], i) => ({
+    id: `sample:cam-${i}`, kind: 'camera', ...at(C, n, e), direction: dir,
+    manufacturer: 'Flock Safety', operator: 'Sample police department', model: '', sample: true, url: '',
+  }));
+}
+
 const SAMPLE_AREAS = [
   HOME,
   { label: 'Seattle, WA', lat: 47.6097, lon: -122.3331 },
@@ -243,4 +270,4 @@ const SAMPLE_AREAS = [
   { label: 'Hagåtña, GU', lat: 13.4757, lon: 144.7489 },
 ];
 
-module.exports = { HOME, SAMPLE_AREAS, items: () => muskegon().concat(nationwide()) };
+module.exports = { HOME, SAMPLE_AREAS, items: () => muskegon().concat(nationwide()), cameras };
