@@ -33,7 +33,8 @@ imported by it. It should become its own repo and its own Vercel project.
 | OpenFEMA | Active disaster declarations for your county | Official |
 | City police and fire open data (Socrata) | Block-level dispatch calls and crime reports. Seattle Fire 911 (real time), SF Police, Chicago Police (7-day delay), NYPD (quarterly) to start. Add a city in `lib/sources/opendata.js`. | Official |
 | Google News RSS + GDELT | Local news, clustered across outlets | Corroborated or Single source |
-| X (paid, off by default) | Posts from police, fire and NWS accounts, often first. Government-verified accounts count as official. Everyone else is Unverified. | Official or Unverified |
+| Official agency accounts on X (free) | Public posts from police, fire, NWS, FEMA and USGS accounts near you, shown with X's own embed. No X account, no Premium, no API key. Listed in `data/x-accounts.js`. | Shown as posted; not rated |
+| X search (paid, off by default) | Searches all recent posts naming your city. Government-verified accounts count as official; everyone else is Unverified. Needs an X developer API key (not X Premium), billed per post read. | Official or Unverified |
 | Community reports | What people nearby post in the app | Unverified until confirmed |
 
 News articles rarely give an address, so stories sit at the city center and
@@ -44,7 +45,7 @@ say "City-level" instead of a guessed pin.
 ```bash
 cd vigil
 npm install
-npm test                 # 14 tests: parsers, truth meter, clustering, API
+npm test                 # 15 tests: parsers, truth meter, clustering, X accounts, API
 npm run dev              # http://localhost:3000 with live upstream data
 npm run dev:fixtures     # same, with canned upstream data (no network)
 npm run build:preview    # writes preview/vigil-preview.html
@@ -55,7 +56,7 @@ Environment variables:
 | Name | Needed? | Purpose |
 | --- | --- | --- |
 | `VIGIL_CONTACT` | Yes, before going live | Email or URL sent in the User-Agent. NWS and OpenStreetMap require it. |
-| `X_BEARER_TOKEN` | Optional | Turns on X posts. Billed per post read by X. |
+| `X_BEARER_TOKEN` | Optional | Turns on paid X search. Not needed for the free official-account posts. |
 | `X_CACHE_SECONDS` | Optional | How long X results are reused per city (default 120). |
 
 ## Put it live (needs the owner's OK)
@@ -71,7 +72,7 @@ people watching them.
 
 ## What's verified and what isn't
 
-- **Tested here:** all 14 unit/API tests pass; the app was driven in a
+- **Tested here:** all 15 unit/API tests pass; the app was driven in a
   headless phone-size browser against the local server (fixture data) and
   against the preview build, with no script errors.
 - **Not tested against the real upstream services.** The build environment
@@ -90,8 +91,12 @@ people watching them.
   monetizing.
 - Google News RSS has no published license for apps. GDELT allows commercial
   use with attribution. A licensed news API is the safer long-term choice.
-- X: pay-per-use API; check its developer terms on display, deletions and
-  commercial use.
+- X: the free official-account posts use X's embed widget, which falls under
+  X's Developer Agreement. Vigil never scrapes X; X's terms forbid it.
+  Before launch, open each handle in `data/x-accounts.js` marked
+  `checked: 'known'` on x.com and confirm the grey government check.
+- X search (optional): pay-per-use developer API; check its terms on
+  display, deletions and commercial use.
 - Nominatim (place search) allows about 1 request per second. Heavy use needs
   a hosted geocoder.
 - Sex offender data: the app links to the official DOJ NSOPW search instead

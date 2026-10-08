@@ -12,6 +12,7 @@ const fema = require('./sources/fema');
 const opendata = require('./sources/opendata');
 const news = require('./sources/news');
 const x = require('./sources/x');
+const { accountsFor } = require('./x-accounts');
 
 async function timed(id, label, fn) {
   const started = Date.now();
@@ -39,7 +40,7 @@ async function buildFeed(center, { radiusMi = 3, hours = 24 } = {}) {
     timed('fema', 'FEMA disaster declarations', () => fema.declarationsFor(place, center)),
     ...opendata.feedsFor(center).map((f) => timed(f.id, f.label, () => opendata.fetchFeed(f, center, radiusMi, hours))),
     timed('news', 'Local news (Google News, GDELT)', () => (place.city || place.label ? news.storiesFor(place, center, hours) : [])),
-    timed('x', 'X posts', () => x.postsFor(place, center)),
+    timed('x', 'X search (paid API, optional)', () => x.postsFor(place, center)),
   ]);
 
   const cutoff = Date.now() - hours * 3600e3;
@@ -64,6 +65,7 @@ async function buildFeed(center, { radiusMi = 3, hours = 24 } = {}) {
     place,
     area,
     items,
+    xAccounts: accountsFor(center),
     sources: [placeRun.health, ...runs.map((r) => r.health)],
   };
 }

@@ -7,9 +7,14 @@
 //     established outlets confirm it. Unverified posts are hidden when the
 //     viewer turns on "Verified only".
 //
-// X's API is paid per post read (about $0.005 per post as of 2026), so this
-// source is off unless X_BEARER_TOKEN is set, and results are cached per
-// city for X_CACHE_SECONDS (default 120) to keep the bill predictable.
+// Searching X needs a developer API account (separate from X Premium) and
+// is paid per post read (about $0.005 per post as of 2026), so this source
+// is off unless X_BEARER_TOKEN is set. Results are cached per city for
+// X_CACHE_SECONDS (default 120) to keep the bill predictable.
+//
+// Without a token, the app still shows official agencies' public posts for
+// free through X's embed widget (see data/x-accounts.js). Those are
+// displayed, not read, so they don't feed the truth meter.
 const { fetchJson } = require('../http');
 const { classify } = require('../classify');
 
@@ -52,7 +57,7 @@ function normalize(post, author, place, center) {
 
 async function postsFor(place, center) {
   if (!configured()) {
-    const err = new Error('Add X_BEARER_TOKEN to enable');
+    const err = new Error('Off. Free official-account posts still show in the feed');
     err.notConfigured = true;
     throw err;
   }

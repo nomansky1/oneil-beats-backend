@@ -8,6 +8,7 @@ const path = require('path');
 const { withVerification } = require('../lib/verify');
 const sample = require('../data/sample');
 const cities = require('../data/cities');
+const xAccounts = require('../data/x-accounts');
 
 const root = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
@@ -20,7 +21,7 @@ const kinds = [
   ['Weather service alerts (sample)', (it) => it.sources.some((s) => /Weather service/.test(s.name))],
   ['Earthquake survey (sample)', (it) => it.category === 'quake'],
   ['Local news, clustered (sample)', (it) => it.sources.some((s) => s.kind === 'news')],
-  ['X posts (sample)', (it) => it.sources.some((s) => / on X/.test(s.name))],
+  ['X posts in sample reports', (it) => it.sources.some((s) => / on X/.test(s.name))],
   ['Community reports (sample)', (it) => it.sources.some((s) => s.kind === 'community')],
 ];
 const sources = kinds.map(([label, test]) => ({ label, ok: true, count: items.filter(test).length }));
@@ -40,6 +41,7 @@ const preview = {
   sampleAreas: sample.SAMPLE_AREAS,
   sample: { items, sources },
   cities,
+  xAccounts: xAccounts.map(({ handle, name, kind, area }) => ({ handle, name, kind, area })),
   basemap: { us, land: world },
 };
 

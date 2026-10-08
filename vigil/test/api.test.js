@@ -36,6 +36,7 @@ test('GET /api/feed merges every source and reports their health', async () => {
   assert.ok(body.items.some((i) => i.category === 'quake'), 'quakes use a wider radius');
   assert.ok(body.items.every((i) => i.verification && i.sources.length));
 
+  assert.equal(body.xAccounts[0].handle, 'NWSGrandRapids', 'free official X accounts for the area');
   const health = Object.fromEntries(body.sources.map((s) => [s.id, s]));
   for (const id of ['place', 'nws', 'usgs', 'fema', 'news']) assert.equal(health[id].ok, true, id);
   assert.equal(health.x.ok, false);

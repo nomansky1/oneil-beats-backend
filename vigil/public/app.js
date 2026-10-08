@@ -189,7 +189,7 @@
       const all = this.all().map((it) => ({ ...it, distanceMi: dist(c, it) }));
       const items = all.filter((it) => it.kind !== 'area' && it.distanceMi <= (it.category === 'quake' ? Math.max(S.radiusMi, 100) : S.radiusMi) && new Date(it.time) >= cutoff);
       const area = all.filter((it) => it.kind === 'area' && it.distanceMi <= (it.areaRadiusMi || 30));
-      return { items, area, sources: PREVIEW.sample.sources, place: { label: c.label || nearestCity(c) }, generatedAt: new Date().toISOString() };
+      return { items, area, xAccounts: previewAccounts(c), sources: PREVIEW.sample.sources, place: { label: c.label || nearestCity(c) }, generatedAt: new Date().toISOString() };
     },
     async national() {
       const items = this.all().sort((a, b) => b.severity - a.severity || new Date(b.time) - new Date(a.time));
@@ -229,6 +229,12 @@
       .slice(0, 8 - cities.length)
       .map((c) => ({ label: c.label, detail: 'County or equivalent', lat: c.lat, lon: c.lon }));
     return cities.concat(counties);
+  }
+  function previewAccounts(c) {
+    const covers = (a) => a === 'national' || (a.bbox ? c.lat >= a.bbox[0] && c.lat <= a.bbox[2] && c.lon >= a.bbox[1] && c.lon <= a.bbox[3] : dist(c, a) <= a.radiusMi);
+    const pick = (a) => ({ handle: a.handle, name: a.name, kind: a.kind, url: `https://x.com/${a.handle}` });
+    const all = PREVIEW.xAccounts || [];
+    return all.filter((a) => a.area !== 'national' && covers(a.area)).map(pick).concat(all.filter((a) => a.area === 'national').map(pick));
   }
   function nearestCity(c) {
     if (!PREVIEW) return '';
@@ -536,6 +542,7 @@
         html += '<li class="group-label">Area-wide alerts</li>';
         area.forEach((it, i) => { lookup.set(it.id, it); html += cardHtml(it, i, 'area'); });
       }
+      html += xAccountsHtml();
       let last = '';
       items.forEach((it, i) => {
         lookup.set(it.id, it);
@@ -543,7 +550,7 @@
         if (b !== last) { html += `<li class="group-label">${b}</li>`; last = b; }
         html += cardHtml(it, i + area.length);
       });
-      if (!items.length && !area.length) html = emptyState();
+      if (!items.length && !area.length) html = emptyState() + xAccountsHtml();
     } else {
       $('#feed-context').innerHTML = `<div class="chips" aria-label="Jump to a territory">${TERRITORIES.map((t, i) => `<button class="chip" type="button" data-terr="${i}">${icon('globe')}${esc(t.label)}</button>`).join('')}</div>`;
       if (!S.national) {
@@ -557,6 +564,8 @@
     }
     list.innerHTML = html;
     list.onclick = (e) => {
+      const xv = e.target.closest('[data-xview]');
+      if (xv) { showXPosts(xv.dataset.xview, xv); return; }
       const btn = e.target.closest('[data-id]');
       if (btn && lookup.has(btn.dataset.id)) openItem(lookup.get(btn.dataset.id), { fly: false });
     };
@@ -564,6 +573,58 @@
       const t = e.target.closest('[data-terr]');
       if (t) { const terr = TERRITORIES[Number(t.dataset.terr)]; setCenter({ lat: terr.lat, lon: terr.lon, label: terr.place }); S.scope = 'local'; setTab('map'); }
     };
+  }
+
+  /* Official agency accounts on X: free public posts via X's own embed.
+     Displayed as X shows them; Vigil doesn't read, rate or edit them. */
+  const X_KIND = { police: ['crime', 'Police'], fire: ['fire', 'Fire'], weather: ['weather', 'Weather'], emergency: ['hazard', 'Emergency management'], quake: ['quake', 'Earthquakes'] };
+  function xAccountsHtml() {
+    const accounts = S.feed.xAccounts || [];
+    if (!accounts.length) return '';
+    const rows = accounts.map((a) => {
+      const [ic, kindLabel] = X_KIND[a.kind] || ['community', 'Agency'];
+      const color = (CATS[ic] || CATS.community).color;
+      return `<li class="xacc-row" style="--c:${color}">
+          <span class="glyph">${icon(ic)}</span>
+          <span class="grow"><b>${esc(a.name)}</b><small>@${esc(a.handle)} · ${kindLabel}</small></span>
+          ${PREVIEW ? '' : `<button class="btn small" type="button" data-xview="${esc(a.handle)}" aria-expanded="false">Posts</button>`}
+          <a class="btn small ghost" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer" aria-label="Open @${esc(a.handle)} on X">X ↗</a>
+        </li>
+        <li class="xembed" id="xembed-${esc(a.handle)}" hidden></li>`;
+    }).join('');
+    return `<li class="group-label">Straight from agencies on X</li>
+      <li class="xacc"><p class="note">Free public posts from official accounts, shown the way X shows them. No X account or Premium needed.${PREVIEW ? ' The preview can only link out; the live app shows the posts here.' : ''}</p><ul class="xacc-list">${rows}</ul></li>`;
+  }
+  let xWidgets = null;
+  function loadXWidgets() {
+    if (window.twttr && window.twttr.widgets) return Promise.resolve(window.twttr);
+    if (!xWidgets) {
+      xWidgets = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://platform.twitter.com/widgets.js';
+        s.async = true;
+        s.onload = () => (window.twttr && window.twttr.widgets ? resolve(window.twttr) : reject(new Error('X embed unavailable')));
+        s.onerror = () => { xWidgets = null; reject(new Error('X embed did not load')); };
+        document.head.append(s);
+      });
+    }
+    return xWidgets;
+  }
+  async function showXPosts(handle, btn) {
+    const box = document.getElementById(`xembed-${handle}`);
+    if (!box) return;
+    box.hidden = !box.hidden;
+    btn.setAttribute('aria-expanded', String(!box.hidden));
+    btn.textContent = box.hidden ? 'Posts' : 'Hide';
+    if (box.hidden || box.dataset.loaded) return;
+    box.innerHTML = `<a class="twitter-timeline" data-theme="dark" data-height="460" data-dnt="true" data-chrome="noheader nofooter noborders transparent" href="https://twitter.com/${esc(handle)}">Loading posts from @${esc(handle)}…</a>`;
+    try {
+      const tw = await loadXWidgets();
+      await tw.widgets.load(box);
+      box.dataset.loaded = '1';
+    } catch (err) {
+      box.innerHTML = `<p class="note">X didn't load here. <a href="https://x.com/${esc(handle)}" target="_blank" rel="noopener noreferrer">Open @${esc(handle)} on X</a>.</p>`;
+    }
   }
 
   function contextLine(items) {

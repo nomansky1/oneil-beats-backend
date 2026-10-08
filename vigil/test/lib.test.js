@@ -13,6 +13,7 @@ const opendata = require('../lib/sources/opendata');
 const x = require('../lib/sources/x');
 const news = require('../lib/sources/news');
 const fx = require('./fixtures/upstream');
+const { accountsFor } = require('../lib/x-accounts');
 
 test('verification levels follow the sources', () => {
   assert.equal(verify({ sources: [{ kind: 'official', name: 'NWS' }] }).level, 4);
@@ -106,4 +107,12 @@ test('news stories cluster across indexes and drop non-safety items', () => {
   assert.equal(stabbing.sources.length, 3);
   assert.equal(stabbing.verification.level, 3);
   assert.equal(stabbing.precision, 'city');
+});
+
+test('official X accounts are picked by coverage area, local first', () => {
+  const handles = (c) => accountsFor(c).map((a) => a.handle);
+  assert.deepEqual(handles({ lat: 43.2342, lon: -86.2484 }), ['NWSGrandRapids', 'MichStatePolice', 'NWS', 'fema', 'USGS_Quakes']);
+  assert.deepEqual(handles({ lat: 18.4655, lon: -66.1057 }).slice(0, 1), ['NWSSanJuan']);
+  assert.deepEqual(handles({ lat: 38.5, lon: -98.0 }), ['NWS', 'fema', 'USGS_Quakes'], 'rural Kansas: national accounts only');
+  assert.equal(accountsFor({ lat: 47.61, lon: -122.33 })[0].url, 'https://x.com/SeattlePD');
 });

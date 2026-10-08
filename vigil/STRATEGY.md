@@ -38,15 +38,21 @@ collected by unitQ and coverage by NBC News.
 
 - **What it's good for:** speed. Agencies post road closures, shelter-in-place
   orders and missing-person alerts there first.
-- **How Vigil uses it:** search recent posts that name the city plus safety
-  terms; government-verified accounts count as official; everything else is
+- **Free, on now:** the feed shows official agency accounts for your area
+  (police, fire, your NWS office, FEMA, USGS) and, in the live app, their
+  latest public posts through X's own embed. No X account, X Premium or API
+  key needed. X Premium (the blue check) doesn't unlock any of this anyway;
+  the API is a separate developer account.
+- **Paid, optional:** searching every recent post that names your city.
+  Government-verified accounts count as official; everything else is
   Unverified until confirmed. Retweets and replies are skipped.
+- **Not doing:** scraping X. Its terms ban it, and it breaks often.
 - **Cost:** new developers pay per post read, about $0.005 each as of 2026,
   with no free tier since February 2026. A city with ~50 matching posts a
   day is roughly $0.25/day. 100 active cities is roughly $25/day. These are
   estimates; the X Developer Console has the real rates.
-- **Plan:** keep it off until there's revenue, then turn it on for the
-  busiest metros first. Community Notes have no public read API today, so
+- **Plan:** free embeds now; turn on paid search once there's revenue,
+  busiest metros first. Grow the official-account list city by city. Community Notes have no public read API today, so
   they can't feed the truth meter yet.
 
 ## Money (later, via the website)

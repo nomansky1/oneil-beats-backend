@@ -537,3 +537,16 @@ textarea.input { min-height: 110px; resize: vertical; }
 /* Single-column grids: never let a scrolling chip row or long word widen the column. */
 .top, .deck, .feed-head, .feed-list, .sheet-body, .block, .step, .list, .res, .card-main { grid-template-columns: minmax(0, 1fr); }
 .view.feed, .view.panel, .sheet-body { overflow-x: hidden; }
+
+/* Official accounts on X */
+.xacc { display: grid; gap: 8px; }
+.xacc .note { padding: 0 4px; }
+.xacc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.xacc-row { --c: var(--lv3); display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-md); background: var(--panel-solid); border: 1px solid var(--line); }
+.xacc-row .glyph { width: 34px; height: 34px; border-radius: 11px; flex: none; }
+.xacc-row .grow { flex: 1; min-width: 0; display: grid; }
+.xacc-row b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xacc-row small { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xacc-row .btn { flex: none; text-decoration: none; color: var(--text); }
+.xembed { border-radius: var(--r-md); overflow: hidden; background: var(--panel-solid); border: 1px solid var(--line); padding: 4px; animation: drop-in 0.3s var(--ease); }
+.xembed .note { padding: 12px; }
