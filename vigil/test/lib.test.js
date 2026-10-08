@@ -14,6 +14,7 @@ const x = require('../lib/sources/x');
 const news = require('../lib/sources/news');
 const fx = require('./fixtures/upstream');
 const { accountsFor } = require('../lib/x-accounts');
+const alpr = require('../lib/sources/alpr');
 
 test('verification levels follow the sources', () => {
   assert.equal(verify({ sources: [{ kind: 'official', name: 'NWS' }] }).level, 4);
@@ -115,4 +116,18 @@ test('official X accounts are picked by coverage area, local first', () => {
   assert.deepEqual(handles({ lat: 18.4655, lon: -66.1057 }).slice(0, 1), ['NWSSanJuan']);
   assert.deepEqual(handles({ lat: 38.5, lon: -98.0 }), ['NWS', 'fema', 'USGS_Quakes'], 'rural Kansas: national accounts only');
   assert.equal(accountsFor({ lat: 47.61, lon: -122.33 })[0].url, 'https://x.com/SeattlePD');
+});
+
+test('plate cameras from OpenStreetMap keep vendor, operator and direction', () => {
+  const [a, b, c] = fx.overpass().elements.map(alpr.normalize);
+  assert.equal(a.id, 'osm:node/1001');
+  assert.equal(a.manufacturer, 'Flock Safety');
+  assert.equal(a.operator, 'Fixture Police Department');
+  assert.equal(a.direction, 90);
+  assert.equal(a.url, 'https://www.openstreetmap.org/node/1001');
+  assert.equal(b.manufacturer, 'Flock Safety', 'brand tag used when manufacturer is missing');
+  assert.equal(b.direction, 315, 'first of several directions');
+  assert.equal(c.direction, null);
+  const q = alpr.queryFor(alpr.bboxAround({ lat: 43.2342, lon: -86.2484 }, 2));
+  assert.match(q, /node\["surveillance:type"="ALPR"\]\(43\.2,-86\.3,43\.25,-86\.2\)/);
 });

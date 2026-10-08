@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -50,6 +51,7 @@
     <div class="stat">
       <b class="num" id="stat-near">0</b>
       <span>Reports within <span id="stat-radius">2 mi</span> · <span id="stat-window">24h</span></span>
+      <span class="live" id="live">Connecting…</span>
     </div>
     <div class="stat right">
       <div class="ring" aria-hidden="true"><svg viewBox="0 0 58 58"><circle class="track" cx="29" cy="29" r="24"/><circle class="bar" id="stat-ring" cx="29" cy="29" r="24" stroke-dasharray="150.8" stroke-dashoffset="150.8"/></svg><b id="stat-verified">0%</b></div>
@@ -99,6 +101,8 @@
 </div>
 <!-- app:end -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

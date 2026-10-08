@@ -12,7 +12,7 @@ const SEVERITY = { Extreme: 3, Severe: 2, Moderate: 1, Minor: 1, Unknown: 1 };
 function categoryFor(event) {
   if (/child abduction/i.test(event)) return 'missing';
   if (/law enforcement|civil danger|civil emergency/i.test(event)) return 'crime';
-  if (/evacuation|shelter in place|hazardous materials|nuclear|radiological|911 telephone|local area emergency/i.test(event)) return 'hazard';
+  if (/evacuation|shelter in place|hazardous materials|nuclear|radiological|911 telephone|local area emergency|boil water/i.test(event)) return 'hazard';
   if (/fire warning|red flag|fire weather/i.test(event)) return 'fire';
   return 'weather';
 }

@@ -3,15 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "description": "Free, sourced, local safety news for every US state and territory.",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "node dev-server.js",
     "dev:fixtures": "VIGIL_FIXTURES=1 node dev-server.js",
     "test": "node --test test/*.test.js",
-    "build:preview": "node scripts/build-preview.js"
+    "build:preview": "node scripts/build-preview.js",
+    "build:style": "node scripts/build-map-style.js",
+    "build:city-feeds": "node scripts/build-city-feeds.js"
   },
   "devDependencies": {
+    "@maplibre/maplibre-gl-leaflet": "0.1.4",
+    "@maplibre/maplibre-gl-style-spec": "26.4.4",
     "leaflet": "1.9.4",
+    "maplibre-gl": "5.24.0",
     "us-atlas": "3.0.1",
     "world-atlas": "2.0.2"
   }

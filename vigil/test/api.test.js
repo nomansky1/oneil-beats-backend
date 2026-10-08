@@ -33,15 +33,30 @@ test('GET /api/feed merges every source and reports their health', async () => {
 
   const stabbing = body.items.find((i) => /stabb/i.test(i.title));
   assert.equal(stabbing.verification.level, 3);
+  assert.deepEqual(stabbing.image, { url: 'https://fox17online.com/img/fixture-stabbing.jpg', credit: 'fox17online.com', link: 'https://fox17online.com/news/fixture-stabbing' }, 'article picture from GDELT');
+  assert.ok(body.items.some((i) => i.id === 'nifc:{FIXTURE-1}'), 'active wildfires within 50 miles');
+  assert.ok(!body.items.some((i) => i.id.startsWith('ipaws:')), 'the 24-hour view uses live NWS alerts only');
   assert.ok(body.items.some((i) => i.category === 'quake'), 'quakes use a wider radius');
   assert.ok(body.items.every((i) => i.verification && i.sources.length));
 
   assert.equal(body.xAccounts[0].handle, 'NWSGrandRapids', 'free official X accounts for the area');
+  assert.deepEqual(body.cameras.map((c) => c.id), ['osm:node/1001', 'osm:node/1002'], 'cameras inside the radius only');
+  assert.ok(!body.items.some((i) => i.id.startsWith('osm:')), 'cameras never enter the incident feed');
   const health = Object.fromEntries(body.sources.map((s) => [s.id, s]));
-  for (const id of ['place', 'nws', 'usgs', 'fema', 'news']) assert.equal(health[id].ok, true, id);
-  assert.equal(health.x.ok, false);
-  assert.equal(health.x.notConfigured, true);
+  for (const id of ['place', 'nws', 'usgs', 'fema', 'news', 'wildfire', 'alpr']) assert.equal(health[id].ok, true, id);
+  for (const id of ['x', 'firms']) {
+    assert.equal(health[id].ok, false, id);
+    assert.equal(health[id].notConfigured, true, id);
+  }
   assert.ok(!calls.some((u) => u.includes('api.x.com')), 'no paid X calls without a token');
+});
+
+test('GET /api/feed adds archived FEMA alerts for longer timeframes', async () => {
+  const { body } = await run(feedHandler, { lat: '43.2342', lon: '-86.2484', radius_mi: '3', hours: '72' });
+  const past = body.items.filter((i) => i.id.startsWith('ipaws:'));
+  assert.deepEqual(past.map((i) => i.title), ['Flood Warning', 'Shelter In Place Warning']);
+  assert.ok(past.every((i) => i.precision === 'area'));
+  assert.equal(body.sources.find((s) => s.id === 'ipaws').ok, true);
 });
 
 test('GET /api/feed rejects a missing location', async () => {
@@ -61,4 +76,5 @@ test('GET /api/national returns ranked items', async () => {
   assert.equal(status, 200);
   assert.ok(Array.isArray(body.items));
   assert.ok(body.items.length > 0);
+  assert.ok(body.items.some((i) => i.id === 'nifc:{FIXTURE-1}'), 'large wildfires nationwide');
 });

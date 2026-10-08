@@ -13,16 +13,18 @@ collected by unitQ and coverage by NBC News.
 | Fear and doom-scrolling | The "Nationwide" feed leads with a shooting 652 miles away. | Local first. Calm mode turns off pulsing, hides unverified reports and leads with context ("5 of 16 reports are traffic or medical calls"). |
 | Rewards for posting | "Achieve your first badge... alert your community" pushes volume. | No badges for reporting. The report flow coaches people away from naming people, race-only descriptions and calls to confront anyone. |
 | Privacy and permission nagging | Reviewers complain about repeated permission prompts. | No account. Search works without location access. The server rounds location to about 1 km. |
-| Thin coverage outside big cities | Citizen is strongest where it has staff and users. | Official national feeds (NWS, USGS, FEMA) cover every county and all five inhabited territories on day one. Local news clustering works for any town. |
+| Thin coverage outside big cities | Citizen is strongest where it has staff and users. | Official national feeds (NWS, USGS, FEMA, NIFC wildfires) cover every county and all five inhabited territories on day one. Local news clustering works for any town. 46 city police feeds add block-level calls where cities publish them. |
+| No view of surveillance around you | Citizen shows incidents, not the cameras watching the street. | A plate-camera layer (Flock and others) from OpenStreetMap, with vendor, operator and which way each camera faces. |
 
 ## Moats
 
 1. **Trust you can check.** Each label comes from the sources alone, the
    outlet tier list is public, and corrections are logged on the item. Hard to
    copy for an app whose growth depends on raw volume.
-2. **Official-data adapters.** Every city police/fire feed added to
-   `lib/sources/opendata.js` is work a competitor has to redo. This list is
-   the long-term asset.
+2. **Official-data adapters.** Every city police/fire feed in
+   `data/city-feeds.json` (46 so far, from OpenPoliceData) and every
+   hand-tuned adapter in `lib/sources/` is work a competitor has to redo.
+   This list is the long-term asset.
 3. **Territories and Spanish.** Puerto Rico, Guam, USVI, American Samoa and
    the Northern Marianas are covered from launch. Spanish UI is next on the
    roadmap.
@@ -80,6 +82,11 @@ undercut that:
    Apple's user-generated-content rules need report/block tools and a
    moderation process, which step 3 covers.
 6. **Coverage:** more city dispatch feeds, Spanish UI, state 511 traffic feeds.
+7. **Sex offender registry on the map (on hold, owner's decision):** NSOPW
+   has no API and forbids automated searching, so there is no free
+   nationwide source. Options: states that publish open data (Iowa API with
+   photos, DC open data, Florida and Missouri downloads), or a licensed
+   provider that allows public display in writing.
 
 ## Sources
 

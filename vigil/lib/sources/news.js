@@ -11,6 +11,7 @@ const { clusterArticles } = require('../cluster');
 const { classify } = require('../classify');
 const { tierFor, hostOf } = require('../outlets');
 const { withVerification } = require('../verify');
+const { ogImage, safeImage } = require('../og-image');
 
 const TERMS = '(police OR sheriff OR shooting OR stabbing OR robbery OR arrested OR crash OR fire OR missing OR evacuation OR "shelter in place" OR homicide)';
 
@@ -43,7 +44,8 @@ function gdeltDate(s) {
 
 async function gdelt(place, hours) {
   const span = hours <= 24 ? '1d' : hours <= 168 ? '7d' : '30d';
-  const q = encodeURIComponent(`"${place.city || place.label}" ${TERMS} sourcecountry:US`);
+  const where = place.city || place.label;
+  const q = encodeURIComponent(`${where ? `"${where}" ` : ''}${TERMS} sourcecountry:US`);
   const data = await fetchJson(`https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=artlist&format=json&maxrecords=75&sort=datedesc&timespan=${span}`, { ttl: 180 });
   return (data.articles || []).map((a) => ({
     title: a.title,
@@ -51,6 +53,7 @@ async function gdelt(place, hours) {
     outletUrl: `https://${a.domain}`,
     outlet: a.domain,
     published: gdeltDate(a.seendate),
+    image: safeImage(a.socialimage),
     via: 'GDELT',
   }));
 }
@@ -72,6 +75,10 @@ function toStories(articles, place, center) {
     // Lead with the first established outlet's headline, else the earliest.
     const lead = sources.find((s) => s.tier === 'established' || s.tier === 'gov') || sources[0];
     const first = group[0];
+    // The lead outlet's own picture if it has one, else any outlet's.
+    const arts = [...byOutlet.values()];
+    const leadArt = arts.find((a) => a.url === lead.url);
+    const picArt = leadArt && leadArt.image ? leadArt : arts.find((a) => a.image);
     stories.push(withVerification({
       id: `story:${hashOf(lead.url)}`,
       kind: 'story',
@@ -86,11 +93,25 @@ function toStories(articles, place, center) {
       place: place.label,
       time: first.published,
       updated: group[group.length - 1].published,
+      image: picArt ? { url: picArt.image, credit: picArt.outlet, link: picArt.url } : null,
       sources,
       confirmed: [],
       unconfirmed: ['Location is the city named in the coverage, not the exact scene'],
     }));
   }
+  return stories;
+}
+
+// Stories without a picture borrow the article's own share image. Google
+// News links are redirects, so only direct article links are tried.
+async function addImages(stories, limit = 6) {
+  const missing = stories.filter((st) => !st.image).slice(0, limit);
+  await Promise.allSettled(missing.map(async (st) => {
+    const src = st.sources.find((s) => s.url && !/^https:\/\/news\.google\.com\//.test(s.url));
+    if (!src) return;
+    const url = await ogImage(src.url);
+    if (url) st.image = { url, credit: src.name, link: src.url };
+  }));
   return stories;
 }
 
@@ -107,7 +128,7 @@ async function storiesFor(place, center, hours) {
   if (!articles.length && errors.length === settled.length) throw new Error(errors.join('; '));
   const cutoff = Date.now() - hours * 3600e3;
   const recent = articles.filter((a) => a.title && a.published && new Date(a.published) >= cutoff);
-  return toStories(recent, place, center);
+  return addImages(toStories(recent, place, center));
 }
 
 async function nationalStories(hours = 24) {
@@ -117,10 +138,11 @@ async function nationalStories(hours = 24) {
     fetchText(`https://news.google.com/rss/search?q=${q}&hl=en-US&gl=US&ceid=US:en`, { ttl: 180 }).then((xml) =>
       parseRss(xml).map((it) => ({ title: splitGoogleTitle(it.title, it.sourceName), url: it.link, outletUrl: it.sourceUrl, outlet: it.sourceName, published: it.published }))
     ),
+    gdelt({}, hours),
   ]);
   const articles = settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
   const cutoff = Date.now() - hours * 3600e3;
-  return toStories(articles.filter((a) => a.published && new Date(a.published) >= cutoff), place, { lat: null, lon: null });
+  return addImages(toStories(articles.filter((a) => a.published && new Date(a.published) >= cutoff), place, { lat: null, lon: null }));
 }
 
-module.exports = { storiesFor, nationalStories, toStories, splitGoogleTitle, gdeltDate };
+module.exports = { storiesFor, nationalStories, toStories, addImages, splitGoogleTitle, gdeltDate };
