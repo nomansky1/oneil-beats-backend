@@ -17,6 +17,7 @@ const citydata = require('./sources/citydata');
 const wildfire = require('./sources/wildfire');
 const ipaws = require('./sources/ipaws');
 const { accountsFor } = require('./x-accounts');
+const { registryFor } = require('../data/registries');
 
 async function timed(id, label, fn) {
   const started = Date.now();
@@ -81,6 +82,7 @@ async function buildFeed(center, { radiusMi = 3, hours = 24 } = {}) {
     items,
     cameras: cameraRun.items.filter((c) => haversineMi(center, c) <= Math.max(radiusMi, 1)),
     xAccounts: accountsFor(center),
+    registry: registryFor(place.state),
     sources: [placeRun.health, ...runs.map((r) => r.health), cameraRun.health],
   };
 }

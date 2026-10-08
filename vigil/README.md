@@ -144,8 +144,11 @@ people watching them.
   display, deletions and commercial use.
 - Nominatim (place search) allows about 1 request per second. Heavy use needs
   a hosted geocoder.
-- Sex offender data: the app links to the official DOJ NSOPW search instead
-  of copying records. NSOPW has no API and forbids automated searching.
+- Sex offender data: the app links to each state's, DC's and territory's
+  official registry (`data/registries.js`, from the DOJ's list) and to the
+  national NSOPW search, instead of copying records. Recheck the four
+  entries marked `checked: false` before launch. NSOPW has no API and
+  forbids automated searching.
   Republishing registry data has state-specific rules (for example CA Penal
   Code 290.46, NV NRS 179B, NJ 2C:7-16), and the federal warning in 34 U.S.C.
   §20920(f) must be shown. Showing registry records on the map is on hold

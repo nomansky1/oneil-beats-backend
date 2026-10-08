@@ -9,6 +9,7 @@ const { withVerification } = require('../lib/verify');
 const sample = require('../data/sample');
 const cities = require('../data/cities');
 const xAccounts = require('../data/x-accounts');
+const { REGISTRIES, registryFor } = require('../data/registries');
 
 const root = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
@@ -42,6 +43,7 @@ const preview = {
   sample: { items, sources, cameras: sample.cameras() },
   cities,
   xAccounts: xAccounts.map(({ handle, name, kind, area }) => ({ handle, name, kind, area })),
+  registries: Object.fromEntries(Object.keys(REGISTRIES).map((st) => [st, registryFor(st)])),
   basemap: { us, land: world },
 };
 

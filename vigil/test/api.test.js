@@ -41,6 +41,7 @@ test('GET /api/feed merges every source and reports their health', async () => {
 
   assert.equal(body.xAccounts[0].handle, 'NWSGrandRapids', 'free official X accounts for the area');
   assert.deepEqual(body.cameras.map((c) => c.id), ['osm:node/1001', 'osm:node/1002'], 'cameras inside the radius only');
+  assert.deepEqual(body.registry, { state: 'MI', name: 'Michigan', url: 'https://mspsor.com/', agency: 'Michigan State Police' }, 'official state registry link');
   assert.ok(!body.items.some((i) => i.id.startsWith('osm:')), 'cameras never enter the incident feed');
   const health = Object.fromEntries(body.sources.map((s) => [s.id, s]));
   for (const id of ['place', 'nws', 'usgs', 'fema', 'news', 'wildfire', 'alpr']) assert.equal(health[id].ok, true, id);
