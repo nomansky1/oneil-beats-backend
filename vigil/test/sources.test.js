@@ -125,3 +125,41 @@ test('news pictures: share image parsing and fallback', async () => {
   assert.equal(stories[2].image.url, 'https://kept.example/c.jpg');
   assert.ok(!calls.some((u) => u.startsWith('https://news.google.com/rss/articles')));
 });
+
+test('storm damage reports from the weather service, with the exact spot', async () => {
+  const stormreports = require('../lib/sources/stormreports');
+  const reports = await stormreports.reportsNear(MUSKEGON, 3, 24);
+  assert.equal(reports.length, 2);
+  const [wind, hail] = reports;
+  assert.equal(wind.title, 'Thunderstorm wind damage');
+  assert.equal(wind.severity, 2);
+  assert.equal(wind.category, 'weather');
+  assert.equal(wind.place, 'Muskegon, Muskegon County, MI');
+  assert.equal(wind.details, 'Large tree down on Fixture St blocking both lanes.');
+  assert.match(wind.sources[0].name, /NWS GRR storm report/);
+  assert.deepEqual(wind.unconfirmed, []);
+  assert.ok(Math.abs(minsOld(wind.time) - 70) < 1);
+  assert.equal(hail.title, 'Hail: 1 inch'.replace('1 inch', '1.00 inch'));
+  assert.equal(hail.severity, 1);
+  assert.equal(hail.unconfirmed.length, 1, 'public reports are flagged as not yet surveyed');
+  const url = decodeURIComponent(calls.find((u) => u.includes('lsr.geojson')));
+  assert.match(url, /west=-86\.7\d+&south=42\.8\d+&east=-85\.7\d+&north=43\.5\d+&hours=24/, '25-mile box at least');
+});
+
+test('Bluesky: government handles are official, others unverified, place must be clear', async () => {
+  const bluesky = require('../lib/sources/bluesky');
+  const place = { label: 'Muskegon, MI', city: 'Muskegon', county: 'Muskegon', state: 'MI', stateName: 'Michigan' };
+  const posts = await bluesky.postsFor(place, MUSKEGON, 24);
+  assert.deepEqual(posts.map((p) => p.sources[0].name), ['@police.muskegon-mi.gov on Bluesky', '@someone.bsky.social on Bluesky'], 'non-safety and unclear-place posts dropped');
+  const [gov, user] = posts;
+  assert.equal(gov.sources[0].kind, 'official');
+  assert.equal(gov.sources[0].url, 'https://bsky.app/profile/police.muskegon-mi.gov/post/3kfix1');
+  assert.equal(user.sources[0].kind, 'social');
+  assert.equal(user.category, 'fire');
+  assert.equal(bluesky.isGov('nws.noaa.gov'), true);
+  assert.equal(bluesky.isGov('gov.bsky.social'), false);
+  assert.equal(bluesky.mentionsPlace('Crash in Springfield', { city: 'Springfield', state: 'IL', stateName: 'Illinois' }), false);
+  assert.equal(bluesky.mentionsPlace('Crash in Springfield, IL tonight', { city: 'Springfield', state: 'IL', stateName: 'Illinois' }), true);
+  const url = decodeURIComponent(calls.find((u) => u.includes('searchPosts')));
+  assert.match(url, /q="Muskegon"&sort=latest&limit=100&since=/);
+});

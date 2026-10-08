@@ -47,6 +47,8 @@ runs.
 | FEMA IPAWS alert archive | Past AMBER, evacuation, shelter-in-place and weather alerts for timeframes over 24 hours. Listed, not pinned (they cover an area). | 1 hour | 24 hours (FEMA's rule) | Official |
 | City police and fire open data | Block-level dispatch calls and crime reports: 46 feeds in 35 places in 20 states (Seattle, LA, San Francisco, Chicago, Detroit, Austin, Cincinnati, Memphis, Tacoma, Montgomery County MD and more), matched to your city or county. | 1 min | Real time to a few days, by city | Official |
 | Google News RSS + GDELT | Local news, clustered across outlets, with each article's own picture when it has one | 2–3 min | Minutes | Corroborated or Single source |
+| Storm damage reports (NWS, via Iowa Environmental Mesonet) | Tornado touchdowns, hail, downed trees and lines, flooding, reported to the weather service, with the exact spot, within 25 miles. Public domain; credit IEM. | 5 min | Minutes | Official (public reports flagged as not yet surveyed) |
+| Bluesky public posts | Posts naming your city and a safety topic. A post must also name the state or county, unless it comes from a local agency's .gov address. Handles ending in .gov or .mil count as official; everyone else is Unverified. Text and link only; nothing stored. No key. | 2 min | None | Official or Unverified |
 | License plate cameras (OpenStreetMap) | Flock and other plate readers mapped by volunteers, with vendor, operator and direction. A map layer, not incidents. | 6 hours | As fast as volunteers map them | Not rated |
 | Sex offender registries | Iowa (with photos), Tennessee and DC on the map, with alerts when someone is newly listed nearby. Every other state, DC and territory: a link to its official registry. | Iowa: every request; TN, DC: 1 hour. The app re-checks every 15 min. | Daily | Official registry |
 | Official agency accounts on X (free) | Public posts from police, fire, NWS, FEMA and USGS accounts near you, shown with X's own embed. No X account, no Premium, no API key. Listed in `data/x-accounts.js`. | Live (X's embed) | None | Shown as posted; not rated |
@@ -68,7 +70,7 @@ in the list with their distance, but the "within 2 mi" counts leave them out.
 ```bash
 cd vigil
 npm install
-npm test                 # 30 tests: parsers, truth meter, every source adapter, API
+npm test                 # 32 tests: parsers, truth meter, every source adapter, API
 npm run dev              # http://localhost:3000 with live upstream data
 npm run dev:fixtures     # same, with canned upstream data (no network)
 npm run build:preview    # writes preview/vigil-preview.html
@@ -93,19 +95,39 @@ Environment variables:
 2. Add `VIGIL_CONTACT` (and `X_BEARER_TOKEN` if you want X).
 3. Deploy. Open the URL on your phone and use "Add to Home Screen".
 
+## On Android
+
+Open the site in Chrome. The Alerts tab shows **Install Vigil on this
+phone** when Chrome offers it (or use Chrome's menu, then *Install app*).
+Installed, it opens full screen with its own icon. `public/sw.js` keeps the
+app files on the phone so it opens on a weak signal, and sends notifications
+the way Android requires (through the service worker; the plain browser
+call is blocked there). Tapping a notification opens that report or
+registry record. The phone's Back button closes an open panel instead of
+leaving the app. Live data (`/api/*`) is never stored by the service worker.
+
+The same site can later be packaged for Google Play as a Trusted Web
+Activity (for example with Bubblewrap) without rewriting it.
+
 Responses are cached at Vercel's edge for 60 seconds per ~1 km area, so cost
 grows with the number of places people watch rather than the number of
 people watching them.
 
 ## What's verified and what isn't
 
-- **Tested here:** all 24 unit/API tests pass; the app was driven in a
-  headless phone-size browser (360 and 390 px wide) against the local server
-  (fixture data, with the MapLibre street map loading) and against the
-  preview build, with no script errors.
+- **Tested here:** all 32 unit/API tests pass. The app was driven in a
+  headless phone-size browser (360 and 390 px wide, and an emulated Pixel 7)
+  against the local server (fixture data, with the MapLibre street map
+  loading) and against the preview build, with no script errors. On the
+  Pixel 7 run:
+  - notifications go through the service worker;
+  - tapping one opens the right record;
+  - Back closes panels;
+  - the app opens offline.
 - **Not tested against the real upstream services.** The build environment
   could not reach api.weather.gov, USGS, FEMA, NIFC, NASA FIRMS, Google News,
-  GDELT, the city data portals, OpenStreetMap, OpenFreeMap or X. Each adapter
+  GDELT, the city data portals, Iowa Environmental Mesonet, Bluesky,
+  OpenStreetMap, OpenFreeMap or X. Each adapter
   follows the provider's documented format and is isolated, so if one is
   wrong it shows red in "Source status" while the others keep working. Check
   that panel on the first real deploy. Most likely to need a fix:
@@ -163,6 +185,18 @@ people watching them.
     Recheck the four entries marked `checked: false`.
   - **Every state on the map** needs a licensed provider whose contract
     allows public display; standard API licenses are internal-use only.
+  - **Next free candidates** (Oct 2026 research, terms from search snippets;
+    confirm with each agency before building):
+    - Florida FDLE public data file: CSV, updated about every 4 hours. It has
+      addresses but no coordinates, so it needs geocoding and storage. FDLE's
+      two required warnings apply.
+    - Texas DPS export: free, needs an account; the account terms are unread.
+    - Missouri Highway Patrol: a zipped file, plus an ArcGIS layer with
+      points. The terms are unclear.
+    - Chicago Police (Socrata `vc9r-bqvy`): block addresses only.
+    - Georgia GBI data download: the terms are unclear.
+    - Arizona's list bars commercial use (A.R.S. 39-121.03).
+    - Michigan, Ohio and Indiana: no feed found; keep them link-only.
   - The federal warning (34 U.S.C. §20920) is shown on every record. Some
     states restrict use for jobs, housing, loans and insurance (CA Penal
     Code 290.46, NV NRS 179B, NJ 2C:7-16); the app is not a background check.

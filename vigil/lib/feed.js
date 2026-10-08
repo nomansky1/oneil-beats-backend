@@ -16,6 +16,8 @@ const alpr = require('./sources/alpr');
 const citydata = require('./sources/citydata');
 const wildfire = require('./sources/wildfire');
 const ipaws = require('./sources/ipaws');
+const stormreports = require('./sources/stormreports');
+const bluesky = require('./sources/bluesky');
 const { accountsFor } = require('./x-accounts');
 const { registryFor } = require('../data/registries');
 
@@ -53,7 +55,9 @@ async function buildFeed(center, { radiusMi = 3, hours = 24 } = {}) {
     timed('wildfire', 'Active wildfires (NIFC)', () => wildfire.firesNear(center, radiusMi)),
     timed('firms', 'Satellite heat detections (NASA FIRMS)', () => wildfire.heatNear(center, radiusMi)),
     ...(hours > 24 ? [timed('ipaws', 'Past emergency alerts (FEMA IPAWS archive)', () => ipaws.pastAlertsNear(center, hours))] : []),
+    timed('lsr', 'Storm damage reports (NWS via Iowa Environmental Mesonet)', () => stormreports.reportsNear(center, radiusMi, hours)),
     timed('news', 'Local news (Google News, GDELT)', () => (place.city || place.label ? news.storiesFor(place, center, hours) : [])),
+    timed('bluesky', 'Public posts on Bluesky', () => bluesky.postsFor(place, center, hours)),
     timed('x', 'X search (paid API, optional)', () => x.postsFor(place, center)),
   ]);
   const cameraRun = await cameraPromise;

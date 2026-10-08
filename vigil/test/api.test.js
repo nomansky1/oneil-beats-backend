@@ -44,7 +44,7 @@ test('GET /api/feed merges every source and reports their health', async () => {
   assert.deepEqual(body.registry, { state: 'MI', name: 'Michigan', url: 'https://mspsor.com/', agency: 'Michigan State Police' }, 'official state registry link');
   assert.ok(!body.items.some((i) => i.id.startsWith('osm:')), 'cameras never enter the incident feed');
   const health = Object.fromEntries(body.sources.map((s) => [s.id, s]));
-  for (const id of ['place', 'nws', 'usgs', 'fema', 'news', 'wildfire', 'alpr']) assert.equal(health[id].ok, true, id);
+  for (const id of ['place', 'nws', 'usgs', 'fema', 'news', 'wildfire', 'alpr', 'lsr', 'bluesky']) assert.equal(health[id].ok, true, id);
   for (const id of ['x', 'firms']) {
     assert.equal(health[id].ok, false, id);
     assert.equal(health[id].notConfigured, true, id);
