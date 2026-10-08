@@ -194,7 +194,10 @@
       const items = all.filter((it) => it.kind !== 'area' && it.distanceMi <= (it.category === 'quake' ? Math.max(S.radiusMi, 100) : S.radiusMi) && new Date(it.time) >= cutoff);
       const area = all.filter((it) => it.kind === 'area' && it.distanceMi <= (it.areaRadiusMi || 30));
       const cameras = (PREVIEW.sample.cameras || []).filter((cam) => dist(c, cam) <= S.radiusMi);
-      return { items, area, cameras, xAccounts: previewAccounts(c), sources: PREVIEW.sample.sources, place: { label: c.label || nearestCity(c) }, generatedAt: new Date().toISOString() };
+      const label = c.label || nearestCity(c);
+      const st = (/,\s*([A-Z]{2})$/.exec(label) || [])[1];
+      const registry = (st && PREVIEW.registries[st]) || null;
+      return { items, area, cameras, registry, xAccounts: previewAccounts(c), sources: PREVIEW.sample.sources, place: { label }, generatedAt: new Date().toISOString() };
     },
     async national() {
       const items = this.all().sort((a, b) => b.severity - a.severity || new Date(b.time) - new Date(a.time));
@@ -531,15 +534,21 @@
       </div>`, 'License plate reader');
   }
 
+  // Your state's official registry (map and photos live there), plus the
+  // national search. Every state, DC and territory has one.
   function registryLinksHtml() {
-    return `<a href="https://www.nsopw.gov/" target="_blank" rel="noopener noreferrer">${icon('registry')}<b>Sex offender registry search</b><small>U.S. Dept. of Justice NSOPW · every state, DC and territory</small></a>`;
+    const r = S.feed.registry;
+    const state = r ? `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${icon('registry')}<b>${esc(r.name)} sex offender registry</b><small>${esc(r.agency)} · official map and photos</small></a>` : '';
+    return `${state}<a href="https://www.nsopw.gov/" target="_blank" rel="noopener noreferrer">${icon('registry')}<b>National sex offender search</b><small>U.S. Dept. of Justice NSOPW · every state, DC and territory</small></a>`;
   }
 
   function aroundYouHtml() {
     const cams = (S.feed.cameras || []).length;
+    const reg = S.feed.registry;
     return `<li class="group-label">Around you</li>
       <li class="xacc"><ul class="xacc-list">
         <li class="xacc-row" style="--c:#c084fc"><span class="glyph">${icon('camera')}</span><span class="grow"><b>${plural(cams, 'license plate camera')}</b><small>Mapped on OpenStreetMap near you</small></span><button class="btn small" type="button" data-overlay="cameras" aria-pressed="${S.overlays.cameras}">${S.overlays.cameras ? 'On map' : 'Show'}</button></li>
+        ${reg ? `<li class="xacc-row" style="--c:#fb7185"><span class="glyph">${icon('registry')}</span><span class="grow"><b>Sex offenders near you</b><small>${esc(reg.name)} official registry map and photos</small></span><a class="btn small" href="${esc(reg.url)}" target="_blank" rel="noopener noreferrer">Open</a></li>` : ''}
       </ul></li>`;
   }
 

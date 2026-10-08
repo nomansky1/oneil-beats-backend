@@ -131,3 +131,16 @@ test('plate cameras from OpenStreetMap keep vendor, operator and direction', () 
   const q = alpr.queryFor(alpr.bboxAround({ lat: 43.2342, lon: -86.2484 }, 2));
   assert.match(q, /node\["surveillance:type"="ALPR"\]\(43\.2,-86\.3,43\.25,-86\.2\)/);
 });
+
+test('every state, DC and territory has an official registry link', () => {
+  const { REGISTRIES, registryFor } = require('../data/registries');
+  const { STATE_TZ } = require('../lib/time');
+  assert.equal(Object.keys(REGISTRIES).length, 56, '50 states + DC + 5 territories');
+  for (const code of Object.keys(REGISTRIES)) {
+    const r = registryFor(code);
+    assert.match(r.url, /^https?:\/\//, code);
+    assert.ok(r.name && r.agency, code);
+    assert.ok(r.name in STATE_TZ, `${code} name matches the state list`);
+  }
+  assert.equal(registryFor(null), null);
+});
