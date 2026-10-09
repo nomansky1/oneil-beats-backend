@@ -24,7 +24,7 @@ imported by it. It should become its own repo and its own Vercel project.
 | `lib/og-image.js` | Finds an article's own share picture (the link-preview image) for news stories. |
 | `data/city-feeds.json` | 46 police calls-for-service and incident feeds in 35 places, generated from OpenPoliceData. |
 | `data/sample.js` | **Invented** sample events for the offline phone preview only. |
-| `public/map-style.json` | Dark street-map style for OpenFreeMap vector tiles (`npm run build:style`). |
+| `public/map-style.json`, `public/map-style-satellite.json` | Night and Satellite street maps, built from `scripts/map-styles/` by `npm run build:style`. |
 | `scripts/build-preview.js` | Builds `preview/vigil-preview.html`, the single-file preview. |
 | `scripts/build-city-feeds.js` | Rebuilds `data/city-feeds.json` from OpenPoliceData's source table. |
 | `STRATEGY.md` | Citizen's gaps, Vigil's moats, roadmap, money. |
@@ -74,7 +74,7 @@ npm test                 # 32 tests: parsers, truth meter, every source adapter,
 npm run dev              # http://localhost:3000 with live upstream data
 npm run dev:fixtures     # same, with canned upstream data (no network)
 npm run build:preview    # writes preview/vigil-preview.html
-npm run build:style      # rewrites public/map-style.json
+npm run build:style      # rewrites the Night and Satellite map styles
 npm run build:city-feeds -- path/to/opd_source_table.csv   # refresh city feeds
 ```
 
@@ -145,10 +145,20 @@ people watching them.
 
 ## Licenses and terms to check before launch
 
-- Map: OpenFreeMap vector tiles (free, no key, commercial use allowed) drawn
-  with MapLibre. Keep the "OpenFreeMap © OpenMapTiles Data from
-  OpenStreetMap" credit on the map. OpenFreeMap runs on donations; for heavy
-  traffic, self-host the tiles or pay a tile host.
+- Maps: OpenFreeMap vector tiles (free, no key, commercial use allowed)
+  drawn with MapLibre, in three styles picked under Layers.
+  - **Night** (default): OpenFreeMap's Dark (Dark Matter, BSD-3 code, design
+    CC-BY 3.0 CARTO), recolored so streets and names read on a phone. It
+    adds police, fire, hospital and school icons in gold, other places,
+    house numbers and highway shields from OSM Liberty (BSD-3).
+  - **Streets**: OpenFreeMap's hosted Liberty style.
+  - **Satellite**: USGS The National Map aerial imagery (public domain, US
+    only) with street names.
+
+  Keep the credits the map shows ("OpenFreeMap © OpenMapTiles Data from
+  OpenStreetMap", "Style © CARTO", "USGS The National Map"). The upstream
+  license texts are in `scripts/map-styles/NOTICE.md`. OpenFreeMap runs on
+  donations; for heavy traffic, self-host the tiles or pay a tile host.
 - OpenStreetMap data (plate cameras, place names) is ODbL: keep the
   "© OpenStreetMap contributors" credit. Use a private Overpass server at
   scale.
