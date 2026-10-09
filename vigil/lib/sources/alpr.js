@@ -53,7 +53,8 @@ function normalize(el) {
 async function camerasNear(center, radiusMi) {
   const bbox = bboxAround(center, Math.min(Math.max(radiusMi, 1), 10));
   const url = `${OVERPASS_URL}?data=${encodeURIComponent(queryFor(bbox))}`;
-  const data = await fetchJson(url, { ttl: 6 * 3600, timeoutMs: 20000 });
+  // Overpass is often busy; give up well inside the feed's 15-second limit.
+  const data = await fetchJson(url, { ttl: 6 * 3600, timeoutMs: 9000 });
   return (data.elements || []).filter((el) => el.type === 'node' && Number.isFinite(el.lat)).map(normalize);
 }
 

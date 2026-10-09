@@ -70,7 +70,7 @@ in the list with their distance, but the "within 2 mi" counts leave them out.
 ```bash
 cd vigil
 npm install
-npm test                 # 32 tests: parsers, truth meter, every source adapter, API
+npm test                 # 33 tests: parsers, truth meter, every source adapter, API
 npm run dev              # http://localhost:3000 with live upstream data
 npm run dev:fixtures     # same, with canned upstream data (no network)
 npm run build:preview    # writes preview/vigil-preview.html
@@ -89,6 +89,9 @@ Environment variables:
 | `OVERPASS_URL` | Optional | A different Overpass API server for plate-camera data. The public one is shared and rate limited. |
 
 ## Put it live (needs the owner's OK)
+
+Live at https://vigil-mauve-one.vercel.app (Vercel project `vigil`, with
+`VIGIL_CONTACT` set to that address). To set it up again elsewhere:
 
 1. Create a new Vercel project from this repo and set **Root Directory** to
    `vigil`. Framework preset: Other. No build command.
@@ -115,7 +118,7 @@ people watching them.
 
 ## What's verified and what isn't
 
-- **Tested here:** all 32 unit/API tests pass. The app was driven in a
+- **Tested here:** all 33 unit/API tests pass. The app was driven in a
   headless phone-size browser (360 and 390 px wide, and an emulated Pixel 7)
   against the local server (fixture data, with the MapLibre street map
   loading) and against the preview build, with no script errors. On the
@@ -124,21 +127,38 @@ people watching them.
   - tapping one opens the right record;
   - Back closes panels;
   - the app opens offline.
-- **Not tested against the real upstream services.** The build environment
-  could not reach api.weather.gov, USGS, FEMA, NIFC, NASA FIRMS, Google News,
-  GDELT, the city data portals, Iowa Environmental Mesonet, Bluesky,
-  OpenStreetMap, OpenFreeMap or X. Each adapter
-  follows the provider's documented format and is isolated, so if one is
-  wrong it shows red in "Source status" while the others keep working. Check
-  that panel on the first real deploy. Most likely to need a fix:
-  - City feeds: each city names its columns differently. The reader finds
-    type, address and coordinates by name and skips rows without
-    coordinates. Some cities may show zero items until mapped by hand.
-  - ArcGIS date filters (`TIMESTAMP '…'`) are not accepted by every server.
-  - FEMA's IPAWS archive: the point-in-area filter and coordinate order are
-    from FEMA's docs; a local polygon check backs it up.
-  - Publisher sites may block the share-image lookup; those stories just
-    have no picture.
+- **Tested live (October 9, 2026)** on https://vigil-mauve-one.vercel.app
+  with real data in Detroit, Des Moines, Nashville, Washington DC and
+  Chicago:
+  - The site, app files, map styles and all three map tile sources load,
+    with no login wall.
+  - Working: place lookup and search, NWS alerts, USGS, FEMA, NIFC
+    wildfires, Google News, Bluesky, storm reports, plate cameras (when
+    Overpass answers in time), Detroit 911 calls, Chicago crime reports and
+    the national view.
+  - Registry pins: Iowa (names, photos, addresses), Tennessee (names,
+    addresses, offenses) and DC (names, block, class, home or work). Iowa's
+    API leaves offenses out when a page holds more than 20 records; Vigil
+    asks for 100 in one call to stay under Iowa's hourly limit, so Iowa
+    records say to see the official record. Tennessee's layer has no photos.
+  - Fixed after that test:
+    - Storm reports from other states showed in every city (the feed
+      ignores its area filter).
+    - GDELT refused requests (one per 5 seconds per address, and Vercel's
+      addresses are shared) and held news up by 8 seconds.
+    - Plate-camera lookups could run past the 15-second function limit.
+    - Tennessee and DC registry fields were read from the wrong columns.
+  - Still open:
+    - News pictures came from GDELT, which refuses Vercel's shared servers,
+      so most stories have no picture for now.
+    - Chicago's crime data runs 7 days behind, so it shows under "Last 7
+      days", not "Last 24 hours".
+    - Detroit's incident-report dataset is slow and sometimes times out (its
+      911 calls work).
+    - Satellite heat detections need `FIRMS_MAP_KEY`; X search is off.
+  - Not checked live yet: the IPAWS archive (only asked for in the 7- and
+    30-day views) and most other cities' feeds. Each source is isolated, so
+    one that fails shows red in "Source status" while the rest keep working.
 - **Not built yet:** background push notifications, a database for
   community reports and corrections (they stay on the device for now), SMS
   for the check-in timer, the native iOS/Android app, Spanish UI.
@@ -187,7 +207,8 @@ people watching them.
       per server. Busy use needs Iowa DPS's OK for a higher limit.
     - Tennessee's TBI map service (no published license; TBI asked for
       credit).
-    - DC open data (CC BY 4.0, block-level, no names).
+    - DC open data (CC BY 4.0, block-level; names, class and whether the
+      block is a home or work location, but no offenses).
   - **Everywhere else**: a link to the official registry for every state,
     DC and territory (`data/registries.js`, from the DOJ's list), plus the
     national NSOPW search. NSOPW and most state sites forbid automated

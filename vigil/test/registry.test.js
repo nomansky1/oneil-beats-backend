@@ -59,19 +59,23 @@ test('Tennessee and DC map layers', async () => {
   assert.equal(tn.registrants.length, 1);
   assert.equal(tn.registrants[0].name, 'Test Registrant C');
   assert.equal(tn.registrants[0].recordUrl, 'https://tnmap.tn.gov/sor/?TID=00900001');
-  assert.equal(tn.registrants[0].photo, 'https://sor.tbi.tn.gov/photos/00900001.jpg');
-  assert.deepEqual(tn.registrants[0].offenses, ['Fixture offense three']);
+  assert.equal(tn.registrants[0].photo, '', 'the map layer has no photos');
+  assert.equal(tn.registrants[0].address, '200 Fixture Ave, Nashville, TN');
+  assert.deepEqual(tn.registrants[0].offenses, ['Fixture offense three'], 'offense text without its date; the offense date alone is not an offense');
+  assert.equal(tn.registrants[0].level, 'SEXUAL');
   const tnUrl = decodeURIComponent(calls.find((u) => u.includes('TBI_SEX_OFFENDER_REGISTRY')));
   assert.match(tnUrl, /outSR=4326/);
   assert.match(tnUrl, /f=geojson/);
 
   const dc = await registry.registrantsNear('DC', { lat: 38.9, lon: -77.03 }, 2);
-  assert.equal(dc.registrants.length, 1);
-  const r = dc.registrants[0];
-  assert.equal(r.name, '', 'DC publishes no names in its open data');
+  assert.equal(dc.registrants.length, 2);
+  const [r, work] = dc.registrants;
+  assert.equal(r.name, 'Test Registrant D');
   assert.equal(r.precision, 'block');
   assert.equal(r.address, '1200 BLOCK OF FIXTURE ST NW');
-  assert.equal(r.level, 'Class A');
+  assert.equal(r.level, 'Class A', 'MAXCLASSIFICATION, not the registrant code');
+  assert.deepEqual(r.offenses, [], 'DC publishes no offenses; its SEXOFFENDERCODE is an ID');
+  assert.equal(work.address, 'Work: 1300 BLOCK OF FIXTURE ST NW');
 });
 
 test('states without an app-friendly registry get a link only', async () => {

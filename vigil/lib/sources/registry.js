@@ -9,8 +9,8 @@
 // Every other state, DC and territory gets a link to its official registry
 // (data/registries.js); their sites forbid automated collection.
 //
-// Field names differ by registry and were taken from each agency's
-// documentation, so the reader finds name, photo, address and offense
+// Field names differ by registry (checked against each one's live data in
+// October 2026), so the reader finds name, photo, address and offense
 // fields by name rather than trusting one exact schema.
 const { fetchJson } = require('../http');
 const { haversineMi } = require('../geo');
@@ -81,25 +81,38 @@ function photoOf(row, base) {
 }
 
 function addressOf(row) {
-  const street = field(row, ['address', 'street_address', 'address1', 'residence_address', 'block_address', 'block', 'street', 'location']);
-  const city = field(row, ['city', 'residence_city']);
-  const state = field(row, ['state', 'residence_state']);
-  return [street, city, state].filter(Boolean).join(', ');
+  const street = field(row, ['address', 'street_address', 'address1', 'resaddr1', 'residence_address', 'block_address', 'blockname', 'block', 'street', 'location']);
+  const city = field(row, ['city', 'rescity', 'residence_city']);
+  const state = field(row, ['state', 'resstate', 'residence_state']);
+  const where = [street, city, state].filter(Boolean).join(', ');
+  // DC lists work and school locations as well as homes.
+  const type = field(row, ['type', 'address_type', 'location_type']);
+  if (where && /work|employ/i.test(type)) return `Work: ${where}`;
+  if (where && /school|univ|student/i.test(type)) return `School: ${where}`;
+  return where;
 }
 
 function offensesOf(row) {
   const out = [];
   for (const [k, v] of Object.entries(row)) {
-    if (!/offen|convict|crime|charge|statute/i.test(k)) continue;
+    // Offense text only: not dates or ID codes (DC's SEXOFFENDERCODE is an
+    // ID). Tennessee lists offenses as Tca1..Tca5.
+    if (!/offen|convict|crime|charge|statute|^tca\d$/i.test(k) || /date|code/i.test(k)) continue;
     const list = Array.isArray(v) ? v : [v];
     for (const o of list) {
-      if (o && typeof o === 'object') {
-        const d = field(o, ['description', 'offense', 'offense_description', 'name', 'title', 'statute_description', 'statute']);
-        if (d) out.push(d);
-      } else if (text(o) && !/^\d+$/.test(text(o))) out.push(text(o));
+      const d = o && typeof o === 'object'
+        ? field(o, ['description', 'offense', 'offense_description', 'conviction', 'name', 'title', 'statute_description', 'statute'])
+        : text(o);
+      const clean = d.replace(/^\d{1,2}\/\d{1,2}\/\d{4}\s*/, ''); // Tennessee leads with the date
+      if (clean && !/^\d+$/.test(clean)) out.push(clean);
     }
   }
   return [...new Set(out)].slice(0, 6);
+}
+
+function levelOf(row) {
+  const level = field(row, ['tier', 'tier_level', 'level', 'risk_level', 'maxclassification', 'classification', 'class', 'designation']);
+  return /^[A-Z]$/.test(level) ? `Class ${level}` : level; // DC classes are single letters
 }
 
 function coordsOf(row, geometry) {
@@ -121,7 +134,7 @@ function normalize(src, row, geometry, center) {
     precision: src.precision,
     address: addressOf(row),
     offenses: offensesOf(row),
-    level: field(row, ['tier', 'tier_level', 'level', 'risk_level', 'classification', 'class', 'designation', 'sexoffendercode']),
+    level: levelOf(row),
     updated: field(row, ['last_updated', 'updated', 'last_verified', 'verified', 'modified', 'last_registration']),
     recordUrl: src.recordUrl(rid),
     source: { name: src.agency, url: src.site },

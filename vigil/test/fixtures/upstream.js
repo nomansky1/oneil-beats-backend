@@ -160,7 +160,7 @@ const articlePage = () => `<!doctype html><html><head><title>Fixture</title>
 // Registry fixtures. Invented test records, not real people.
 const iowaRegistry = () => ({
   records: [
-    { registrant: '90001', first_name: 'Test', last_name: 'Registrant A', photo: 'https://www.iowasexoffender.gov/images/photos/90001.jpg', lat: 41.5900, lon: -93.6200, address: '100 Example St', city: 'Des Moines', state: 'IA', tier: 'Tier II', convictions: [{ description: 'Fixture offense one' }, { description: 'Fixture offense two' }], last_updated: '2026-10-01' },
+    { registrant: '90001', first_name: 'Test', last_name: 'Registrant A', photo: 'https://www.iowasexoffender.gov/images/photos/90001.jpg', lat: 41.5900, lon: -93.6200, address: '100 Example St', city: 'Des Moines', state: 'IA', tier: 'Tier II', convictions: [{ conviction: 'Fixture offense one', conviction_date: '01/02/2003', iowa_code: '000.1' }, { conviction: 'Fixture offense two', conviction_date: '03/04/2005', iowa_code: '000.2' }], last_changed: '10/01/2026' },
     { registrant: '90002', name: 'Test Registrant B', photo: 'http://insecure.example/b.jpg', lat: '41.6000', lon: '-93.6100', city: 'Des Moines' },
     { registrant: '90003', name: 'Test Registrant Far', lat: 42.5, lon: -93.0 },
   ],
@@ -169,14 +169,15 @@ const iowaRegistry = () => ({
 const tennesseeRegistry = () => ({
   type: 'FeatureCollection',
   features: [
-    { type: 'Feature', geometry: { type: 'Point', coordinates: [-86.7810, 36.1630] }, properties: { TID: '00900001', FIRST_NAME: 'Test', LAST_NAME: 'Registrant C', ADDRESS: '200 Fixture Ave', CITY: 'Nashville', OFFENSE: 'Fixture offense three', PHOTO_URL: 'https://sor.tbi.tn.gov/photos/00900001.jpg' } },
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [-86.7810, 36.1630] }, properties: { OBJECTID: 7, Tid: '00900001', FirstName: 'Test', LastName: 'Registrant C', ResAddr1: '200 Fixture Ave', ResCity: 'Nashville', ResState: 'TN', OffenseDate: '01/02/2003', Tca1: '01/02/2003  Fixture offense three', Tca2: '', tcacode1: '00-00-000', Classification: 'SEXUAL', Imagefile: '' } },
   ],
 });
 
 const dcRegistry = () => ({
   type: 'FeatureCollection',
   features: [
-    { type: 'Feature', geometry: { type: 'Point', coordinates: [-77.0300, 38.9000] }, properties: { OBJECTID: 5, BLOCK_ADDRESS: '1200 BLOCK OF FIXTURE ST NW', SEXOFFENDERCODE: 'Class A' } },
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [-77.0300, 38.9000] }, properties: { OBJECTID: 5, LASTNAME: 'Registrant D', FIRSTNAME: 'Test', BLOCKNAME: '1200 BLOCK OF FIXTURE ST NW', SEXOFFENDERCODE: '000-001', MAXCLASSIFICATION: 'A', TYPE: 'HOME' } },
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [-77.0310, 38.9010] }, properties: { OBJECTID: 6, LASTNAME: 'Registrant E', FIRSTNAME: 'Test', BLOCKNAME: '1300 BLOCK OF FIXTURE ST NW', SEXOFFENDERCODE: '000-002', MAXCLASSIFICATION: 'B', TYPE: 'WORK' } },
   ],
 });
 
@@ -186,6 +187,8 @@ const lsr = () => ({
   features: [
     { type: 'Feature', geometry: { type: 'Point', coordinates: [-86.2300, 43.2500] }, properties: { valid: iso(70).slice(0, 19) + 'Z', type: 'D', typetext: 'TSTM WND DMG', magnitude: 'None', unit: '', city: 'MUSKEGON', county: 'MUSKEGON', state: 'MI', source: 'LAW ENFORCEMENT', remark: 'Large tree down on Fixture St blocking both lanes.', wfo: 'GRR', product_id: '202610081900-KGRR-NWUS53-LSRGRR' } },
     { type: 'Feature', geometry: { type: 'Point', coordinates: [-86.1000, 43.3000] }, properties: { valid: iso(95).slice(0, 19) + 'Z', type: 'H', typetext: 'HAIL', magnitude: '1.00', unit: 'INCH', city: '2 N FIXTURE', county: 'MUSKEGON', state: 'MI', source: 'PUBLIC', remark: '', wfo: 'GRR', product_id: '202610081830-KGRR-NWUS53-LSRGRR' } },
+    // The real feed ignores the area and returns the whole country.
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [-155.0800, 19.7200] }, properties: { valid: iso(50).slice(0, 19) + 'Z', type: 'H', typetext: 'HAIL', magnitude: '0.75', unit: 'INCH', city: 'HILO', county: 'HAWAII', state: 'HI', source: 'PUBLIC', remark: '', wfo: 'HFO', product_id: '202610081900-PHFO-NWUS52-LSRHFO' } },
   ],
 });
 
