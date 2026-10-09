@@ -40,6 +40,7 @@
     bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>',
     flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
     pin: '<path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
+    map: '<path d="M9 4.5 3.5 6.5v13l5.5-2 6 2 5.5-2v-13l-5.5 2z"/><path d="M9 4.5v13M15 6.5v13"/>',
     news: '<rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M7 9h10M7 12.5h10M7 16h6"/>',
     radio: '<rect x="3.5" y="8" width="17" height="12" rx="2"/><path d="M7 8l9-4.5"/><circle cx="15.5" cy="14" r="2.5"/><path d="M7 12.5h3M7 15.5h3"/>',
     registry: '<circle cx="10" cy="8" r="3.5"/><path d="M3.5 20c.8-3.6 3.4-5.5 6.5-5.5"/><circle cx="16.5" cy="16.5" r="3"/><path d="M18.7 18.7l2.3 2.3"/>',
@@ -133,6 +134,7 @@
     hours: store.get('hours', 24),
     cats: new Set(store.get('cats', Object.keys(CATS))),
     overlays: Object.assign({ cameras: true, registry: true }, store.get('overlays', {})),
+    mapStyle: store.get('mapStyle', 'night'),
     registry: { coverage: 'link', registrants: [], official: null, warning: '' },
     registryKey: '',
     registryAt: 0,
@@ -348,7 +350,7 @@
       labels.push(m);
     }
     map.on('zoomend', updateLabels);
-    map.attributionControl.addAttribution('Boundaries: U.S. Census Bureau via us-atlas · Natural Earth');
+    map.attributionControl.addAttribution('Preview: outline map only; the live app shows full street maps · Boundaries: U.S. Census Bureau via us-atlas · Natural Earth');
   }
   function updateLabels() {
     const z = map.getZoom();
@@ -377,15 +379,47 @@
 
   // Street map: OpenFreeMap vector tiles (free, no key, OpenStreetMap data)
   // drawn by MapLibre inside Leaflet, with Vigil's own dark style.
+  // Three street maps, all free: Night (dark, default), Streets (light, the
+  // most detail: shops, parks, transit) and Satellite (USGS aerial imagery
+  // with street names). Chosen in Layers and remembered on the phone.
+  const OFM_CREDIT = '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
+  const MAP_STYLES = {
+    night: { label: 'Night', hint: 'Dark street map; police, fire, hospitals and schools in gold', style: '/map-style.json', credit: `${OFM_CREDIT} · Style © CARTO` },
+    streets: { label: 'Streets', hint: 'Light street map with shops, parks and transit', style: 'https://tiles.openfreemap.org/styles/liberty', credit: `${OFM_CREDIT} · Style OSM Liberty` },
+    satellite: { label: 'Satellite', hint: 'Aerial photos (US) with street names', style: '/map-style-satellite.json', credit: `<a href="https://www.usgs.gov/programs/national-geospatial-program/national-map" target="_blank" rel="noopener">USGS The National Map</a> · ${OFM_CREDIT}` },
+  };
+  let streetLayer = null;
+  let streetCredit = '';
+
   function addStreetMap() {
-    const credit = '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
     const webgl = (() => { try { const cv = document.createElement('canvas'); return Boolean(cv.getContext('webgl2') || cv.getContext('webgl')); } catch (e) { return false; } })();
+    const m = MAP_STYLES[S.mapStyle] || MAP_STYLES.night;
     if (!L.maplibreGL || !window.maplibregl || !webgl) {
-      map.attributionControl.addAttribution(credit);
+      map.attributionControl.addAttribution(OFM_CREDIT);
       toast('This browser can’t draw the street map. Reports still show on the map.', 'pin', 5000);
       return;
     }
-    L.maplibreGL({ style: '/map-style.json', attribution: credit, interactive: false }).addTo(map);
+    streetCredit = m.credit;
+    map.attributionControl.addAttribution(streetCredit);
+    markMapStyle();
+    streetLayer = L.maplibreGL({ style: m.style, interactive: false }).addTo(map);
+  }
+
+  function markMapStyle() {
+    app.classList.toggle('map-light', !PREVIEW && S.mapStyle === 'streets');
+    app.classList.toggle('map-photo', !PREVIEW && S.mapStyle === 'satellite');
+  }
+
+  function setMapStyle(key) {
+    if (!MAP_STYLES[key] || key === S.mapStyle) return;
+    S.mapStyle = key;
+    store.set('mapStyle', key);
+    markMapStyle();
+    if (!streetLayer) return;
+    streetLayer.getMaplibreMap().setStyle(MAP_STYLES[key].style);
+    map.attributionControl.removeAttribution(streetCredit);
+    streetCredit = MAP_STYLES[key].credit;
+    map.attributionControl.addAttribution(streetCredit);
   }
 
   function fitRadius(animate = true) {
@@ -1142,6 +1176,9 @@
         <button class="opt" type="button" role="checkbox" aria-checked="${S.cats.has(id)}" data-cat="${id}" style="--c:${c.color}">
           <span class="glyph" style="--c:${c.color}">${icon(id)}</span><span class="grow">${esc(c.label)}<small>${plural(counts[id] || 0, 'report')}</small></span><span class="tick">${icon('check')}</span>
         </button>`).join('')}</div>
+      ${PREVIEW ? '' : `<section class="sec"><h3>Map</h3><div class="list">${Object.entries(MAP_STYLES).map(([key, m]) => `
+        <button class="opt" type="button" role="radio" aria-checked="${S.mapStyle === key}" data-mapstyle="${key}"><span class="glyph" style="--c:#7cc4ff">${icon('map')}</span><span class="grow">${esc(m.label)}<small>${esc(m.hint)}</small></span><span class="tick">${icon('check')}</span></button>`).join('')}
+      </div></section>`}
       <section class="sec"><h3>Map overlays</h3><div class="list">
         <button class="opt" type="button" role="checkbox" aria-checked="${S.overlays.cameras}" data-ov="cameras"><span class="glyph" style="--c:#c084fc">${icon('camera')}</span><span class="grow">License plate cameras<small>${plural((S.feed.cameras || []).length, 'camera')} mapped on OpenStreetMap</small></span><span class="tick">${icon('check')}</span></button>
         <button class="opt" type="button" role="checkbox" aria-checked="${S.overlays.registry}" data-ov="registry"><span class="glyph" style="--c:${REG_COLOR}">${icon('registry')}</span><span class="grow">Registered sex offenders<small>${S.registry.coverage === 'map' ? `${plural((S.registry.registrants || []).length, 'listing')} from the official registry` : 'This state only shares its registry on its own site; see Around you in the feed'}</small></span><span class="tick">${icon('check')}</span></button>
@@ -1150,6 +1187,12 @@
     sheetBody.onclick = (e) => {
       const ov = e.target.closest('[data-ov]');
       if (ov) { toggleOverlay(ov.dataset.ov); ov.setAttribute('aria-checked', String(S.overlays[ov.dataset.ov])); return; }
+      const ms = e.target.closest('[data-mapstyle]');
+      if (ms) {
+        setMapStyle(ms.dataset.mapstyle);
+        $$('[data-mapstyle]', sheetBody).forEach((b) => b.setAttribute('aria-checked', String(b === ms)));
+        return;
+      }
       const opt = e.target.closest('[data-cat]');
       const all = e.target.closest('[data-all]');
       if (!opt && !all) return;

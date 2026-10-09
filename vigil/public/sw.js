@@ -4,8 +4,8 @@
 // and on a weak signal, and shows notifications the way phones require
 // (Android and iPhone only allow them through a service worker).
 // Live data (/api/*) is never cached here; it always comes from the network.
-const SHELL = 'vigil-shell-v1';
-const FILES = ['/', '/index.html', '/app.js', '/styles.css', '/map-style.json', '/icon.svg', '/icon-192.png', '/icon-512.png', '/manifest.webmanifest'];
+const SHELL = 'vigil-shell-v2';
+const FILES = ['/', '/index.html', '/app.js', '/styles.css', '/map-style.json', '/map-style-satellite.json', '/icon.svg', '/icon-192.png', '/icon-512.png', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(SHELL).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
