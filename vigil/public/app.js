@@ -615,11 +615,8 @@
     const badge = $('#alerts-badge');
     badge.hidden = false;
     badge.textContent = String(Math.min(9, Number(badge.textContent || 0) + fresh.length));
-    if (PREVIEW || !S.alertPrefs.registry || !('Notification' in window) || Notification.permission !== 'granted') return;
-    try {
-      const n = new Notification('Registry update near you', { body: `A registered sex offender now lists an address ${miles(r.distanceMi)} away. Tap to view.`, tag: r.id });
-      n.onclick = () => { window.focus(); openRegistrant(r); };
-    } catch (e) { /* some browsers only allow notifications from a service worker */ }
+    if (PREVIEW || !S.alertPrefs.registry) return;
+    notify('Registry update near you', `A registered sex offender now lists an address ${miles(r.distanceMi)} away. Tap to view.`, r.id, { kind: 'reg', id: r.id });
   }
 
   // Registries change daily at most, so this re-checks every 15 minutes
@@ -636,6 +633,7 @@
       S.registry = { coverage: data.coverage, registrants: data.registrants || [], official: data.official, warning: data.warning, sources: data.sources || [] };
       const fresh = diffRegistry(S.registry.registrants);
       renderOverlays();
+      if (pendingOpen) openTarget(pendingOpen);
       if (S.tab === 'feed') renderFeed();
       // A first visit to an area only records what's there; later visits
       // alert on anything listed since.
@@ -698,7 +696,11 @@
   function renderLive() {
     const el = $('#live');
     if (!el) return;
-    if (!S.lastUpdated) { el.textContent = PREVIEW ? 'Sample data' : 'Connecting…'; el.className = 'live'; return; }
+    if (!S.lastUpdated) {
+      el.textContent = PREVIEW ? 'Sample data' : S.lastError ? 'Offline · no connection' : 'Connecting…';
+      el.className = `live${S.lastError ? ' stale' : ''}`;
+      return;
+    }
     const secs = Math.round((Date.now() - S.lastUpdated) / 1000);
     const ago = secs < 60 ? `${secs}s ago` : `${Math.round(secs / 60)} min ago`;
     el.className = `live${S.lastError ? ' stale' : ''}`;
@@ -925,7 +927,21 @@
     sheet.style.setProperty('--sheet-y', `${y}px`);
     sheetState = to;
   }
+  // Android's Back button closes an open panel instead of leaving the app.
+  const backCloses = !PREVIEW && 'pushState' in history;
+  let ownBack = false; // history.back() called by closeSheet itself
+  window.addEventListener('popstate', () => {
+    if (ownBack) {
+      ownBack = false;
+      // A new panel opened before the old entry was removed: give it one.
+      if (sheetState !== 'closed') history.pushState({ sheet: true }, '');
+      return;
+    }
+    if (sheetState !== 'closed') closeSheet({ fromBack: true });
+  });
+
   function openSheet(html, label = 'Details') {
+    if (backCloses && sheetState === 'closed' && !ownBack && !(history.state && history.state.sheet)) history.pushState({ sheet: true }, '');
     sheetBody.onclick = null;
     sheetBody.innerHTML = html;
     sheetBody.scrollTop = 0;
@@ -938,8 +954,9 @@
       requestAnimationFrame(() => snap('half'));
     });
   }
-  function closeSheet() {
+  function closeSheet({ fromBack = false } = {}) {
     if (sheetState === 'closed') return;
+    if (backCloses && !fromBack && history.state && history.state.sheet) { ownBack = true; history.back(); }
     snap('closed');
     sheet.setAttribute('aria-hidden', 'true');
     scrim.classList.remove('is-on');
@@ -1281,7 +1298,7 @@
       <div class="block">
         <h2>Following</h2>
         ${followed.length ? `<ol class="feed-list">${followed.map((it, i) => cardHtml(it, i)).join('')}</ol>` : '<p>Tap Follow on any report to get its updates here.</p>'}
-        ${PREVIEW ? '<p class="note">Push notifications need the installed app. This preview shows the settings and what they would send.</p>' : `<button class="btn" type="button" id="notify-btn">${icon('bell')}Allow notifications on this device</button><p class="note">While Vigil is open, matching reports pop up as notifications. Background push is on the roadmap.</p>`}
+        ${PREVIEW ? '<p class="note">Push notifications need the installed app. This preview shows the settings and what they would send.</p>' : `${S.installPrompt ? `<button class="btn primary" type="button" id="install-btn">${icon('pin')}Install Vigil on this phone</button>` : ''}<button class="btn" type="button" id="notify-btn">${icon('bell')}${'Notification' in window && Notification.permission === 'granted' ? 'Notifications are on' : 'Allow notifications on this device'}</button><p class="note">While Vigil is open, matching reports pop up as notifications. Alerts with the app closed are on the roadmap.</p>`}
       </div>`;
     const view = $('#view-alerts');
     view.onclick = async (e) => {
@@ -1297,7 +1314,14 @@
       else if (t.closest('#notify-btn')) {
         if (!('Notification' in window)) return toast('This browser doesn’t support notifications', 'bell');
         const res = await Notification.requestPermission();
-        return toast(res === 'granted' ? 'Notifications are on for this device' : 'Notifications stay off', 'bell');
+        toast(res === 'granted' ? 'Notifications are on for this device' : 'Notifications stay off. You can turn them on in Chrome’s site settings.', 'bell');
+        return renderAlerts();
+      } else if (t.closest('#install-btn') && S.installPrompt) {
+        const prompt = S.installPrompt;
+        S.installPrompt = null;
+        prompt.prompt();
+        await prompt.userChoice.catch(() => null);
+        return renderAlerts();
       } else return;
       store.set('alertPrefs', p);
       const y = view.scrollTop;
@@ -1314,10 +1338,33 @@
     const hits = items.filter((it) => matchesPrefs(it));
     const badge = $('#alerts-badge');
     if (hits.length) { badge.hidden = false; badge.textContent = String(Math.min(9, Number(badge.textContent || 0) + hits.length)); }
-    if (PREVIEW || !('Notification' in window) || Notification.permission !== 'granted') return;
-    for (const it of hits.slice(0, 3)) {
-      try { new Notification(it.title, { body: `${LEVELS[levelOf(it)][0]} · ${(it.sources[0] || {}).name || ''}`, tag: it.id }); } catch (e) { /* some browsers only allow notifications from a service worker */ }
-    }
+    if (PREVIEW) return;
+    for (const it of hits.slice(0, 3)) notify(it.title, `${LEVELS[levelOf(it)][0]} · ${(it.sources[0] || {}).name || ''}`, it.id, { kind: 'item', id: it.id });
+  }
+
+  // Phones (Android, iPhone home-screen apps) only show notifications sent
+  // through the service worker; desktop browsers also accept the direct way.
+  async function notify(title, body, tag, open) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    try {
+      const reg = 'serviceWorker' in navigator && (await navigator.serviceWorker.getRegistration());
+      if (reg) return await reg.showNotification(title, { body, tag, icon: '/icon-192.png', badge: '/icon-192.png', vibrate: [200, 100, 200], data: { open } });
+      const n = new Notification(title, { body, tag });
+      n.onclick = () => { window.focus(); openTarget(open); };
+    } catch (e) { /* notification blocked by the browser; the in-app alert still shows */ }
+  }
+
+  // Open the report or registry record a notification pointed to, once
+  // the data that holds it has loaded.
+  let pendingOpen = null;
+  function openTarget(open) {
+    if (!open) return;
+    const found = open.kind === 'reg'
+      ? (S.registry.registrants || []).find((r) => r.id === open.id)
+      : localItems().concat(S.feed.area || []).find((it) => it.id === open.id);
+    if (!found) { pendingOpen = open; return; }
+    pendingOpen = null;
+    if (open.kind === 'reg') openRegistrant(found); else openItem(found, { fly: false });
   }
 
   /* ---------- Safety ---------- */
@@ -1551,6 +1598,7 @@
       const mode = S.firstLoad ? 'reveal' : freshIds.size ? 'new' : 'static';
       if (S.firstLoad && sweepMarker) { map.removeLayer(sweepMarker); sweepMarker = null; drawCenter(); }
       renderAll(mode, freshIds);
+      if (pendingOpen) openTarget(pendingOpen);
       loadRegistry();
       if (freshIds.size && !quiet) {
         const fresh = localItems().filter((it) => freshIds.has(it.id) && passes(it));
@@ -1633,6 +1681,33 @@
     setInterval(renderLive, 5000);
   }
 
+  // Installed-app support and notification taps (live app only; the
+  // preview runs inside another page).
+  function initServiceWorker() {
+    if (PREVIEW || !('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* app still works without it */ });
+    // Chrome on Android offers to install the app; keep the offer for the
+    // Install button in the Alerts tab instead of popping it up uninvited.
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      S.installPrompt = e;
+      if (S.tab === 'alerts') renderAlerts();
+    });
+    window.addEventListener('appinstalled', () => {
+      S.installPrompt = null;
+      toast('Vigil is on your home screen', 'check');
+      if (S.tab === 'alerts') renderAlerts();
+    });
+    navigator.serviceWorker.addEventListener('message', (e) => {
+      if (e.data && e.data.type === 'open') openTarget({ kind: e.data.kind, id: e.data.id });
+    });
+    const m = /^(item|reg):(.+)$/.exec(new URLSearchParams(location.search).get('open') || '');
+    if (m) {
+      pendingOpen = { kind: m[1], id: m[2] };
+      history.replaceState(null, '', location.pathname);
+    }
+  }
+
   function start() {
     initMap();
     initSearch();
@@ -1647,6 +1722,9 @@
     }
   }
 
+  // Registered even if the map library failed, so the next open can work
+  // from the copy saved on the phone.
+  initServiceWorker();
   if (window.L) start();
   else document.body.insertAdjacentHTML('beforeend', '<p style="position:fixed;inset:auto 16px 50%;color:#e8edf3;text-align:center">The map library didn’t load. Check your connection and reload.</p>');
 })();

@@ -180,8 +180,30 @@ const dcRegistry = () => ({
   ],
 });
 
+// Iowa Environmental Mesonet local storm reports (GeoJSON).
+const lsr = () => ({
+  type: 'FeatureCollection',
+  features: [
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [-86.2300, 43.2500] }, properties: { valid: iso(70).slice(0, 19) + 'Z', type: 'D', typetext: 'TSTM WND DMG', magnitude: 'None', unit: '', city: 'MUSKEGON', county: 'MUSKEGON', state: 'MI', source: 'LAW ENFORCEMENT', remark: 'Large tree down on Fixture St blocking both lanes.', wfo: 'GRR', product_id: '202610081900-KGRR-NWUS53-LSRGRR' } },
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [-86.1000, 43.3000] }, properties: { valid: iso(95).slice(0, 19) + 'Z', type: 'H', typetext: 'HAIL', magnitude: '1.00', unit: 'INCH', city: '2 N FIXTURE', county: 'MUSKEGON', state: 'MI', source: 'PUBLIC', remark: '', wfo: 'GRR', product_id: '202610081830-KGRR-NWUS53-LSRGRR' } },
+  ],
+});
+
+// Bluesky searchPosts. Invented accounts and posts.
+const bskyPost = (n, handle, text, mins) => ({ uri: `at://did:plc:fixture${n}/app.bsky.feed.post/3kfix${n}`, author: { did: `did:plc:fixture${n}`, handle, displayName: handle.split('.')[0] }, record: { text, createdAt: iso(mins) }, indexedAt: iso(mins) });
+const bluesky = () => ({
+  posts: [
+    bskyPost(1, 'police.muskegon-mi.gov', 'Muskegon police: road closed at Fixture St and 3rd for a crash investigation. Avoid the area.', 40),
+    bskyPost(2, 'someone.bsky.social', 'Huge fire on the east side of Muskegon, MI right now, smoke everywhere', 25),
+    bskyPost(3, 'elsewhere.bsky.social', 'Muskegon is lovely this time of year', 15),
+    bskyPost(4, 'other.bsky.social', 'Shooting reported in Muskegon Heights? anyone know', 10),
+  ],
+});
+
 // URL -> body. Order matters; first match wins.
 const ROUTES = [
+  [/mesonet\.agron\.iastate\.edu\/geojson\/lsr\.geojson/, lsr],
+  [/api\.bsky\.app\/xrpc\/app\.bsky\.feed\.searchPosts/, bluesky],
   [/nominatim\.openstreetmap\.org\/reverse/, nominatimReverse],
   [/nominatim\.openstreetmap\.org\/search/, nominatimSearch],
   [/api\.weather\.gov\/alerts/, nwsAlerts],
@@ -202,4 +224,4 @@ const ROUTES = [
   [/FEEDS\/MPD\/MapServer\/20\/query/, dcRegistry],
 ];
 
-module.exports = { ROUTES, articlePage, iowaRegistry, tennesseeRegistry, dcRegistry, overpass, mesaCalls, gilbertCalls, wfigs, firmsCsv, ipaws, nominatimReverse, nwsAlerts, usgs, fema, googleNews, gdeltDoc, seattleFire };
+module.exports = { ROUTES, lsr, bluesky, articlePage, iowaRegistry, tennesseeRegistry, dcRegistry, overpass, mesaCalls, gilbertCalls, wfigs, firmsCsv, ipaws, nominatimReverse, nwsAlerts, usgs, fema, googleNews, gdeltDoc, seattleFire };
