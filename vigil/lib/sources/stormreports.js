@@ -7,15 +7,10 @@
 // (Iowa State University) as GeoJSON. Public domain; IEM asks for credit.
 // https://mesonet.agron.iastate.edu/request/gis/lsrs.phtml
 const { fetchJson } = require('../http');
+const { haversineMi } = require('../geo');
 
 const BASE = 'https://mesonet.agron.iastate.edu/geojson/lsr.geojson';
 const PAGE = 'https://mesonet.agron.iastate.edu/lsr/';
-
-function envelope({ lat, lon }, radiusMi) {
-  const dLat = radiusMi / 69.0;
-  const dLon = radiusMi / (69.17 * Math.cos((lat * Math.PI) / 180));
-  return { west: lon - dLon, south: lat - dLat, east: lon + dLon, north: lat + dLat };
-}
 
 const titleCase = (s) => String(s || '').toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
 const LABELS = { 'TSTM WND DMG': 'Thunderstorm wind damage', 'TSTM WND GST': 'Thunderstorm wind gust', 'NON-TSTM WND DMG': 'Wind damage', 'NON-TSTM WND GST': 'Wind gust', 'FLASH FLOOD': 'Flash flooding', 'FUNNEL CLOUD': 'Funnel cloud' };
@@ -56,12 +51,14 @@ function normalize(f) {
   };
 }
 
-// Storms matter beyond a few blocks, so look at least 25 miles out.
+// The feed has no area filter (it ignores west/south/east/north and
+// returns the whole country), so one nationwide copy is shared by every
+// viewer and trimmed here. Storms matter beyond a few blocks, so keep
+// reports up to 25 miles out.
 async function reportsNear(center, radiusMi, hours) {
-  const box = envelope(center, Math.max(radiusMi, 25));
-  const q = new URLSearchParams({ ...Object.fromEntries(Object.entries(box).map(([k, v]) => [k, v.toFixed(3)])), hours: String(Math.min(hours, 24 * 30)) });
-  const data = await fetchJson(`${BASE}?${q}`, { ttl: 300 });
-  return (data.features || []).map(normalize).filter(Boolean);
+  const within = Math.max(radiusMi, 25);
+  const data = await fetchJson(`${BASE}?hours=${Math.min(hours, 24 * 30)}`, { ttl: 300 });
+  return (data.features || []).map(normalize).filter((r) => r && haversineMi(center, r) <= within);
 }
 
-module.exports = { reportsNear, normalize, envelope };
+module.exports = { reportsNear, normalize };

@@ -186,6 +186,8 @@ const lsr = () => ({
   features: [
     { type: 'Feature', geometry: { type: 'Point', coordinates: [-86.2300, 43.2500] }, properties: { valid: iso(70).slice(0, 19) + 'Z', type: 'D', typetext: 'TSTM WND DMG', magnitude: 'None', unit: '', city: 'MUSKEGON', county: 'MUSKEGON', state: 'MI', source: 'LAW ENFORCEMENT', remark: 'Large tree down on Fixture St blocking both lanes.', wfo: 'GRR', product_id: '202610081900-KGRR-NWUS53-LSRGRR' } },
     { type: 'Feature', geometry: { type: 'Point', coordinates: [-86.1000, 43.3000] }, properties: { valid: iso(95).slice(0, 19) + 'Z', type: 'H', typetext: 'HAIL', magnitude: '1.00', unit: 'INCH', city: '2 N FIXTURE', county: 'MUSKEGON', state: 'MI', source: 'PUBLIC', remark: '', wfo: 'GRR', product_id: '202610081830-KGRR-NWUS53-LSRGRR' } },
+    // The real feed ignores the area and returns the whole country.
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [-155.0800, 19.7200] }, properties: { valid: iso(50).slice(0, 19) + 'Z', type: 'H', typetext: 'HAIL', magnitude: '0.75', unit: 'INCH', city: 'HILO', county: 'HAWAII', state: 'HI', source: 'PUBLIC', remark: '', wfo: 'HFO', product_id: '202610081900-PHFO-NWUS52-LSRHFO' } },
   ],
 });
 

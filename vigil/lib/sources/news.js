@@ -42,11 +42,23 @@ function gdeltDate(s) {
   return m ? `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z` : null;
 }
 
+// GDELT allows one request per 5 seconds from an address (Vercel's are
+// shared) and is often slow. After a refusal or a stall, rest it a few
+// minutes so it doesn't hold up every feed; Google News still answers.
+let gdeltRestUntil = 0;
+
 async function gdelt(place, hours) {
+  if (Date.now() < gdeltRestUntil) throw new Error('GDELT is resting after a refusal or timeout');
   const span = hours <= 24 ? '1d' : hours <= 168 ? '7d' : '30d';
   const where = place.city || place.label;
   const q = encodeURIComponent(`${where ? `"${where}" ` : ''}${TERMS} sourcecountry:US`);
-  const data = await fetchJson(`https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=artlist&format=json&maxrecords=75&sort=datedesc&timespan=${span}`, { ttl: 180 });
+  let data;
+  try {
+    data = await fetchJson(`https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=artlist&format=json&maxrecords=75&sort=datedesc&timespan=${span}`, { ttl: 180, timeoutMs: 4000 });
+  } catch (err) {
+    gdeltRestUntil = Date.now() + 5 * 60e3;
+    throw err;
+  }
   return (data.articles || []).map((a) => ({
     title: a.title,
     url: a.url,

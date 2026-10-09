@@ -129,7 +129,7 @@ test('news pictures: share image parsing and fallback', async () => {
 test('storm damage reports from the weather service, with the exact spot', async () => {
   const stormreports = require('../lib/sources/stormreports');
   const reports = await stormreports.reportsNear(MUSKEGON, 3, 24);
-  assert.equal(reports.length, 2);
+  assert.equal(reports.length, 2, 'the Hawaii report is too far away');
   const [wind, hail] = reports;
   assert.equal(wind.title, 'Thunderstorm wind damage');
   assert.equal(wind.severity, 2);
@@ -143,7 +143,7 @@ test('storm damage reports from the weather service, with the exact spot', async
   assert.equal(hail.severity, 1);
   assert.equal(hail.unconfirmed.length, 1, 'public reports are flagged as not yet surveyed');
   const url = decodeURIComponent(calls.find((u) => u.includes('lsr.geojson')));
-  assert.match(url, /west=-86\.7\d+&south=42\.8\d+&east=-85\.7\d+&north=43\.5\d+&hours=24/, '25-mile box at least');
+  assert.match(url, /lsr\.geojson\?hours=24$/, 'one nationwide copy shared by every viewer');
 });
 
 test('Bluesky: government handles are official, others unverified, place must be clear', async () => {
@@ -162,4 +162,26 @@ test('Bluesky: government handles are official, others unverified, place must be
   assert.equal(bluesky.mentionsPlace('Crash in Springfield, IL tonight', { city: 'Springfield', state: 'IL', stateName: 'Illinois' }), true);
   const url = decodeURIComponent(calls.find((u) => u.includes('searchPosts')));
   assert.match(url, /q="Muskegon"&sort=latest&limit=100&since=/);
+});
+
+// Keep last: it leaves GDELT resting for the rest of this file.
+test('GDELT rests after it refuses; Google News still answers', async () => {
+  const fixtureFetch = global.fetch;
+  let gdeltCalls = 0;
+  global.fetch = async (url) => {
+    if (/api\.gdeltproject\.org/.test(String(url))) {
+      gdeltCalls++;
+      return new Response('Please limit requests to one every 5 seconds', { status: 429 });
+    }
+    return fixtureFetch(url);
+  };
+  try {
+    const place = { label: 'Norton Shores, MI', city: 'Norton Shores', county: 'Muskegon', state: 'MI', stateName: 'Michigan' };
+    const first = await news.storiesFor(place, MUSKEGON, 24);
+    const second = await news.storiesFor({ ...place, label: 'Roosevelt Park, MI', city: 'Roosevelt Park' }, MUSKEGON, 24);
+    assert.equal(gdeltCalls, 1, 'not asked again while resting');
+    assert.ok(first.length > 0 && second.length > 0);
+  } finally {
+    global.fetch = fixtureFetch;
+  }
 });
