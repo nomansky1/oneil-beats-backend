@@ -50,7 +50,7 @@ runs.
 | Storm damage reports (NWS, via Iowa Environmental Mesonet) | Tornado touchdowns, hail, downed trees and lines, flooding, reported to the weather service, with the exact spot, within 25 miles. Public domain; credit IEM. | 5 min | Minutes | Official (public reports flagged as not yet surveyed) |
 | Bluesky public posts | Posts naming your city and a safety topic. A post must also name the state or county, unless it comes from a local agency's .gov address. Handles ending in .gov or .mil count as official; everyone else is Unverified. Text and link only; nothing stored. No key. | 2 min | None | Official or Unverified |
 | License plate cameras (OpenStreetMap) | Flock and other plate readers mapped by volunteers, with vendor, operator and direction. A map layer, not incidents. | 6 hours | As fast as volunteers map them | Not rated |
-| Sex offender registries | Iowa (with photos), Tennessee and DC on the map, with alerts when someone is newly listed nearby. Every other state, DC and territory: a link to its official registry. | Iowa: every request; TN, DC: 1 hour. The app re-checks every 15 min. | Daily | Official registry |
+| Sex offender registries | Iowa (with photos), Missouri, Tennessee and DC on the map, with alerts when someone is newly listed nearby, even with the app closed. Every other state, DC and territory: a link to its official registry. | Iowa: every request; MO, TN, DC: 1 hour. Checked every 15 min. | Daily | Official registry |
 | Official agency accounts on X (free) | Public posts from police, fire, NWS, FEMA and USGS accounts near you, shown with X's own embed. No X account, no Premium, no API key. Listed in `data/x-accounts.js`. | Live (X's embed) | None | Shown as posted; not rated |
 | X search (paid, off by default) | Searches all recent posts naming your city. Government-verified accounts count as official; everyone else is Unverified. Needs an X developer API key (not X Premium), billed per post read. | 2 min | None | Official or Unverified |
 | Community reports | What people nearby post in the app | Instant | None | Unverified until confirmed |
@@ -70,7 +70,7 @@ in the list with their distance, but the "within 2 mi" counts leave them out.
 ```bash
 cd vigil
 npm install
-npm test                 # 33 tests: parsers, truth meter, every source adapter, API
+npm test                 # 41 tests: parsers, truth meter, every source adapter, API
 npm run dev              # http://localhost:3000 with live upstream data
 npm run dev:fixtures     # same, with canned upstream data (no network)
 npm run build:preview    # writes preview/vigil-preview.html
@@ -87,6 +87,9 @@ Environment variables:
 | `X_CACHE_SECONDS` | Optional | How long X results are reused per city (default 120). |
 | `FIRMS_MAP_KEY` | Optional | Free NASA FIRMS key (firms.modaps.eosdis.nasa.gov/api/map_key). Turns on satellite heat detections. |
 | `OVERPASS_URL` | Optional | A different Overpass API server for plate-camera data. The public one is shared and rate limited. |
+| `SUPABASE_URL`, `SUPABASE_KEY` | For background alerts | The alerts database (Supabase project "Vigil") and its publishable key. |
+| `WATCH_SECRET` | For background alerts | Shared with the database (`private.settings`); the only way into it. Mark it sensitive. |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | For background alerts | Web Push key pair (`npx web-push generate-vapid-keys`). Mark the private one sensitive. |
 
 ## Put it live (needs the owner's OK)
 
@@ -112,13 +115,36 @@ leaving the app. Live data (`/api/*`) is never stored by the service worker.
 The same site can later be packaged for Google Play as a Trusted Web
 Activity (for example with Bubblewrap) without rewriting it.
 
+### Registry alerts with the app closed
+
+Where a registry is on the map, a phone with notifications allowed and the
+registry switch on signs up for background alerts (`POST /api/push`). It
+stores the browser's push address and the map area rounded to about 1 km in
+the alerts database. Turning the switch off, or moving to a state without a
+registry map, deletes it (`DELETE /api/push`).
+
+Every 15 minutes `pg_cron` in the database calls `/api/registry-watch`
+with the shared secret. `lib/watch.js` asks each watched area's registry
+who is listed, compares that with the IDs it saw before (IDs only, dropped
+14 days after last seen) and pushes any new listing to the phones watching
+that area. The first check of an area only records what's there. A capped
+answer (more people than the registry returns at once, as Iowa does past
+100) can't tell who is new, so it sends nothing. Notifications carry no
+names; tapping one opens the record in the app. Iowa is asked about at most
+3 areas per check, to stay under its hourly limit.
+
+The database is set up by `db/001_registry_alerts.sql` and
+`db/002_watch_schedule.sql`. Row level security is on with no policies,
+and every function needs the watch secret, so the publishable key alone
+reads nothing.
+
 Responses are cached at Vercel's edge for 60 seconds per ~1 km area, so cost
 grows with the number of places people watch rather than the number of
 people watching them.
 
 ## What's verified and what isn't
 
-- **Tested here:** all 33 unit/API tests pass. The app was driven in a
+- **Tested here:** all 41 unit/API tests pass. The app was driven in a
   headless phone-size browser (360 and 390 px wide, and an emulated Pixel 7)
   against the local server (fixture data, with the MapLibre street map
   loading) and against the preview build, with no script errors. On the
@@ -159,7 +185,10 @@ people watching them.
   - Not checked live yet: the IPAWS archive (only asked for in the 7- and
     30-day views) and most other cities' feeds. Each source is isolated, so
     one that fails shows red in "Source status" while the rest keep working.
-- **Not built yet:** background push notifications, a database for
+- **Background registry alerts** are covered by tests (sign-up, the
+  15-minute check, capped answers, Iowa's limit, the secret). They haven't
+  been seen arriving on a real phone yet.
+- **Not built yet:** push for reports other than the registry, a database for
   community reports and corrections (they stay on the device for now), SMS
   for the check-in timer, the native iOS/Android app, Spanish UI.
 
@@ -209,6 +238,11 @@ people watching them.
       credit).
     - DC open data (CC BY 4.0, block-level; names, class and whether the
       block is a home or work location, but no offenses).
+    - Missouri State Highway Patrol's public registry map service (NSOR
+      layer 7): one geocoded point per registered home, work, school or
+      temporary address, updated daily. No license is published; the
+      Patrol publishes the layer for its own public map. Confirming with
+      mosor@mshp.dps.mo.gov would be prudent.
   - **Everywhere else**: a link to the official registry for every state,
     DC and territory (`data/registries.js`, from the DOJ's list), plus the
     national NSOPW search. NSOPW and most state sites forbid automated
@@ -216,24 +250,31 @@ people watching them.
     Recheck the four entries marked `checked: false`.
   - **Every state on the map** needs a licensed provider whose contract
     allows public display; standard API licenses are internal-use only.
-  - **Next free candidates** (Oct 2026 research, terms from search snippets;
-    confirm with each agency before building):
-    - Florida FDLE public data file: CSV, updated about every 4 hours. It has
-      addresses but no coordinates, so it needs geocoding and storage. FDLE's
-      two required warnings apply.
-    - Texas DPS export: free, needs an account; the account terms are unread.
-    - Missouri Highway Patrol: a zipped file, plus an ArcGIS layer with
-      points. The terms are unclear.
-    - Chicago Police (Socrata `vc9r-bqvy`): block addresses only.
-    - Georgia GBI data download: the terms are unclear.
-    - Arizona's list bars commercial use (A.R.S. 39-121.03).
-    - Michigan, Ohio and Indiana: no feed found; keep them link-only.
+    Offenders.io's terms allow showing results to users but forbid
+    replicating its registry, so a nationwide map needs written enterprise
+    terms first.
+  - **Next free candidates** (October 2026 research, terms from search
+    snippets; confirm with each agency before building):
+    - Florida FDLE public data file: CSV with an automatic-download URL,
+      updated about every 4 hours. It has addresses but maybe no
+      coordinates, so it may need geocoding (US Census batch geocoder) and
+      storage. Show FDLE's two recommended warnings.
+    - Texas DPS export: free, any purpose, needs an account, about 15 MB
+      twice a week. Ask DPS whether a script may download it.
+    - Georgia GBI data download: free; terms silent; format unknown.
+    - Chicago Police (Socrata `vc9r-bqvy`): block addresses only; the city
+      requires a disclaimer.
+    - Paid: Hawaii ($100 a download), Montana ($550 a request), Arkansas
+      (subscription plus 10 cents a record).
+    - Forbidden or commercial use barred: Arizona, Mississippi, Washington,
+      Vermont, Pennsylvania, California, Nevada, New Jersey. Michigan has no
+      download.
   - The federal warning (34 U.S.C. §20920) is shown on every record. Some
     states restrict use for jobs, housing, loans and insurance (CA Penal
     Code 290.46, NV NRS 179B, NJ 2C:7-16); the app is not a background check.
-  - "Newly listed" alerts compare against listing IDs saved on the phone
-    (IDs only, dropped after 14 days). They fire while the app is open;
-    alerts with the app closed need the push server (roadmap).
-  - Field names in the three readers come from each agency's documentation
-    and could not be checked live from here; check the Source status on the
-    first deploy.
+  - "Newly listed" alerts compare against listing IDs (IDs only, dropped 14
+    days after last seen): on the phone while the app is open, and in the
+    alerts database with the app closed (see "Registry alerts with the app
+    closed").
+  - Field names in the readers were checked against each registry's live
+    data in October 2026.

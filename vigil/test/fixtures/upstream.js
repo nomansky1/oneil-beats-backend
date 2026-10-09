@@ -14,6 +14,7 @@ const nominatimReverse = (url = '') => {
   if (lat > 41 && lat < 42) return { address: { city: 'Des Moines', county: 'Polk County', state: 'Iowa', 'ISO3166-2-lvl4': 'US-IA', country_code: 'us' } };
   if (lat > 36 && lat < 37) return { address: { city: 'Nashville', county: 'Davidson County', state: 'Tennessee', 'ISO3166-2-lvl4': 'US-TN', country_code: 'us' } };
   if (lat > 38.8 && lat < 39) return { address: { city: 'Washington', state: 'District of Columbia', 'ISO3166-2-lvl4': 'US-DC', country_code: 'us' } };
+  if (lat > 39 && lat < 39.3) return { address: { city: 'Kansas City', county: 'Jackson County', state: 'Missouri', 'ISO3166-2-lvl4': 'US-MO', country_code: 'us' } };
   return { address: { city: 'Muskegon', county: 'Muskegon County', state: 'Michigan', 'ISO3166-2-lvl4': 'US-MI', country_code: 'us' } };
 };
 
@@ -181,6 +182,16 @@ const dcRegistry = () => ({
   ],
 });
 
+// Missouri State Highway Patrol map service, layer 7: one row per address,
+// answered in pages (the first page says there is more).
+const missouriRegistry = (url = '') => {
+  const offset = Number((/resultOffset=(\d+)/.exec(url) || [])[1] || 0);
+  const row = (sid, seq, type, address, lon) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [lon, 39.1000] }, properties: { ObjectID: sid + seq, SID: sid, SEQ_NBR: seq, FIRST_NAME: 'Test', LAST_NAME: `Registrant ${sid}`, MIDDLE_NM: null, SUFFIX: null, ADDRESS: address, City: 'Kansas City', TYPE: type, COMPLIANT: 'Y', Status: 'M' } });
+  return offset === 0
+    ? { type: 'FeatureCollection', exceededTransferLimit: true, features: [row(900001, 1, 'H', '300 Fixture St', -94.5800), row(900001, 2, 'W', '400 Fixture Ave', -94.5790)] }
+    : { type: 'FeatureCollection', features: [row(900002, 1, 'T', '500 Fixture Blvd', -94.5780)] };
+};
+
 // Iowa Environmental Mesonet local storm reports (GeoJSON).
 const lsr = () => ({
   type: 'FeatureCollection',
@@ -225,6 +236,7 @@ const ROUTES = [
   [/iowasexoffender\.gov\/api\/search\/results\.json/, iowaRegistry],
   [/TBI_SEX_OFFENDER_REGISTRY\/MapServer\/0\/query/, tennesseeRegistry],
   [/FEEDS\/MPD\/MapServer\/20\/query/, dcRegistry],
+  [/NSOR\/MapServer\/7\/query/, missouriRegistry],
 ];
 
-module.exports = { ROUTES, lsr, bluesky, articlePage, iowaRegistry, tennesseeRegistry, dcRegistry, overpass, mesaCalls, gilbertCalls, wfigs, firmsCsv, ipaws, nominatimReverse, nwsAlerts, usgs, fema, googleNews, gdeltDoc, seattleFire };
+module.exports = { ROUTES, lsr, bluesky, articlePage, iowaRegistry, tennesseeRegistry, dcRegistry, missouriRegistry, overpass, mesaCalls, gilbertCalls, wfigs, firmsCsv, ipaws, nominatimReverse, nwsAlerts, usgs, fema, googleNews, gdeltDoc, seattleFire };

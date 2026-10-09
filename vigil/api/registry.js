@@ -19,14 +19,14 @@ module.exports = async (req, res) => {
     const place = await placeFor(center);
     const official = registryFor(place.state);
     const started = Date.now();
-    let result = { coverage: 'link', registrants: [], source: null };
+    let result = { coverage: 'link', registrants: [], source: null, complete: true };
     let health = null;
     try {
       result = await registrantsNear(place.state, center, radiusMi);
       if (result.source) health = { id: result.source.id, label: `${result.source.agency} registry`, ok: true, count: result.registrants.length, ms: Date.now() - started };
     } catch (err) {
       health = { id: `${(place.state || 'xx').toLowerCase()}-sor`, label: `${(official && official.name) || 'State'} registry`, ok: false, count: 0, ms: Date.now() - started, error: err.message };
-      result = { coverage: 'map', registrants: [], source: null };
+      result = { coverage: 'map', registrants: [], source: null, complete: true };
     }
     sendJson(res, 200, {
       generatedAt: new Date().toISOString(),
@@ -36,6 +36,7 @@ module.exports = async (req, res) => {
       official,
       coverage: result.coverage,
       registrants: result.registrants,
+      complete: result.complete,
       warning: WARNING,
       sources: health ? [health] : [],
     });

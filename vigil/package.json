@@ -21,5 +21,8 @@
     "maplibre-gl": "5.24.0",
     "us-atlas": "3.0.1",
     "world-atlas": "2.0.2"
+  },
+  "dependencies": {
+    "web-push": "3.6.7"
   }
 }

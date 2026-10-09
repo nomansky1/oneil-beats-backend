@@ -4,7 +4,7 @@
 // and on a weak signal, and shows notifications the way phones require
 // (Android and iPhone only allow them through a service worker).
 // Live data (/api/*) is never cached here; it always comes from the network.
-const SHELL = 'vigil-shell-v2';
+const SHELL = 'vigil-shell-v3';
 const FILES = ['/', '/index.html', '/app.js', '/styles.css', '/map-style.json', '/map-style-satellite.json', '/icon.svg', '/icon-192.png', '/icon-512.png', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
@@ -40,6 +40,24 @@ self.addEventListener('fetch', (event) => {
       return saved || fresh;
     })
   );
+});
+
+// Registry alerts sent by the server (lib/watch.js) while Vigil is closed.
+self.addEventListener('push', (event) => {
+  let msg = {};
+  try {
+    msg = event.data ? event.data.json() : {};
+  } catch {
+    /* not JSON: show the generic alert */
+  }
+  event.waitUntil(self.registration.showNotification(msg.title || 'Vigil alert', {
+    body: msg.body || 'Something changed near you. Tap to view.',
+    tag: msg.tag,
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    vibrate: [200, 100, 200],
+    data: { open: msg.open || null },
+  }));
 });
 
 // Tapping a notification opens Vigil on that report or registry record.
