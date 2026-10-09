@@ -41,6 +41,18 @@ const SOURCES = {
     layer: 'https://maps2.dcgis.dc.gov/dcgis/rest/services/FEEDS/MPD/MapServer/20',
     recordUrl: () => 'https://sexoffender.dc.gov/',
   },
+  // The Highway Patrol's public registry map service (layer 7, "Offenders"):
+  // one row per registered address (home, work, school, temporary),
+  // geocoded by the Patrol, updated daily.
+  MO: {
+    id: 'missouri-sor',
+    agency: 'Missouri State Highway Patrol',
+    site: 'https://www.mshp.dps.missouri.gov/CJ38/searchRegistry.jsp',
+    precision: 'address',
+    layer: 'https://www.mshp.dps.mo.gov/arcgis/rest/services/NSOR/MapServer/7',
+    idOf: (row) => [field(row, ['sid']), field(row, ['seq_nbr'])].filter(Boolean).join('-'),
+    recordUrl: () => 'https://www.mshp.dps.missouri.gov/CJ38/searchRegistry.jsp',
+  },
 };
 
 /* ---------- Field finding ---------- */
@@ -62,7 +74,7 @@ function nameOf(row) {
   if (full) return full;
   const parts = [
     field(row, ['first_name', 'firstname', 'fname', 'first', 'given_name']),
-    field(row, ['middle_name', 'middlename', 'mname', 'middle']),
+    field(row, ['middle_name', 'middlename', 'middle_nm', 'mname', 'middle']),
     field(row, ['last_name', 'lastname', 'lname', 'last', 'surname']),
     field(row, ['suffix', 'name_suffix']),
   ].filter(Boolean);
@@ -85,10 +97,12 @@ function addressOf(row) {
   const city = field(row, ['city', 'rescity', 'residence_city']);
   const state = field(row, ['state', 'resstate', 'residence_state']);
   const where = [street, city, state].filter(Boolean).join(', ');
-  // DC lists work and school locations as well as homes.
+  // DC and Missouri list work, school and temporary addresses as well as
+  // homes (Missouri as W, S, T and H).
   const type = field(row, ['type', 'address_type', 'location_type']);
-  if (where && /work|employ/i.test(type)) return `Work: ${where}`;
-  if (where && /school|univ|student/i.test(type)) return `School: ${where}`;
+  if (where && /^(w$|work|employ)/i.test(type)) return `Work: ${where}`;
+  if (where && /^(s$|school|univ|student)/i.test(type)) return `School: ${where}`;
+  if (where && /^(t$|temp)/i.test(type)) return `Temporary: ${where}`;
   return where;
 }
 
@@ -123,7 +137,7 @@ function coordsOf(row, geometry) {
 function normalize(src, row, geometry, center) {
   const { lat, lon } = coordsOf(row, geometry);
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) < 1 || Math.abs(lon) < 1) return null;
-  const rid = field(row, ['registrant', 'registrant_id', 'registrantid', 'offender_id', 'tid', 'sor_id', 'id', 'objectid']);
+  const rid = src.idOf ? src.idOf(row) : field(row, ['registrant', 'registrant_id', 'registrantid', 'offender_id', 'tid', 'sor_id', 'id', 'objectid']);
   if (!rid) return null;
   return {
     id: `${src.id}:${rid}`,
@@ -155,17 +169,19 @@ function iowaAllowed(now = Date.now()) {
   return true;
 }
 
+const IOWA_PAGE = 100;
+
 async function iowa(center, radiusMi) {
   if (!iowaAllowed()) throw new Error('Iowa registry hourly limit reached; try again later or open the official registry');
   const range = Math.min(Math.max(Math.ceil(radiusMi), 1), 25);
-  const url = `https://www.iowasexoffender.gov/api/search/results.json?lat=${center.lat}&lon=${center.lon}&range=${range}&per_page=100&page=1`;
+  const url = `https://www.iowasexoffender.gov/api/search/results.json?lat=${center.lat}&lon=${center.lon}&range=${range}&per_page=${IOWA_PAGE}&page=1`;
   // ttl 0: Iowa forbids caching coordinates from location searches.
   const data = await fetchJson(url, { ttl: 0, timeoutMs: 10000 });
-  const rows = Array.isArray(data) ? data : data.records || data.results || data.registrants || data.data || [];
-  return rows.map((r) => normalize(SOURCES.IA, r, null, center));
+  const rows = Array.isArray(data) ? data : data.records || data.registrants || data.data || [];
+  return { rows: rows.map((r) => normalize(SOURCES.IA, r, null, center)), full: rows.length >= IOWA_PAGE };
 }
 
-/* ---------- ArcGIS layers (Tennessee, DC) ---------- */
+/* ---------- ArcGIS layers (Tennessee, DC, Missouri) ---------- */
 
 function envelope({ lat, lon }, radiusMi) {
   const dLat = radiusMi / 69.0;
@@ -173,27 +189,42 @@ function envelope({ lat, lon }, radiusMi) {
   return [lon - dLon, lat - dLat, lon + dLon, lat + dLat];
 }
 
+// Map services answer at most 1,000 rows at a time (downtown Kansas City
+// alone has about 1,000 registered addresses), so page through them.
+const ARCGIS_PAGE = 1000;
+const ARCGIS_PAGES = 6;
+
 async function arcgis(src, center, radiusMi) {
-  const params = new URLSearchParams({
-    where: '1=1', outFields: '*', outSR: '4326', f: 'geojson', resultRecordCount: '2000',
-    geometry: envelope(center, radiusMi).join(','), geometryType: 'esriGeometryEnvelope', inSR: '4326', spatialRel: 'esriSpatialRelIntersects',
-  });
-  // Both registries update nightly, so an hour of reuse is safe.
-  const data = await fetchJson(`${src.layer}/query?${params}`, { ttl: 3600, timeoutMs: 10000 });
-  return (data.features || []).map((f) => normalize(src, f.properties || {}, f.geometry, center));
+  const rows = [];
+  for (let page = 0; page < ARCGIS_PAGES; page++) {
+    const params = new URLSearchParams({
+      where: '1=1', outFields: '*', outSR: '4326', f: 'geojson', resultRecordCount: String(ARCGIS_PAGE), resultOffset: String(rows.length),
+      geometry: envelope(center, radiusMi).join(','), geometryType: 'esriGeometryEnvelope', inSR: '4326', spatialRel: 'esriSpatialRelIntersects',
+    });
+    // These registries update nightly or daily, so an hour of reuse is safe.
+    const data = await fetchJson(`${src.layer}/query?${params}`, { ttl: 3600, timeoutMs: 10000 });
+    const features = data.features || [];
+    rows.push(...features.map((f) => normalize(src, f.properties || {}, f.geometry, center)));
+    const more = data.exceededTransferLimit || (data.properties && data.properties.exceededTransferLimit);
+    if (!more || !features.length) return { rows, full: false };
+  }
+  return { rows, full: true };
 }
 
 /* ---------- Public ---------- */
 
+// `complete` is false when the registry capped its answer, so some people
+// in the area are missing from it. Iowa's 100 are not the nearest 100, so
+// a capped answer can't say who is newly listed.
 async function registrantsNear(stateCode, center, radiusMi) {
   const src = SOURCES[stateCode];
-  if (!src) return { coverage: 'link', registrants: [], source: null };
-  const rows = await (stateCode === 'IA' ? iowa(center, radiusMi) : arcgis(src, center, radiusMi));
+  if (!src) return { coverage: 'link', registrants: [], source: null, complete: true };
+  const { rows, full } = await (stateCode === 'IA' ? iowa(center, radiusMi) : arcgis(src, center, radiusMi));
   const registrants = rows
     .filter(Boolean)
     .filter((r) => r.distanceMi <= radiusMi)
     .sort((a, b) => a.distanceMi - b.distanceMi);
-  return { coverage: 'map', registrants, source: src };
+  return { coverage: 'map', registrants, source: src, complete: !full };
 }
 
 module.exports = { registrantsNear, normalize, iowaAllowed, SOURCES, WARNING, _iowaCalls: iowaCalls };

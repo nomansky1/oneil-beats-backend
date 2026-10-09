@@ -78,9 +78,40 @@ test('Tennessee and DC map layers', async () => {
   assert.equal(work.address, 'Work: 1300 BLOCK OF FIXTURE ST NW');
 });
 
+test('Missouri: every page of the map service, one pin per registered address', async () => {
+  const mo = await registry.registrantsNear('MO', { lat: 39.1, lon: -94.58 }, 2);
+  assert.equal(mo.coverage, 'map');
+  assert.equal(mo.complete, true, 'the second page was the last');
+  assert.deepEqual(mo.registrants.map((r) => r.id), ['missouri-sor:900001-1', 'missouri-sor:900001-2', 'missouri-sor:900002-1']);
+  const [home, work, temp] = mo.registrants;
+  assert.equal(home.name, 'Test Registrant 900001');
+  assert.equal(home.address, '300 Fixture St, Kansas City');
+  assert.equal(work.address, 'Work: 400 Fixture Ave, Kansas City');
+  assert.equal(temp.address, 'Temporary: 500 Fixture Blvd, Kansas City');
+  assert.equal(home.source.name, 'Missouri State Highway Patrol');
+  const pages = calls.filter((u) => u.includes('NSOR/MapServer/7/query')).map((u) => /resultOffset=(\d+)/.exec(u)[1]);
+  assert.deepEqual(pages.slice(-2), ['0', '2']);
+});
+
+test('a map service that never stops paging is reported as capped', async () => {
+  const fixtures = global.fetch;
+  global.fetch = async (url, opts) => {
+    if (!/NSOR\/MapServer\/7\/query/.test(String(url))) return fixtures(url, opts);
+    const offset = Number(/resultOffset=(\d+)/.exec(String(url))[1]);
+    return new Response(JSON.stringify({ type: 'FeatureCollection', exceededTransferLimit: true, features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [-94.58, 39.1] }, properties: { SID: 800000 + offset, SEQ_NBR: 1 } }] }), { status: 200 });
+  };
+  try {
+    const mo = await registry.registrantsNear('MO', { lat: 39.11, lon: -94.59 }, 2);
+    assert.equal(mo.complete, false);
+    assert.equal(mo.registrants.length, 6, 'stops after six pages');
+  } finally {
+    global.fetch = fixtures;
+  }
+});
+
 test('states without an app-friendly registry get a link only', async () => {
   const mi = await registry.registrantsNear('MI', { lat: 43.23, lon: -86.25 }, 2);
-  assert.deepEqual(mi, { coverage: 'link', registrants: [], source: null });
+  assert.deepEqual(mi, { coverage: 'link', registrants: [], source: null, complete: true });
 });
 
 test('GET /api/registry: records, official link, warning, never cached', async () => {
@@ -90,6 +121,7 @@ test('GET /api/registry: records, official link, warning, never cached', async (
   assert.equal(ia.headers['cache-control'], 'no-store', 'Iowa forbids caching coordinates');
   assert.equal(ia.body.coverage, 'map');
   assert.equal(ia.body.registrants.length, 2);
+  assert.equal(ia.body.complete, true);
   assert.equal(ia.body.official.url, 'https://www.iowasexoffender.gov/');
   assert.match(ia.body.warning, /must not be used to threaten, harass/);
   assert.equal(ia.body.sources[0].ok, true);

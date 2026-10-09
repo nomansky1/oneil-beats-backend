@@ -590,7 +590,7 @@
         ${regPhoto(r, 'reg-photo big')}
         <div><div class="eyebrow" style="color:${REG_COLOR}">Registered sex offender${r.sample ? ' · sample' : ''}</div><h2 class="d-title">${esc(r.name || 'Name not published by this registry')}</h2></div>
       </div>
-      ${r.sample ? '<p class="note"><span class="sample-chip">SAMPLE</span> Placeholder record for the preview. Not a real person. The live app shows official records where the state lets apps read its registry (Iowa, Tennessee, DC) and links to the official registry everywhere else.</p>' : ''}
+      ${r.sample ? '<p class="note"><span class="sample-chip">SAMPLE</span> Placeholder record for the preview. Not a real person. The live app shows official records where the state lets apps read its registry (Iowa, Missouri, Tennessee, DC) and links to the official registry everywhere else.</p>' : ''}
       <dl class="d-meta">
         <div><dt>${r.precision === 'block' ? 'Block' : 'Address'}</dt><dd>${esc(r.address || 'Not listed')}<span>${r.precision === 'block' ? 'Block-level, as published' : 'As registered'}</span></dd></div>
         <div><dt>Distance</dt><dd>${miles(r.distanceMi)}<span>from map center</span></dd></div>
@@ -608,6 +608,7 @@
     const list = S.registry.registrants || [];
     openSheet(`<h2 class="sheet-title">Registered sex offenders</h2>
       <p class="sheet-sub">${plural(list.length, 'listing')} within ${radiusText(S.radiusMi)}, closest first, from the official registry.</p>
+      ${S.registry.complete === false ? `<p class="note">The registry sends a limited number of listings at a time, so there are more in this area than shown. Make the map radius smaller, or open the official registry for everyone.</p>` : ''}
       <ol class="feed-list reg-list">${list.map((r, i) => `<li class="card" style="--c:${REG_COLOR};--i:${Math.min(i, 12)}"><button class="card-btn" type="button" data-reg="${esc(r.id)}">
         ${regPhoto(r, 'reg-photo')}<span class="card-main"><span class="card-meta mono"><span>${miles(r.distanceMi)}</span>${r.level ? `<span>${esc(r.level)}</span>` : ''}${r.sample ? '<span class="sample-chip">SAMPLE</span>' : ''}</span><span class="card-title">${esc(r.name || 'Name not published')}</span><span class="src">${esc(r.address || '')}</span></span>
       </button></li>`).join('')}</ol>
@@ -664,14 +665,16 @@
     try {
       const data = await API.registry();
       if (key !== `${S.center.lat},${S.center.lon},${S.radiusMi}`) return;
-      S.registry = { coverage: data.coverage, registrants: data.registrants || [], official: data.official, warning: data.warning, sources: data.sources || [] };
+      S.registry = { coverage: data.coverage, registrants: data.registrants || [], complete: data.complete !== false, official: data.official, warning: data.warning, sources: data.sources || [] };
       const fresh = diffRegistry(S.registry.registrants);
+      syncPush();
       renderOverlays();
       if (pendingOpen) openTarget(pendingOpen);
       if (S.tab === 'feed') renderFeed();
       // A first visit to an area only records what's there; later visits
-      // alert on anything listed since.
-      if (fresh.length && !quiet) registryAlert(fresh);
+      // alert on anything listed since. A capped answer shifts between
+      // checks, so it can't tell who is new.
+      if (fresh.length && !quiet && S.registry.complete) registryAlert(fresh);
     } catch (err) {
       S.registryAt = 0;
     }
@@ -714,7 +717,7 @@
     return `<li class="group-label">Around you</li>
       <li class="xacc"><ul class="xacc-list">
         <li class="xacc-row" style="--c:#c084fc"><span class="glyph">${icon('camera')}</span><span class="grow"><b>${plural(cams, 'license plate camera')}</b><small>Mapped on OpenStreetMap near you</small></span><button class="btn small" type="button" data-overlay="cameras" aria-pressed="${S.overlays.cameras}">${S.overlays.cameras ? 'On map' : 'Show'}</button></li>
-        ${onMap ? `<li class="xacc-row" style="--c:${REG_COLOR}"><span class="glyph">${icon('registry')}</span><button class="grow linkish" type="button" data-reglist="1"><b>${plural(regs.length, 'registered sex offender')}</b><small>Within ${radiusText(S.radiusMi)} · tap to see the list</small></button><button class="btn small" type="button" data-overlay="registry" aria-pressed="${S.overlays.registry}">${S.overlays.registry ? 'On map' : 'Show'}</button></li>` : ''}
+        ${onMap ? `<li class="xacc-row" style="--c:${REG_COLOR}"><span class="glyph">${icon('registry')}</span><button class="grow linkish" type="button" data-reglist="1"><b>${S.registry.complete === false ? `${regs.length}+ registered sex offenders` : plural(regs.length, 'registered sex offender')}</b><small>Within ${radiusText(S.radiusMi)} · tap to see the list</small></button><button class="btn small" type="button" data-overlay="registry" aria-pressed="${S.overlays.registry}">${S.overlays.registry ? 'On map' : 'Show'}</button></li>` : ''}
         ${reg ? `<li class="xacc-row" style="--c:${REG_COLOR}"><span class="glyph">${icon('registry')}</span><span class="grow"><b>${onMap ? `${esc(reg.name)} registry` : 'Sex offenders near you'}</b><small>${onMap ? 'Official map, photos and full records' : `${esc(reg.name)} official registry map and photos`}</small></span><a class="btn small" href="${esc(reg.url)}" target="_blank" rel="noopener noreferrer">Open</a></li>` : ''}
       </ul></li>`;
   }
@@ -1329,7 +1332,7 @@
         <div class="field"><span>Minimum severity</span>${seg('minSeverity', [1, 2, 3], (v) => ({ 1: 'Everything', 2: 'Serious and up', 3: 'Critical only' })[v])}</div>
         ${sw('confirmedOnly', 'Confirmed reports only', 'Skip single-source and unverified reports')}
         <div class="field"><span>Topics</span><div class="segs">${Object.entries(CATS).map(([id, c]) => `<button type="button" data-cat-pref="${id}" aria-pressed="${p.cats.includes(id)}">${esc(c.label)}</button>`).join('')}</div></div>
-        ${sw('registry', 'Sex offender registry changes', 'When someone is newly listed within your map radius. Iowa, Tennessee and DC for now')}
+        ${sw('registry', 'Sex offender registry changes', 'When someone is newly listed within your map radius, even with Vigil closed. Iowa, Missouri, Tennessee and DC for now')}
       </div>
       <div class="block">
         <h2>Quiet time</h2>
@@ -1341,7 +1344,7 @@
       <div class="block">
         <h2>Following</h2>
         ${followed.length ? `<ol class="feed-list">${followed.map((it, i) => cardHtml(it, i)).join('')}</ol>` : '<p>Tap Follow on any report to get its updates here.</p>'}
-        ${PREVIEW ? '<p class="note">Push notifications need the installed app. This preview shows the settings and what they would send.</p>' : `${S.installPrompt ? `<button class="btn primary" type="button" id="install-btn">${icon('pin')}Install Vigil on this phone</button>` : ''}<button class="btn" type="button" id="notify-btn">${icon('bell')}${'Notification' in window && Notification.permission === 'granted' ? 'Notifications are on' : 'Allow notifications on this device'}</button><p class="note">While Vigil is open, matching reports pop up as notifications. Alerts with the app closed are on the roadmap.</p>`}
+        ${PREVIEW ? '<p class="note">Push notifications need the installed app. This preview shows the settings and what they would send.</p>' : `${S.installPrompt ? `<button class="btn primary" type="button" id="install-btn">${icon('pin')}Install Vigil on this phone</button>` : ''}<button class="btn" type="button" id="notify-btn">${icon('bell')}${'Notification' in window && Notification.permission === 'granted' ? 'Notifications are on' : 'Allow notifications on this device'}</button><p class="note">While Vigil is open, matching reports pop up as notifications. Registry alerts also come with Vigil closed: the server checks every 15 minutes, which means storing your map area (rounded to about 1 km). Turning the registry switch off deletes it.</p>`}
       </div>`;
     const view = $('#view-alerts');
     view.onclick = async (e) => {
@@ -1358,6 +1361,7 @@
         if (!('Notification' in window)) return toast('This browser doesn’t support notifications', 'bell');
         const res = await Notification.requestPermission();
         toast(res === 'granted' ? 'Notifications are on for this device' : 'Notifications stay off. You can turn them on in Chrome’s site settings.', 'bell');
+        syncPush();
         return renderAlerts();
       } else if (t.closest('#install-btn') && S.installPrompt) {
         const prompt = S.installPrompt;
@@ -1367,6 +1371,7 @@
         return renderAlerts();
       } else return;
       store.set('alertPrefs', p);
+      if (tog && tog.dataset.toggle === 'registry') syncPush();
       const y = view.scrollTop;
       renderAlerts();
       view.scrollTop = y;
@@ -1395,6 +1400,47 @@
       const n = new Notification(title, { body, tag });
       n.onclick = () => { window.focus(); openTarget(open); };
     } catch (e) { /* notification blocked by the browser; the in-app alert still shows */ }
+  }
+
+  // Registry alerts with Vigil closed: the server checks this area every 15
+  // minutes and sends a Web Push (api/push.js, lib/watch.js). Only where a
+  // registry is on the map, with the registry switch on and notifications
+  // allowed; otherwise the stored area is deleted.
+  let pushBusy = false;
+  async function syncPush() {
+    if (PREVIEW || pushBusy || !S.center || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
+    pushBusy = true;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      const want = S.alertPrefs.registry && Notification.permission === 'granted' && S.registry.coverage === 'map';
+      if (!want) {
+        if (sub) {
+          await fetch('/api/push', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) });
+          await sub.unsubscribe();
+        }
+        store.set('pushArea', '');
+        return;
+      }
+      const area = `${S.center.lat.toFixed(2)},${S.center.lon.toFixed(2)},${S.radiusMi}`;
+      if (sub && store.get('pushArea', '') === area) return;
+      if (!sub) {
+        const info = await (await fetch('/api/push')).json();
+        if (!info.enabled) return;
+        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlBytes(info.publicKey) });
+      }
+      const res = await fetch('/api/push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub.toJSON(), lat: S.center.lat, lon: S.center.lon, radiusMi: S.radiusMi }) });
+      if (res.ok && (await res.json()).ok) store.set('pushArea', area);
+    } catch (e) {
+      /* push isn't available here; registry alerts still show while Vigil is open */
+    } finally {
+      pushBusy = false;
+    }
+  }
+
+  function base64UrlBytes(s) {
+    const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (s.length % 4)) % 4));
+    return Uint8Array.from(bin, (c) => c.charCodeAt(0));
   }
 
   // Open the report or registry record a notification pointed to, once
